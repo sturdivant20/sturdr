@@ -26,14 +26,14 @@ WGS84_RP        = 6356752.314245      # Earth's polar radius (semi-minor axis) [
 WGS84_E         = 0.0818191908429654  # Eccentricity, e
 WGS84_E2        = 0.00669437999019758 # Eccentricity squared, e^2
 WGS84_F         = 0.00335281066477569 # Earth's inverse flattening
-WGS84_GM        = 3.986004415e14      # Earth's gravitational constant [m^3/s^2]
-WGS84_OMEGA_DOT = 7.2921151467e-5     # Earth's rotation rate [rad/s]
 
 # ===== ORBITAL ================================================================================== #
 J2            = 1.0826269e-03    # Second zonal harmonic coefficient
 J3            = -2.5323000e-06   # Third zonal harmonic coefficient
 J4            = -1.6204000e-06   # Fourth zonal harmonic coefficient
 RELATIVISTC_F = -4.442807633e-10 # Relativistic clock correction [s/m^(1/2)]
+OMEGA_DOT     = 7.2921151467e-5  # Earth's rotation rate [rad/s]
+GM            = 3.986004415e14   # Earth's gravitational constant [m^3/s^2]
 
 # ===== GNSS CONSTELLATIONS ====================================================================== #
 GPS_L1CA_CARRIER_FREQ = 1575.42e6 # [Hz]

@@ -9,18 +9,19 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
         2. "Are PLLs Dead? A Tutorial on Kalman Filter-Based Techniques for Digital Carrier Syncronization" 
             - Vila-Valls, Closas, Navarro, Fernandez-Prades
         3. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach", 2007
-            - Borre, Akos, bertelsen, Rinder, Jensen
+            - Borre, Akos, Bertelsen, Rinder, Jensen
 ======  ============================================================================================
 """
 
 import numpy as np
-from sturdr.dsp.discriminators import *
+from sturdr.dsp.discriminator import *
 
 # ===== LOOP FILTERS ============================================================================= #
 # See [Kaplan & Hegarty, 2017] pg. 464
 
 def NaturalFrequency(bw: np.double, order: int):
-    """Calculate the natual radian frequency of the loop filter given the noise bandwidth
+    """
+    Calculate the natual radian frequency of the loop filter given the noise bandwidth
 
     Parameters
     ----------
@@ -56,7 +57,8 @@ def FLLassistedPLL_2rdOrder(phase_err: np.double,
                             T: np.double, 
                             w0p: np.double, 
                             w0f: np.double):
-    """2nd order PLL/DLL assisted by 1st order FLL Digital Loop Filter
+    """
+    2nd order PLL/DLL assisted by 1st order FLL Digital Loop Filter
 
     Parameters
     ----------
@@ -84,7 +86,7 @@ def FLLassistedPLL_2rdOrder(phase_err: np.double,
     
     # velocity accumulator
     update = vel_accumulator + T * (phase_err * w0p**2 + freq_err * w0f)
-    output = (vel_accumulator + output) * 0.5 + (phase_err * a * w0p)
+    output = (vel_accumulator + update) * 0.5 + (phase_err * a * w0p)
     
     return output, update
 
@@ -95,7 +97,8 @@ def FLLassistedPLL_3rdOrder(phase_err: np.double,
                             T: np.double, 
                             w0p: np.double, 
                             w0f: np.double):
-    """3rd order PLL/DLL assisted by 2nd order FLL Digital Loop Filter
+    """
+    3rd order PLL/DLL assisted by 2nd order FLL Digital Loop Filter
 
     Parameters
     ----------
@@ -135,7 +138,8 @@ def FLLassistedPLL_3rdOrder(phase_err: np.double,
     return output, jitter, freq
 
 def PLL_2ndOrder(phase_err: np.double, vel_accumulator: np.double, T: np.double, w0d: np.double):
-    """2nd order Phase/Delay Lock Loop
+    """
+    2nd order Phase/Delay Lock Loop
 
     Parameters
     ----------
@@ -165,7 +169,8 @@ def PLL_3rdOrder(phase_err: np.double,
                  vel_accumulator: np.double, 
                  T: np.double, 
                  w0p: np.double):
-    """3nd order PLL/DLL Digital Loop Filter
+    """
+    3nd order PLL/DLL Digital Loop Filter
 
     Parameters
     ----------
@@ -201,6 +206,7 @@ def PLL_3rdOrder(phase_err: np.double,
 # ===== KALMAN FILTER ============================================================================ #
 
 class TrackingKF:
+    __slots__ = 'x', 'u', 'P', 'A', 'B', 'C', 'Q', 'R', 'T', 'cn0', 'kappa', 'w0d', 'w0p', 'w0f'
     x     : np.ndarray
     u     : np.ndarray
     P     : np.ndarray
@@ -210,24 +216,26 @@ class TrackingKF:
     Q     : np.ndarray
     R     : np.ndarray
     T     : np.double
-    cn0   : np.double = 5000.0
-    kappa : np.double = 0.0
+    cn0   : np.double
+    kappa : np.double
     w0d   : np.double
     w0p   : np.double
     w0f   : np.double
     
     def __init__(self, 
-                 w0p: np.double,
-                 w0f: np.double,
-                 w0d: np.double,
-                 doppler: np.double, 
+                 w0p: np.double=0.0,
+                 w0f: np.double=0.0,
+                 w0d: np.double=0.0,
+                 doppler: np.double=0.0, 
                  carrier_phase: np.double=0.0, 
                  code_phase: np.double=0.0, 
                  nominal_carrier_freq: np.double=2.0*np.pi*1575.42e6,
                  nominal_code_freq: np.double=1.023e6,
                  intermediate_freq: np.double=0.0,
+                 cn0: np.double=5000.0,
                  T: np.double=0.001):
-        """Constructor for TrackingKF class
+        """
+        Constructor for TrackingKF class
 
         Parameters
         ----------
@@ -256,19 +264,21 @@ class TrackingKF:
         self.w0f = w0f
         self.w0d = w0d
         self.T = T
+        self.cn0 = cn0
         self.UpdateCarrierAidingCoeff(nominal_code_freq, nominal_carrier_freq)
-        self.reset_A()
-        self.reset_B()
-        self.reset_Q()
-        self.reset_C()
-        self.reset_R()
+        self.__reset_A()
+        self.__reset_B()
+        self.__reset_Q()
+        self.__reset_C()
+        self.__reset_R()
         self.x = np.array([carrier_phase, doppler, 0.0, code_phase, 0.0])
         self.u = np.array([intermediate_freq, nominal_code_freq])
-        self.P = np.diag([np.pi**2/3, 2*np.pi*100.0, 1.0, 0.1, 1.0])
-        
+        self.P = np.diag([np.pi**2/3, 2*np.pi*500.0, 100.0, 0.1, 10.0])
+        return
             
     def Run(self, phase_err: np.double, freq_err: np.double, chip_err: np.double):
-        """Run the Kalman Filter DLL/PLL
+        """
+        Run the Kalman Filter DLL/PLL
 
         Parameters
         ----------
@@ -296,9 +306,22 @@ class TrackingKF:
         self.x += K @ dy
         
         return self.x
-            
+       
+    def UpdateDoppler(self, doppler: np.double):
+        """
+        Update tracking loop carrier-to-noise density ratio
+
+        Parameters
+        ----------
+        cn0 : np.double
+            Carrier-to-noise density ratio magnitude (not dB-Hz)
+        """
+        self.x[1] = doppler
+        return
+         
     def UpdateCn0(self, cn0: np.double):
-        """Update tracking loop carrier-to-noise density ratio
+        """
+        Update tracking loop carrier-to-noise density ratio
 
         Parameters
         ----------
@@ -306,11 +329,12 @@ class TrackingKF:
             Carrier-to-noise density ratio magnitude (not dB-Hz)
         """
         self.cn0 = cn0
-        self.reset_R()
+        self.__reset_R()
         return
     
     def UpdateIntegrationTime(self, T: np.double):
-        """Update tracking loop integration time
+        """
+        Update tracking loop integration time
 
         Parameters
         ----------
@@ -318,15 +342,16 @@ class TrackingKF:
             Integration time [s]
         """
         self.T = T
-        self.reset_A()
-        self.reset_B()
-        self.reset_Q()
+        self.__reset_A()
+        self.__reset_B()
+        self.__reset_Q()
         return
     
     def UpdateCarrierAidingCoeff(self, 
                                  nominal_code_freq: np.double, 
                                  nominal_carrier_freq: np.double):
-        """Update coefficient for carrier aiding inside the DLL filter
+        """
+        Update coefficient for carrier aiding inside the DLL filter
 
         Parameters
         ----------
@@ -337,8 +362,28 @@ class TrackingKF:
         """
         self.kappa = nominal_code_freq / nominal_carrier_freq
         return
+    
+    def UpdateNaturalFreqs(self, w0p: np.double, w0f: np.double, w0d: np.double):
+        """
+        Update the natural frequencies for the equivalent loop filters
+
+        Parameters
+        ----------
+        w0p : np.double
+            Natural radian frequency of the PLL [rad/s]
+        w0f : np.double
+            Natural radian frequency of the FLL [rad/s]
+        w0d : np.double
+            Natural radian frequency of the DLL [rad/s]
+        """
+        
+        self.w0p = w0p
+        self.w0f = w0f
+        self.w0d = w0d
+        self.__reset_Q()
+        return
             
-    def reset_A(self):
+    def __reset_A(self):
         T, k = self.T, self.kappa
         self.A = np.array(
             [
@@ -352,7 +397,7 @@ class TrackingKF:
         )
         return
     
-    def reset_B(self):
+    def __reset_B(self):
         self.B = np.array(
             [
                 [self.T,    0.0],
@@ -365,7 +410,7 @@ class TrackingKF:
         )
         return
     
-    def reset_C(self):
+    def __reset_C(self):
         self.C = np.array(
             [
                 [1.0, 0.0, 0.0, 0.0, 0.0], 
@@ -376,9 +421,9 @@ class TrackingKF:
         )
         return
         
-    def reset_Q(self):
+    def __reset_Q(self):
         T, w0d, w0p, w0f, k = self.T, self.w0d, self.w0p, self.w0f, self.kappa
-        self.Q = np.array(
+        self.Q = 100 * np.array(
             [
                 [     (w0f*T**5)/20 + (w0p*T**3)/3,   (T**2*(w0f*T**2 + 4*w0p))/8,   (T**3*w0f)/6,                  (T**3*k*(3*w0f*T**2 + 20*w0p))/60,            0],
                 [      (w0f*T**4)/8 + (w0p*T**2)/2,          (w0f*T**3)/3 + w0p*T,   (T**2*w0f)/2,                      (T**2*k*(w0f*T**2 + 4*w0p))/8,            0],
@@ -390,11 +435,11 @@ class TrackingKF:
         )
         return
     
-    def reset_R(self):
+    def __reset_R(self):
         self.R = np.array(
             [
                 [PllVariance(self.cn0, self.T), 0.0, 0.0], # [rad^2]
-                [0.0, FllVariance(self.cn0, self.T) / (2*np.pi)**2, 0.0], # [(rad/s)^2]
+                [0.0, FllVariance(self.cn0, self.T), 0.0], # [(rad/s)^2]
                 [0.0, 0.0, DllVariance(self.cn0, self.T)]  # [chip^2]
             ],
             dtype=np.double

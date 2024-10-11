@@ -1,7 +1,7 @@
-"""**discriminators.py**
+"""**discriminator.py**
 
 ======  ============================================================================================
-file    sturdr/dsp/discriminators.py
+file    sturdr/dsp/discriminator.py
 brief   Standard satellite tracking match filter discriminators.  
 date    October 2024
 refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017 
@@ -17,7 +17,8 @@ import numpy as np
 
 # ===== DLL ====================================================================================== #
 def DllNneml(IE: np.double, QE: np.double, IL: np.double, QL: np.double):
-    """Delay Lock Loop - Normalized non-coherent early minus late discriminator
+    """
+    Delay Lock Loop - Normalized non-coherent early minus late discriminator
 
     Parameters
     ----------
@@ -40,7 +41,8 @@ def DllNneml(IE: np.double, QE: np.double, IL: np.double, QL: np.double):
     return 0.5 * (E - L) / (E + L)
 
 def DllNcdp(IE: np.double, IP: np.double, IL: np.double):
-    """Delay Lock Loop - Normalized coherent dot product discriminator
+    """
+    Delay Lock Loop - Normalized coherent dot product discriminator
 
     Parameters
     ----------
@@ -59,7 +61,8 @@ def DllNcdp(IE: np.double, IP: np.double, IL: np.double):
     return 0.25 * (IE - IL) / IP
 
 def DllVariance(cn0: np.double, T: np.double):
-    """Variance in the DLL discriminator
+    """
+    Variance in the DLL discriminator
 
     Parameters
     ----------
@@ -78,7 +81,8 @@ def DllVariance(cn0: np.double, T: np.double):
 
 # ===== PLL ====================================================================================== #
 def PllCostas(IP: np.double, QP: np.double):
-    """Phase Lock Loop - Costas discriminator
+    """
+    Phase Lock Loop - Costas discriminator
 
     Parameters
     ----------
@@ -95,7 +99,8 @@ def PllCostas(IP: np.double, QP: np.double):
     return np.atan(QP / IP)
 
 def PllAtan2(IP: np.double, QP: np.double):
-    """Phase Lock Loop - ATAN2 discriminator, sensitive to data bits
+    """
+    Phase Lock Loop - ATAN2 discriminator, sensitive to data bits
 
     Parameters
     ----------
@@ -112,7 +117,8 @@ def PllAtan2(IP: np.double, QP: np.double):
     return np.atan2(QP, IP)
 
 def PllNddc(IP: np.double, QP: np.double):
-    """Phase Lock Loop - Normalized decision-directed-costas discriminator
+    """
+    Phase Lock Loop - Normalized decision-directed-costas discriminator
 
     Parameters
     ----------
@@ -130,7 +136,8 @@ def PllNddc(IP: np.double, QP: np.double):
     return QP * np.sign(IP) / P
 
 def PllVariance(cn0: np.double, T: np.double):
-    """Variance in the PLL discriminator
+    """
+    Variance in the PLL discriminator
 
     Parameters
     ----------
@@ -149,7 +156,8 @@ def PllVariance(cn0: np.double, T: np.double):
 
 # ===== FLL ====================================================================================== #
 def FllAtan2(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double, T: np.double):
-    """Frequency Lock Loop - ATAN2 discriminator
+    """
+    Frequency Lock Loop - ATAN2 discriminator
 
     Parameters
     ----------
@@ -174,7 +182,8 @@ def FllAtan2(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double,
     return np.atan2(x, d) / T
 
 def FllNddcp(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double, T: np.double):
-    """Frequency Lock Loop - Nomralized decision-directed-cross-product discriminator
+    """
+    Frequency Lock Loop - Nomralized decision-directed-cross-product discriminator
 
     Parameters
     ----------
@@ -200,7 +209,8 @@ def FllNddcp(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double,
     return x * np.sign(d) / (P * T)
 
 def FllVariance(cn0: np.double, T: np.double):
-    """Variance in the FLL discriminator
+    """
+    Variance in the FLL discriminator
 
     Parameters
     ----------

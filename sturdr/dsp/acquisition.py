@@ -7,7 +7,7 @@ date    October 2024
 refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017 
             - Kaplan & Hegarty
         2. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach", 2007
-            - Borre, Akos, bertelsen, Rinder, Jensen
+            - Borre, Akos, Bertelsen, Rinder, Jensen
 ======  ============================================================================================
 """
 
@@ -22,7 +22,8 @@ def SerialSearch(rfdata: np.ndarray,
                  sampling_freq: np.double, 
                  code_freq: np.double,
                  intermediate_freq: np.double):
-    """Implementation of the serial acquisition method (very slow)
+    """
+    Implementation of the serial acquisition method (very slow), limited to 1 ms
 
     Parameters
     ----------
@@ -81,30 +82,28 @@ def SerialSearch(rfdata: np.ndarray,
     return correlation_map
 
 def PcpsSearch(rfdata: np.ndarray, 
-               code: np.ndarray, 
+               upsampled_code: np.ndarray, 
                doppler_range: np.double, 
                doppler_step: np.double, 
                sampling_freq: np.double, 
-               code_freq: np.double,
                intermediate_freq: np.double,
                coherent_integration: int=1,
                non_coherent_integration: int=1):
-    """Implementation of the parallel code phase search (PCPS) method
+    """
+    Implementation of the parallel code phase search (PCPS) method
 
     Parameters
     ----------
     rfdata : np.ndarray
         Data samples recorded by the RF front end
-    code : np.ndarray
-        Local code (not upsampled)
+    upsampled_code : np.ndarray
+        Local code
     doppler_range : np.double
         Max doppler frequency to search [Hz]
     doppler_step : np.double
         Frequency step for doppler search [Z]
     sampling_freq : np.double
         Front end sampleing frequency [Hz]
-    code_freq : np.double
-        GNSS signal code frequency [Hz]
     intermediate_freq : np.double
         Intermediate frequency of the RF signal [Hz]
     coherent_integration : int, optional
@@ -119,7 +118,6 @@ def PcpsSearch(rfdata: np.ndarray,
     """
     # Initialize
     doppler_bins = np.arange(-doppler_range, doppler_range+1, doppler_step)
-    upsampled_code, _ = CodeNCO(code, sampling_freq, code_freq, code.size)
     samples_per_code = upsampled_code.size
     correlation_map = np.zeros((doppler_bins.size, samples_per_code), dtype=np.double) 
     
@@ -146,7 +144,8 @@ def PcpsSearch(rfdata: np.ndarray,
     return correlation_map
 
 def Peak2PeakComparison(correlation_map: np.ndarray, samples_per_code: int, samples_per_chip: int):
-    """Compares the two highest peaks of the correlation map
+    """
+    Compares the two highest peaks of the correlation map
 
     Parameters
     ----------
@@ -185,7 +184,8 @@ def Peak2PeakComparison(correlation_map: np.ndarray, samples_per_code: int, samp
     return first_peak_idx, acquisition_metric
 
 def Peak2NoiseFloorComparison(correlation_map: np.ndarray):
-    """Compares the two highest peak to the noise floor of the acquisition plane
+    """
+    Compares the two highest peak to the noise floor of the acquisition plane
 
     Parameters
     ----------

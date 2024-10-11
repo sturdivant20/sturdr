@@ -15,15 +15,14 @@ import numpy as np
 
 # ================================================================================================ #
 
-def CorrelateEPL(rfdata: np.ndarray, carrier: np.ndarray, code: np.ndarray, tap_spacing: int):
-    """Generate the standard Early-Prompt-Late correlator values
+def CorrelateEPL(signal: np.ndarray, code: np.ndarray, tap_spacing: int, noise_spacing: bool=False):
+    """
+    Generate the standard Early-Prompt-Late correlator values
 
     Parameters
     ----------
-    rfdata : np.ndarray
-        Recorded signal data
-    carrier : np.ndarray
-        Local carrier replica from NCO
+    signal : np.ndarray
+        Recorded signal data and carrier replica multiplied together
     code : np.ndarray
         Local code replica from NCO
     tap_spacing : int
@@ -34,7 +33,6 @@ def CorrelateEPL(rfdata: np.ndarray, carrier: np.ndarray, code: np.ndarray, tap_
     IE, QE, IP, QP, IL, QL, IP_1, QP_1, IP_2, QP_2 : np.double
         GNSS correlator values
     """
-    signal = rfdata * carrier
     len = code.size
     half_len = int(len / 2)
     idx = np.arange(len, dtype=int)
@@ -42,15 +40,24 @@ def CorrelateEPL(rfdata: np.ndarray, carrier: np.ndarray, code: np.ndarray, tap_
     # correlate
     E = np.sum(signal * code[(idx + tap_spacing) % len])
     L = np.sum(signal * code[(idx - tap_spacing) % len])
+    # E = np.sum(signal * code[(idx + tap_spacing)])
+    # L = np.sum(signal * code[(idx - tap_spacing)])
     p1 = np.sum(signal[:half_len] * code[:half_len])
     p2 = np.sum(signal[half_len:] * code[half_len:])
     P = p1 + p2
     
-    # return IE, QE, IP, QP, IL, QL, IP_1, QP_1, IP_2, QP_2
-    return E.real, E.imag, P.real, P.imag, L.real, L.imag, p1.real, p1.imag, p2.real, p2.imag
+    if noise_spacing:
+        N = np.sum(signal * code[(idx + half_len) % len])
+        # N = np.sum(signal * code[(idx + noise_spacing)])
+        return E.real, E.imag, P.real, P.imag, L.real, L.imag, p1.real, p1.imag, p2.real, p2.imag, \
+               N.real, N.imag
+    else:
+        # return IE, QE, IP, QP, IL, QL, IP_1, QP_1, IP_2, QP_2
+        return E.real, E.imag, P.real, P.imag, L.real, L.imag, p1.real, p1.imag, p2.real, p2.imag
 
 def Correlate(signal: np.ndarray, code: np.ndarray):
-    """Correlate a signal and code replica
+    """
+    Correlate a signal and code replica
 
     Parameters
     ----------
@@ -77,7 +84,8 @@ def CodeNCO(code: np.ndarray,
             code_freq: np.double, 
             code_len: np.double, 
             remainder_phase: np.double = 0.0):
-    """Return the upsampled version of the code provided
+    """
+    Return the upsampled version of the code provided
 
     Parameters
     ----------
@@ -114,7 +122,8 @@ def CarrierNCO(sampling_freq: np.double,
                freq_jitter: np.double,
                size: np.double, 
                remainder_phase: np.double = 0.0):
-    """Create a local carrier replica
+    """
+    Create a local carrier replica
 
     Parameters
     ----------
