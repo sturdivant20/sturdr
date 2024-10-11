@@ -41,7 +41,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'dsp';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="ephem package" href="ephem.html" />
+    <link rel="next" title="main module" href="main.html" />
     <link rel="prev" title="channel package" href="channel.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -132,13 +132,6 @@
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
     
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="includeme.html">
-    SturDR
-  </a>
-</li>
-
-
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="modules.html">
     sturdr
@@ -229,13 +222,6 @@ document.write(`
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
     
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="includeme.html">
-    SturDR
-  </a>
-</li>
-
-
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="modules.html">
     sturdr
@@ -276,8 +262,9 @@ document.write(`
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="channel.html">channel package</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">dsp package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ephem.html">ephem package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="main.html">main module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nav.html">nav package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rcvr.html">rcvr package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="utils.html">utils package</a></li>
 </ul>
 </div>
@@ -366,7 +353,7 @@ document.write(`
 </li>
 <li><dl class="simple">
 <dt>“A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach”, 2007</dt><dd><ul class="simple">
-<li><p>Borre, Akos, bertelsen, Rinder, Jensen</p></li>
+<li><p>Borre, Akos, Bertelsen, Rinder, Jensen</p></li>
 </ul>
 </dd>
 </dl>
@@ -379,22 +366,20 @@ document.write(`
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="dsp.acquisition.PcpsSearch">
-<span class="sig-prename descclassname"><span class="pre">dsp.acquisition.</span></span><span class="sig-name descname"><span class="pre">PcpsSearch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rfdata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler_step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coherent_integration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_coherent_integration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.acquisition.PcpsSearch" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">dsp.acquisition.</span></span><span class="sig-name descname"><span class="pre">PcpsSearch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rfdata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upsampled_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler_step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coherent_integration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_coherent_integration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.acquisition.PcpsSearch" title="Link to this definition">#</a></dt>
 <dd><p>Implementation of the parallel code phase search (PCPS) method</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>rfdata</strong><span class="classifier">np.ndarray</span></dt><dd><p>Data samples recorded by the RF front end</p>
 </dd>
-<dt><strong>code</strong><span class="classifier">np.ndarray</span></dt><dd><p>Local code (not upsampled)</p>
+<dt><strong>upsampled_code</strong><span class="classifier">np.ndarray</span></dt><dd><p>Local code</p>
 </dd>
 <dt><strong>doppler_range</strong><span class="classifier">np.double</span></dt><dd><p>Max doppler frequency to search [Hz]</p>
 </dd>
 <dt><strong>doppler_step</strong><span class="classifier">np.double</span></dt><dd><p>Frequency step for doppler search [Z]</p>
 </dd>
 <dt><strong>sampling_freq</strong><span class="classifier">np.double</span></dt><dd><p>Front end sampleing frequency [Hz]</p>
-</dd>
-<dt><strong>code_freq</strong><span class="classifier">np.double</span></dt><dd><p>GNSS signal code frequency [Hz]</p>
 </dd>
 <dt><strong>intermediate_freq</strong><span class="classifier">np.double</span></dt><dd><p>Intermediate frequency of the RF signal [Hz]</p>
 </dd>
@@ -464,7 +449,7 @@ document.write(`
 <dl class="py function">
 <dt class="sig sig-object py" id="dsp.acquisition.SerialSearch">
 <span class="sig-prename descclassname"><span class="pre">dsp.acquisition.</span></span><span class="sig-name descname"><span class="pre">SerialSearch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rfdata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler_step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.acquisition.SerialSearch" title="Link to this definition">#</a></dt>
-<dd><p>Implementation of the serial acquisition method (very slow)</p>
+<dd><p>Implementation of the serial acquisition method (very slow), limited to 1 ms</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -494,13 +479,13 @@ document.write(`
 </dd></dl>
 
 </section>
-<section id="module-dsp.discriminators">
-<span id="dsp-discriminators-module"></span><h2>dsp.discriminators module<a class="headerlink" href="#module-dsp.discriminators" title="Link to this heading">#</a></h2>
-<p><strong>discriminators.py</strong></p>
+<section id="module-dsp.discriminator">
+<span id="dsp-discriminator-module"></span><h2>dsp.discriminator module<a class="headerlink" href="#module-dsp.discriminator" title="Link to this heading">#</a></h2>
+<p><strong>discriminator.py</strong></p>
 <div class="pst-scrollable-table-container"><table class="table">
 <tbody>
 <tr class="row-odd"><td><p>file</p></td>
-<td><p>sturdr/dsp/discriminators.py</p></td>
+<td><p>sturdr/dsp/discriminator.py</p></td>
 </tr>
 <tr class="row-even"><td><p>brief</p></td>
 <td><p>Standard satellite tracking match filter discriminators.</p></td>
@@ -538,8 +523,8 @@ document.write(`
 </table>
 </div>
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.DllNcdp">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">DllNcdp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IE</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IL</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.DllNcdp" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.DllNcdp">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">DllNcdp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IE</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IL</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.DllNcdp" title="Link to this definition">#</a></dt>
 <dd><p>Delay Lock Loop - Normalized coherent dot product discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -562,8 +547,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.DllNneml">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">DllNneml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IE</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QE</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IL</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QL</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.DllNneml" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.DllNneml">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">DllNneml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IE</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QE</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IL</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QL</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.DllNneml" title="Link to this definition">#</a></dt>
 <dd><p>Delay Lock Loop - Normalized non-coherent early minus late discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -588,8 +573,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.DllVariance">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">DllVariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.DllVariance" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.DllVariance">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">DllVariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.DllVariance" title="Link to this definition">#</a></dt>
 <dd><p>Variance in the DLL discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -610,8 +595,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.FllAtan2">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">FllAtan2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.FllAtan2" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.FllAtan2">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">FllAtan2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.FllAtan2" title="Link to this definition">#</a></dt>
 <dd><p>Frequency Lock Loop - ATAN2 discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -638,8 +623,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.FllNddcp">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">FllNddcp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.FllNddcp" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.FllNddcp">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">FllNddcp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.FllNddcp" title="Link to this definition">#</a></dt>
 <dd><p>Frequency Lock Loop - Nomralized decision-directed-cross-product discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -666,8 +651,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.FllVariance">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">FllVariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.FllVariance" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.FllVariance">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">FllVariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.FllVariance" title="Link to this definition">#</a></dt>
 <dd><p>Variance in the FLL discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -688,8 +673,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.PllAtan2">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">PllAtan2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.PllAtan2" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.PllAtan2">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">PllAtan2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.PllAtan2" title="Link to this definition">#</a></dt>
 <dd><p>Phase Lock Loop - ATAN2 discriminator, sensitive to data bits</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -710,8 +695,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.PllCostas">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">PllCostas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.PllCostas" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.PllCostas">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">PllCostas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.PllCostas" title="Link to this definition">#</a></dt>
 <dd><p>Phase Lock Loop - Costas discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -732,8 +717,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.PllNddc">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">PllNddc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.PllNddc" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.PllNddc">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">PllNddc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.PllNddc" title="Link to this definition">#</a></dt>
 <dd><p>Phase Lock Loop - Normalized decision-directed-costas discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -754,8 +739,8 @@ document.write(`
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dsp.discriminators.PllVariance">
-<span class="sig-prename descclassname"><span class="pre">dsp.discriminators.</span></span><span class="sig-name descname"><span class="pre">PllVariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminators.PllVariance" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsp.discriminator.PllVariance">
+<span class="sig-prename descclassname"><span class="pre">dsp.discriminator.</span></span><span class="sig-name descname"><span class="pre">PllVariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.discriminator.PllVariance" title="Link to this definition">#</a></dt>
 <dd><p>Variance in the PLL discriminator</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -896,14 +881,12 @@ document.write(`
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsp.gnss_signal.CorrelateEPL">
-<span class="sig-prename descclassname"><span class="pre">dsp.gnss_signal.</span></span><span class="sig-name descname"><span class="pre">CorrelateEPL</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rfdata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carrier</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tap_spacing</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.gnss_signal.CorrelateEPL" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">dsp.gnss_signal.</span></span><span class="sig-name descname"><span class="pre">CorrelateEPL</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tap_spacing</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_spacing</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.gnss_signal.CorrelateEPL" title="Link to this definition">#</a></dt>
 <dd><p>Generate the standard Early-Prompt-Late correlator values</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>rfdata</strong><span class="classifier">np.ndarray</span></dt><dd><p>Recorded signal data</p>
-</dd>
-<dt><strong>carrier</strong><span class="classifier">np.ndarray</span></dt><dd><p>Local carrier replica from NCO</p>
+<dt><strong>signal</strong><span class="classifier">np.ndarray</span></dt><dd><p>Recorded signal data and carrier replica multiplied together</p>
 </dd>
 <dt><strong>code</strong><span class="classifier">np.ndarray</span></dt><dd><p>Local code replica from NCO</p>
 </dd>
@@ -924,6 +907,147 @@ document.write(`
 <dt class="sig sig-object py" id="dsp.gnss_signal.shift">
 <span class="sig-prename descclassname"><span class="pre">dsp.gnss_signal.</span></span><span class="sig-name descname"><span class="pre">shift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.gnss_signal.shift" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+</section>
+<section id="module-dsp.lock_detector">
+<span id="dsp-lock-detector-module"></span><h2>dsp.lock_detector module<a class="headerlink" href="#module-dsp.lock_detector" title="Link to this heading">#</a></h2>
+<p><strong>lock_detector.py</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<tbody>
+<tr class="row-odd"><td><p>file</p></td>
+<td><p>sturdr/dsp/lock_detector.py</p></td>
+</tr>
+<tr class="row-even"><td><p>brief</p></td>
+<td><p>Standard tracking loop lock detectors.</p></td>
+</tr>
+<tr class="row-odd"><td><p>date</p></td>
+<td><p>October 2024</p></td>
+</tr>
+<tr class="row-even"><td><p>refs</p></td>
+<td><ol class="arabic simple">
+<li><dl class="simple">
+<dt>“Understanding GPS/GNSS Principles and Applications”, 3rd Edition, 2017</dt><dd><ul class="simple">
+<li><p>Kaplan &amp; Hegarty</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>“Principles of GNSS, Inertial, and Multisensor Integrated Navigation Systems”, 2nd Edition, 2013</dt><dd><ul class="simple">
+<li><p>Groves</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>“Global Positioning System: Signals, Measurements, and Performance”, 2nd Edition, 2006</dt><dd><ul class="simple">
+<li><p>Misra &amp; Enge</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="dsp.lock_detector.CodeLockDetector">
+<span class="sig-prename descclassname"><span class="pre">dsp.lock_detector.</span></span><span class="sig-name descname"><span class="pre">CodeLockDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Amp_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IN</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QN</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.lock_detector.CodeLockDetector" title="Link to this definition">#</a></dt>
+<dd><p>Code lock detector and Carrier-to-Noise ratio estimator, must be reset if integration period 
+changes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>Amp_memory</strong><span class="classifier">np.double</span></dt><dd><p>Previous amplitude squared value</p>
+</dd>
+<dt><strong>noise_memory</strong><span class="classifier">np.double</span></dt><dd><p>Previous noise power value</p>
+</dd>
+<dt><strong>IP</strong><span class="classifier">np.double</span></dt><dd><p>Inphase promt value</p>
+</dd>
+<dt><strong>QP</strong><span class="classifier">np.double</span></dt><dd><p>Quadraphase prompt value</p>
+</dd>
+<dt><strong>IN</strong><span class="classifier">np.double</span></dt><dd><p>Inphase nosie correlator value</p>
+</dd>
+<dt><strong>QN</strong><span class="classifier">np.double</span></dt><dd><p>Quadraphase noise correlator value</p>
+</dd>
+<dt><strong>dt</strong><span class="classifier">np.double</span></dt><dd><p>_description_</p>
+</dd>
+<dt><strong>alpha</strong><span class="classifier">np.double, optional</span></dt><dd><p>Smoothing (filtering) coefficient, by default 0.01</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>lock</strong><span class="classifier">bool</span></dt><dd><p>Carrier Phase lock result</p>
+</dd>
+<dt><strong>cn0_mag</strong><span class="classifier">np.double</span></dt><dd><p>Estimated carrier-to-noise ratio magnitude (not dB-Hz)</p>
+</dd>
+<dt><strong>A2</strong><span class="classifier">np.double</span></dt><dd><p>New (filtered) amplitude squared value</p>
+</dd>
+<dt><strong>n2</strong><span class="classifier">np.double</span></dt><dd><p>New (filtered) noise power value</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsp.lock_detector.LowPassFilter">
+<span class="sig-prename descclassname"><span class="pre">dsp.lock_detector.</span></span><span class="sig-name descname"><span class="pre">LowPassFilter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.lock_detector.LowPassFilter" title="Link to this definition">#</a></dt>
+<dd><p>Implementation of a moving average (low-pass) filter</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>new</strong><span class="classifier">np.double</span></dt><dd><p>New value</p>
+</dd>
+<dt><strong>old</strong><span class="classifier">np.double</span></dt><dd><p>Old value</p>
+</dd>
+<dt><strong>alpha</strong><span class="classifier">np.double, optional</span></dt><dd><p>Forgetting coefficient, by default 0.01</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>output</strong><span class="classifier">np.double</span></dt><dd><p>Filtered value</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsp.lock_detector.PhaseLockDetector">
+<span class="sig-prename descclassname"><span class="pre">dsp.lock_detector.</span></span><span class="sig-name descname"><span class="pre">PhaseLockDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">IP_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">IP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">QP</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.lock_detector.PhaseLockDetector" title="Link to this definition">#</a></dt>
+<dd><p>Carrier phase lock detector (Kaplan)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>IP_memory</strong><span class="classifier">np.double</span></dt><dd><p>Previous inphase prompt value</p>
+</dd>
+<dt><strong>QP_memory</strong><span class="classifier">np.double</span></dt><dd><p>Previous quadraphase prompt value</p>
+</dd>
+<dt><strong>IP</strong><span class="classifier">np.double</span></dt><dd><p>Inphase promt value</p>
+</dd>
+<dt><strong>QP</strong><span class="classifier">np.double</span></dt><dd><p>Quadraphase prompt value</p>
+</dd>
+<dt><strong>alpha</strong><span class="classifier">np.double, optional</span></dt><dd><p>Smoothing (filtering) coefficient, by default 0.001</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>lock</strong><span class="classifier">bool</span></dt><dd><p>Carrier Phase lock result</p>
+</dd>
+<dt><strong>I</strong><span class="classifier">np.double</span></dt><dd><p>New (filtered) inphase prompt value</p>
+</dd>
+<dt><strong>Q</strong><span class="classifier">np.double</span></dt><dd><p>New (filtered) quadraphase prompt value</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 <section id="module-dsp.tracking">
@@ -958,7 +1082,7 @@ document.write(`
 </li>
 <li><dl class="simple">
 <dt>“A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach”, 2007</dt><dd><ul class="simple">
-<li><p>Borre, Akos, bertelsen, Rinder, Jensen</p></li>
+<li><p>Borre, Akos, Bertelsen, Rinder, Jensen</p></li>
 </ul>
 </dd>
 </dl>
@@ -1125,8 +1249,28 @@ document.write(`
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dsp.tracking.TrackingKF">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dsp.tracking.</span></span><span class="sig-name descname"><span class="pre">TrackingKF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w0p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carrier_phase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code_phase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nominal_carrier_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">9898655796.636864</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nominal_code_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1023000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dsp.tracking.</span></span><span class="sig-name descname"><span class="pre">TrackingKF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w0p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doppler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carrier_phase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">code_phase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nominal_carrier_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">9898655796.636864</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nominal_code_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1023000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cn0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>A</strong></dt><dd></dd>
+<dt><strong>B</strong></dt><dd></dd>
+<dt><strong>C</strong></dt><dd></dd>
+<dt><strong>P</strong></dt><dd></dd>
+<dt><strong>Q</strong></dt><dd></dd>
+<dt><strong>R</strong></dt><dd></dd>
+<dt><strong>T</strong></dt><dd></dd>
+<dt><strong>cn0</strong></dt><dd></dd>
+<dt><strong>kappa</strong></dt><dd></dd>
+<dt><strong>u</strong></dt><dd></dd>
+<dt><strong>w0d</strong></dt><dd></dd>
+<dt><strong>w0f</strong></dt><dd></dd>
+<dt><strong>w0p</strong></dt><dd></dd>
+<dt><strong>x</strong></dt><dd></dd>
+</dl>
+</dd>
+</dl>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
@@ -1139,28 +1283,14 @@ document.write(`
 <tr class="row-odd"><td><p><a class="reference internal" href="#dsp.tracking.TrackingKF.UpdateCn0" title="dsp.tracking.TrackingKF.UpdateCn0"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateCn0</span></code></a>(cn0)</p></td>
 <td><p>Update tracking loop carrier-to-noise density ratio</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsp.tracking.TrackingKF.UpdateIntegrationTime" title="dsp.tracking.TrackingKF.UpdateIntegrationTime"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateIntegrationTime</span></code></a>(T)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsp.tracking.TrackingKF.UpdateDoppler" title="dsp.tracking.TrackingKF.UpdateDoppler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateDoppler</span></code></a>(doppler)</p></td>
+<td><p>Update tracking loop carrier-to-noise density ratio</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsp.tracking.TrackingKF.UpdateIntegrationTime" title="dsp.tracking.TrackingKF.UpdateIntegrationTime"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateIntegrationTime</span></code></a>(T)</p></td>
 <td><p>Update tracking loop integration time</p></td>
 </tr>
-</tbody>
-</table>
-</div>
-<div class="pst-scrollable-table-container"><table class="table">
-<tbody>
-<tr class="row-odd"><td><p><strong>reset_A</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>reset_B</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>reset_C</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-even"><td><p><strong>reset_Q</strong></p></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p><strong>reset_R</strong></p></td>
-<td></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsp.tracking.TrackingKF.UpdateNaturalFreqs" title="dsp.tracking.TrackingKF.UpdateNaturalFreqs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateNaturalFreqs</span></code></a>(w0p, w0f, w0d)</p></td>
+<td><p>Update the natural frequencies for the equivalent loop filters</p></td>
 </tr>
 </tbody>
 </table>
@@ -1255,6 +1385,20 @@ document.write(`
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.UpdateDoppler">
+<span class="sig-name descname"><span class="pre">UpdateDoppler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">doppler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.UpdateDoppler" title="Link to this definition">#</a></dt>
+<dd><p>Update tracking loop carrier-to-noise density ratio</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>cn0</strong><span class="classifier">np.double</span></dt><dd><p>Carrier-to-noise density ratio magnitude (not dB-Hz)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dsp.tracking.TrackingKF.UpdateIntegrationTime">
 <span class="sig-name descname"><span class="pre">UpdateIntegrationTime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.UpdateIntegrationTime" title="Link to this definition">#</a></dt>
 <dd><p>Update tracking loop integration time</p>
@@ -1268,39 +1412,32 @@ document.write(`
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.UpdateNaturalFreqs">
+<span class="sig-name descname"><span class="pre">UpdateNaturalFreqs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w0p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.UpdateNaturalFreqs" title="Link to this definition">#</a></dt>
+<dd><p>Update the natural frequencies for the equivalent loop filters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>w0p</strong><span class="classifier">np.double</span></dt><dd><p>Natural radian frequency of the PLL [rad/s]</p>
+</dd>
+<dt><strong>w0f</strong><span class="classifier">np.double</span></dt><dd><p>Natural radian frequency of the FLL [rad/s]</p>
+</dd>
+<dt><strong>w0d</strong><span class="classifier">np.double</span></dt><dd><p>Natural radian frequency of the DLL [rad/s]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="dsp.tracking.TrackingKF.cn0">
-<span class="sig-name descname"><span class="pre">cn0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5000.0</span></em><a class="headerlink" href="#dsp.tracking.TrackingKF.cn0" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cn0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#dsp.tracking.TrackingKF.cn0" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="dsp.tracking.TrackingKF.kappa">
-<span class="sig-name descname"><span class="pre">kappa</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></em><a class="headerlink" href="#dsp.tracking.TrackingKF.kappa" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.reset_A">
-<span class="sig-name descname"><span class="pre">reset_A</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.reset_A" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.reset_B">
-<span class="sig-name descname"><span class="pre">reset_B</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.reset_B" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.reset_C">
-<span class="sig-name descname"><span class="pre">reset_C</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.reset_C" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.reset_Q">
-<span class="sig-name descname"><span class="pre">reset_Q</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.reset_Q" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="dsp.tracking.TrackingKF.reset_R">
-<span class="sig-name descname"><span class="pre">reset_R</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsp.tracking.TrackingKF.reset_R" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">kappa</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#dsp.tracking.TrackingKF.kappa" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -1356,11 +1493,11 @@ document.write(`
       </div>
     </a>
     <a class="right-next"
-       href="ephem.html"
+       href="main.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">ephem package</p>
+        <p class="prev-next-title">main module</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -1390,17 +1527,17 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.acquisition.SerialSearch"><code class="docutils literal notranslate"><span class="pre">SerialSearch()</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-dsp.discriminators">dsp.discriminators module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.DllNcdp"><code class="docutils literal notranslate"><span class="pre">DllNcdp()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.DllNneml"><code class="docutils literal notranslate"><span class="pre">DllNneml()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.DllVariance"><code class="docutils literal notranslate"><span class="pre">DllVariance()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.FllAtan2"><code class="docutils literal notranslate"><span class="pre">FllAtan2()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.FllNddcp"><code class="docutils literal notranslate"><span class="pre">FllNddcp()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.FllVariance"><code class="docutils literal notranslate"><span class="pre">FllVariance()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.PllAtan2"><code class="docutils literal notranslate"><span class="pre">PllAtan2()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.PllCostas"><code class="docutils literal notranslate"><span class="pre">PllCostas()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.PllNddc"><code class="docutils literal notranslate"><span class="pre">PllNddc()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminators.PllVariance"><code class="docutils literal notranslate"><span class="pre">PllVariance()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-dsp.discriminator">dsp.discriminator module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.DllNcdp"><code class="docutils literal notranslate"><span class="pre">DllNcdp()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.DllNneml"><code class="docutils literal notranslate"><span class="pre">DllNneml()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.DllVariance"><code class="docutils literal notranslate"><span class="pre">DllVariance()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.FllAtan2"><code class="docutils literal notranslate"><span class="pre">FllAtan2()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.FllNddcp"><code class="docutils literal notranslate"><span class="pre">FllNddcp()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.FllVariance"><code class="docutils literal notranslate"><span class="pre">FllVariance()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.PllAtan2"><code class="docutils literal notranslate"><span class="pre">PllAtan2()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.PllCostas"><code class="docutils literal notranslate"><span class="pre">PllCostas()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.PllNddc"><code class="docutils literal notranslate"><span class="pre">PllNddc()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.discriminator.PllVariance"><code class="docutils literal notranslate"><span class="pre">PllVariance()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-dsp.gnss_signal">dsp.gnss_signal module</a><ul class="nav section-nav flex-column">
@@ -1409,6 +1546,12 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.gnss_signal.Correlate"><code class="docutils literal notranslate"><span class="pre">Correlate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.gnss_signal.CorrelateEPL"><code class="docutils literal notranslate"><span class="pre">CorrelateEPL()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.gnss_signal.shift"><code class="docutils literal notranslate"><span class="pre">shift()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-dsp.lock_detector">dsp.lock_detector module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.lock_detector.CodeLockDetector"><code class="docutils literal notranslate"><span class="pre">CodeLockDetector()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.lock_detector.LowPassFilter"><code class="docutils literal notranslate"><span class="pre">LowPassFilter()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.lock_detector.PhaseLockDetector"><code class="docutils literal notranslate"><span class="pre">PhaseLockDetector()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-dsp.tracking">dsp.tracking module</a><ul class="nav section-nav flex-column">
@@ -1428,14 +1571,11 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.T"><code class="docutils literal notranslate"><span class="pre">TrackingKF.T</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.UpdateCarrierAidingCoeff"><code class="docutils literal notranslate"><span class="pre">TrackingKF.UpdateCarrierAidingCoeff()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.UpdateCn0"><code class="docutils literal notranslate"><span class="pre">TrackingKF.UpdateCn0()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.UpdateDoppler"><code class="docutils literal notranslate"><span class="pre">TrackingKF.UpdateDoppler()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.UpdateIntegrationTime"><code class="docutils literal notranslate"><span class="pre">TrackingKF.UpdateIntegrationTime()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.UpdateNaturalFreqs"><code class="docutils literal notranslate"><span class="pre">TrackingKF.UpdateNaturalFreqs()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.cn0"><code class="docutils literal notranslate"><span class="pre">TrackingKF.cn0</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.kappa"><code class="docutils literal notranslate"><span class="pre">TrackingKF.kappa</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.reset_A"><code class="docutils literal notranslate"><span class="pre">TrackingKF.reset_A()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.reset_B"><code class="docutils literal notranslate"><span class="pre">TrackingKF.reset_B()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.reset_C"><code class="docutils literal notranslate"><span class="pre">TrackingKF.reset_C()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.reset_Q"><code class="docutils literal notranslate"><span class="pre">TrackingKF.reset_Q()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.reset_R"><code class="docutils literal notranslate"><span class="pre">TrackingKF.reset_R()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.u"><code class="docutils literal notranslate"><span class="pre">TrackingKF.u</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.w0d"><code class="docutils literal notranslate"><span class="pre">TrackingKF.w0d</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#dsp.tracking.TrackingKF.w0f"><code class="docutils literal notranslate"><span class="pre">TrackingKF.w0f</span></code></a></li>

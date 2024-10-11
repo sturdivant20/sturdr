@@ -6,6 +6,7 @@ sturdr
 
    channel
    dsp
-   ephem
    main
+   nav
+   rcvr
    utils

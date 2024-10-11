@@ -12,10 +12,10 @@ dsp.acquisition module
    :undoc-members:
    :show-inheritance:
 
-dsp.discriminators module
--------------------------
+dsp.discriminator module
+------------------------
 
-.. automodule:: dsp.discriminators
+.. automodule:: dsp.discriminator
    :members:
    :undoc-members:
    :show-inheritance:
@@ -24,6 +24,14 @@ dsp.gnss\_signal module
 -----------------------
 
 .. automodule:: dsp.gnss_signal
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+dsp.lock\_detector module
+-------------------------
+
+.. automodule:: dsp.lock_detector
    :members:
    :undoc-members:
    :show-inheritance:

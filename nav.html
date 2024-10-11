@@ -1,0 +1,983 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>nav package &#8212; SturDR 0.0.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'nav';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="rcvr package" href="rcvr.html" />
+    <link rel="prev" title="main module" href="main.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SturDR 0.0.1 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="modules.html">
+    sturdr
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="modules.html">
+    sturdr
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="channel.html">channel package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dsp.html">dsp package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="main.html">main module</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">nav package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rcvr.html">rcvr package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">utils package</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="modules.html" class="nav-link">sturdr</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">nav package</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="nav-package">
+<h1>nav package<a class="headerlink" href="#nav-package" title="Link to this heading">#</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
+</section>
+<section id="module-nav.atmosphere">
+<span id="nav-atmosphere-module"></span><h2>nav.atmosphere module<a class="headerlink" href="#module-nav.atmosphere" title="Link to this heading">#</a></h2>
+</section>
+<section id="module-nav.ephemeris">
+<span id="nav-ephemeris-module"></span><h2>nav.ephemeris module<a class="headerlink" href="#module-nav.ephemeris" title="Link to this heading">#</a></h2>
+<p><strong>ephemeris.py</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<tbody>
+<tr class="row-odd"><td><p>file</p></td>
+<td><p>sturdr/nav/ephemeris.py</p></td>
+</tr>
+<tr class="row-even"><td><p>brief</p></td>
+<td><p>Satellite ephemeris navigation module.</p></td>
+</tr>
+<tr class="row-odd"><td><p>date</p></td>
+<td><p>October 2024</p></td>
+</tr>
+<tr class="row-even"><td><p>refs</p></td>
+<td><ol class="arabic simple">
+<li><p>“IS-GPS-200N”, 2022</p></li>
+<li><dl class="simple">
+<dt>“A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach”, 2007</dt><dd><ul class="simple">
+<li><p>Borre, Akos, Bertelsen, Rinder, Jensen</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="nav.ephemeris.CheckTime">
+<span class="sig-prename descclassname"><span class="pre">nav.ephemeris.</span></span><span class="sig-name descname"><span class="pre">CheckTime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nav.ephemeris.CheckTime" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nav.ephemeris.</span></span><span class="sig-name descname"><span class="pre">KeplerianEphemeris</span></span><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>af0</strong></dt><dd></dd>
+<dt><strong>af1</strong></dt><dd></dd>
+<dt><strong>af2</strong></dt><dd></dd>
+<dt><strong>cic</strong></dt><dd></dd>
+<dt><strong>cis</strong></dt><dd></dd>
+<dt><strong>crc</strong></dt><dd></dd>
+<dt><strong>crs</strong></dt><dd></dd>
+<dt><strong>cuc</strong></dt><dd></dd>
+<dt><strong>cus</strong></dt><dd></dd>
+<dt><strong>deltan</strong></dt><dd></dd>
+<dt><strong>e</strong></dt><dd></dd>
+<dt><strong>health</strong></dt><dd></dd>
+<dt><strong>i0</strong></dt><dd></dd>
+<dt><strong>iDot</strong></dt><dd></dd>
+<dt><strong>iodc</strong></dt><dd></dd>
+<dt><strong>iode</strong></dt><dd></dd>
+<dt><strong>m0</strong></dt><dd></dd>
+<dt><strong>omega</strong></dt><dd></dd>
+<dt><strong>omega0</strong></dt><dd></dd>
+<dt><strong>omegaDot</strong></dt><dd></dd>
+<dt><strong>sqrtA</strong></dt><dd></dd>
+<dt><strong>tgd</strong></dt><dd></dd>
+<dt><strong>toc</strong></dt><dd></dd>
+<dt><strong>toe</strong></dt><dd></dd>
+<dt><strong>ura</strong></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#nav.ephemeris.KeplerianEphemeris.GetNavStates" title="nav.ephemeris.KeplerianEphemeris.GetNavStates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetNavStates</span></code></a>(TOW[, calc_accel])</p></td>
+<td><p>Calculates satellite position, velocity, and acceleration given Keplerian ephemeris  elements.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#nav.ephemeris.KeplerianEphemeris.UpdateParameters" title="nav.ephemeris.KeplerianEphemeris.UpdateParameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateParameters</span></code></a>(**kwargs)</p></td>
+<td><p>Updates the set of ephemeris parameters based on user inputs</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.GetNavStates">
+<span class="sig-name descname"><span class="pre">GetNavStates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">TOW</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">calc_accel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.GetNavStates" title="Link to this definition">#</a></dt>
+<dd><p>Calculates satellite position, velocity, and acceleration given Keplerian ephemeris 
+elements.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>TOW</strong><span class="classifier">np.double</span></dt><dd><p>Current time of week of measurements [s]</p>
+</dd>
+<dt><strong>calc_accel</strong><span class="classifier">bool, optional</span></dt><dd><p>Should acceleration be calculated?, by default False</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>pos</strong><span class="classifier">np.ndarray</span></dt><dd><p>Satellite position [m]</p>
+</dd>
+<dt><strong>vel</strong><span class="classifier">np.ndarray</span></dt><dd><p>Satellite velocity [m]</p>
+</dd>
+<dt><strong>acc</strong><span class="classifier">np.ndarray</span></dt><dd><p>Satellite acceleratio [m]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.UpdateParameters">
+<span class="sig-name descname"><span class="pre">UpdateParameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.UpdateParameters" title="Link to this definition">#</a></dt>
+<dd><p>Updates the set of ephemeris parameters based on user inputs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>Invalid Keplerian Ephemeris parameter</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.af0">
+<span class="sig-name descname"><span class="pre">af0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.af0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.af1">
+<span class="sig-name descname"><span class="pre">af1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.af1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.af2">
+<span class="sig-name descname"><span class="pre">af2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.af2" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.cic">
+<span class="sig-name descname"><span class="pre">cic</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.cic" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.cis">
+<span class="sig-name descname"><span class="pre">cis</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.cis" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.crc">
+<span class="sig-name descname"><span class="pre">crc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.crc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.crs">
+<span class="sig-name descname"><span class="pre">crs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.crs" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.cuc">
+<span class="sig-name descname"><span class="pre">cuc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.cuc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.cus">
+<span class="sig-name descname"><span class="pre">cus</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.cus" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.deltan">
+<span class="sig-name descname"><span class="pre">deltan</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.deltan" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.e">
+<span class="sig-name descname"><span class="pre">e</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.e" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.health">
+<span class="sig-name descname"><span class="pre">health</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.health" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.i0">
+<span class="sig-name descname"><span class="pre">i0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.i0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.iDot">
+<span class="sig-name descname"><span class="pre">iDot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.iDot" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.iodc">
+<span class="sig-name descname"><span class="pre">iodc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.iodc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.iode">
+<span class="sig-name descname"><span class="pre">iode</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.iode" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.m0">
+<span class="sig-name descname"><span class="pre">m0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.m0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.omega">
+<span class="sig-name descname"><span class="pre">omega</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.omega" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.omega0">
+<span class="sig-name descname"><span class="pre">omega0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.omega0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.omegaDot">
+<span class="sig-name descname"><span class="pre">omegaDot</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.omegaDot" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.sqrtA">
+<span class="sig-name descname"><span class="pre">sqrtA</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.sqrtA" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.tgd">
+<span class="sig-name descname"><span class="pre">tgd</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.tgd" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.toc">
+<span class="sig-name descname"><span class="pre">toc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.toc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.toe">
+<span class="sig-name descname"><span class="pre">toe</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.toe" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.ephemeris.KeplerianEphemeris.ura">
+<span class="sig-name descname"><span class="pre">ura</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.ephemeris.KeplerianEphemeris.ura" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-nav.gps_lnav">
+<span id="nav-gps-lnav-module"></span><h2>nav.gps_lnav module<a class="headerlink" href="#module-nav.gps_lnav" title="Link to this heading">#</a></h2>
+<p><strong>gps_lnav.py</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<tbody>
+<tr class="row-odd"><td><p>file</p></td>
+<td><p>sturdr/nav/gps_lnav.py</p></td>
+</tr>
+<tr class="row-even"><td><p>brief</p></td>
+<td><p>Implementation of channel.py for GPS L1 C/A signals.</p></td>
+</tr>
+<tr class="row-odd"><td><p>date</p></td>
+<td><p>October 2024</p></td>
+</tr>
+<tr class="row-even"><td><p>refs</p></td>
+<td><ol class="arabic simple">
+<li><p>“IS-GPS-200N”, 2022</p></li>
+<li><dl class="simple">
+<dt>“Global Positioning System: Signals, Measurements, and Performance”, 2nd Edition, 2006</dt><dd><ul class="simple">
+<li><p>Misra &amp; Enge</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>“A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach”, 2007</dt><dd><ul class="simple">
+<li><p>Borre, Akos, Bertelsen, Rinder, Jensen</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nav.gps_lnav.</span></span><span class="sig-name descname"><span class="pre">GpsLnavParser</span></span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">KeplerianEphemeris</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>TOW</strong></dt><dd></dd>
+<dt><strong>af0</strong></dt><dd></dd>
+<dt><strong>af1</strong></dt><dd></dd>
+<dt><strong>af2</strong></dt><dd></dd>
+<dt><strong>bit_count</strong></dt><dd></dd>
+<dt><strong>cic</strong></dt><dd></dd>
+<dt><strong>cis</strong></dt><dd></dd>
+<dt><strong>crc</strong></dt><dd></dd>
+<dt><strong>crs</strong></dt><dd></dd>
+<dt><strong>cuc</strong></dt><dd></dd>
+<dt><strong>cus</strong></dt><dd></dd>
+<dt><strong>deltan</strong></dt><dd></dd>
+<dt><strong>e</strong></dt><dd></dd>
+<dt><strong>health</strong></dt><dd></dd>
+<dt><strong>i0</strong></dt><dd></dd>
+<dt><strong>iDot</strong></dt><dd></dd>
+<dt><strong>iodc</strong></dt><dd></dd>
+<dt><strong>iode</strong></dt><dd></dd>
+<dt><strong>m0</strong></dt><dd></dd>
+<dt><strong>omega</strong></dt><dd></dd>
+<dt><strong>omega0</strong></dt><dd></dd>
+<dt><strong>omegaDot</strong></dt><dd></dd>
+<dt><strong>signalID</strong></dt><dd></dd>
+<dt><strong>sqrtA</strong></dt><dd></dd>
+<dt><strong>subframe</strong></dt><dd></dd>
+<dt><strong>subframe1</strong></dt><dd></dd>
+<dt><strong>subframe2</strong></dt><dd></dd>
+<dt><strong>subframe3</strong></dt><dd></dd>
+<dt><strong>tgd</strong></dt><dd></dd>
+<dt><strong>toc</strong></dt><dd></dd>
+<dt><strong>toe</strong></dt><dd></dd>
+<dt><strong>ura</strong></dt><dd></dd>
+<dt><strong>week</strong></dt><dd></dd>
+<dt><strong>word_count</strong></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetNavStates</span></code>(TOW[, calc_accel])</p></td>
+<td><p>Calculates satellite position, velocity, and acceleration given Keplerian ephemeris  elements.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">UpdateParameters</span></code>(**kwargs)</p></td>
+<td><p>Updates the set of ephemeris parameters based on user inputs</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<tbody>
+<tr class="row-odd"><td><p><strong>LoadPreamble</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>LoadSubframe1</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>LoadSubframe2</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>LoadSubframe3</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>LoadSubframe4</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>LoadSubframe5</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>NextBit</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>ParityCheck</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><strong>ParseSubframe</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.LoadPreamble">
+<span class="sig-name descname"><span class="pre">LoadPreamble</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.LoadPreamble" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.LoadSubframe1">
+<span class="sig-name descname"><span class="pre">LoadSubframe1</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.LoadSubframe2">
+<span class="sig-name descname"><span class="pre">LoadSubframe2</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe2" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.LoadSubframe3">
+<span class="sig-name descname"><span class="pre">LoadSubframe3</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe3" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.LoadSubframe4">
+<span class="sig-name descname"><span class="pre">LoadSubframe4</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe4" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.LoadSubframe5">
+<span class="sig-name descname"><span class="pre">LoadSubframe5</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe5" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.NextBit">
+<span class="sig-name descname"><span class="pre">NextBit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.NextBit" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.ParityCheck">
+<span class="sig-name descname"><span class="pre">ParityCheck</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gpsword</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.ParityCheck" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.ParseSubframe">
+<span class="sig-name descname"><span class="pre">ParseSubframe</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.ParseSubframe" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.TOW">
+<span class="sig-name descname"><span class="pre">TOW</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float64</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.TOW" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.bit_count">
+<span class="sig-name descname"><span class="pre">bit_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.bit_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.signalID">
+<span class="sig-name descname"><span class="pre">signalID</span></span><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.signalID" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.subframe">
+<span class="sig-name descname"><span class="pre">subframe</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.subframe" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.subframe1">
+<span class="sig-name descname"><span class="pre">subframe1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.subframe1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.subframe2">
+<span class="sig-name descname"><span class="pre">subframe2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.subframe2" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.subframe3">
+<span class="sig-name descname"><span class="pre">subframe3</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.subframe3" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.week">
+<span class="sig-name descname"><span class="pre">week</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.week" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="nav.gps_lnav.GpsLnavParser.word_count">
+<span class="sig-name descname"><span class="pre">word_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nav.gps_lnav.GpsLnavParser.word_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-nav">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-nav" title="Link to this heading">#</a></h2>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="main.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">main module</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="rcvr.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">rcvr package</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nav.atmosphere">nav.atmosphere module</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nav.ephemeris">nav.ephemeris module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.CheckTime"><code class="docutils literal notranslate"><span class="pre">CheckTime()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.GetNavStates"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.GetNavStates()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.UpdateParameters"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.UpdateParameters()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.af0"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.af0</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.af1"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.af1</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.af2"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.af2</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.cic"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.cic</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.cis"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.cis</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.crc"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.crc</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.crs"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.crs</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.cuc"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.cuc</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.cus"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.cus</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.deltan"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.deltan</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.e"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.e</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.health"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.health</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.i0"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.i0</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.iDot"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.iDot</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.iodc"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.iodc</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.iode"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.iode</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.m0"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.m0</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.omega"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.omega</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.omega0"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.omega0</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.omegaDot"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.omegaDot</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.sqrtA"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.sqrtA</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.tgd"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.tgd</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.toc"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.toc</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.toe"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.toe</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.ephemeris.KeplerianEphemeris.ura"><code class="docutils literal notranslate"><span class="pre">KeplerianEphemeris.ura</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nav.gps_lnav">nav.gps_lnav module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.LoadPreamble"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.LoadPreamble()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe1"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.LoadSubframe1()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe2"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.LoadSubframe2()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe3"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.LoadSubframe3()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe4"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.LoadSubframe4()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.LoadSubframe5"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.LoadSubframe5()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.NextBit"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.NextBit()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.ParityCheck"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.ParityCheck()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.ParseSubframe"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.ParseSubframe()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.TOW"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.TOW</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.bit_count"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.bit_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.signalID"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.signalID</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.subframe"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.subframe</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.subframe1"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.subframe1</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.subframe2"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.subframe2</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.subframe3"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.subframe3</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.week"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.week</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nav.gps_lnav.GpsLnavParser.word_count"><code class="docutils literal notranslate"><span class="pre">GpsLnavParser.word_count</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nav">Module contents</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="_sources/nav.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024, Daniel Sturdivant.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

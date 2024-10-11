@@ -41,7 +41,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'utils';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="main module" href="main.html" />
+    <link rel="prev" title="rcvr package" href="rcvr.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -131,13 +131,6 @@
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
     
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="includeme.html">
-    SturDR
-  </a>
-</li>
-
-
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="modules.html">
     sturdr
@@ -228,13 +221,6 @@ document.write(`
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
     
-<li class="nav-item ">
-  <a class="nav-link nav-internal" href="includeme.html">
-    SturDR
-  </a>
-</li>
-
-
 <li class="nav-item current active">
   <a class="nav-link nav-internal" href="modules.html">
     sturdr
@@ -275,8 +261,9 @@ document.write(`
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="channel.html">channel package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dsp.html">dsp package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ephem.html">ephem package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="main.html">main module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nav.html">nav package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rcvr.html">rcvr package</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">utils package</a></li>
 </ul>
 </div>
@@ -340,6 +327,74 @@ document.write(`
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
 </section>
+<section id="module-utils.binary_ops">
+<span id="utils-binary-ops-module"></span><h2>utils.binary_ops module<a class="headerlink" href="#module-utils.binary_ops" title="Link to this heading">#</a></h2>
+<p><strong>binary_ops.py</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<tbody>
+<tr class="row-odd"><td><p>file</p></td>
+<td><p>sturdr/utils/binary_ops.py</p></td>
+</tr>
+<tr class="row-even"><td><p>brief</p></td>
+<td><p>Binary operations.</p></td>
+</tr>
+<tr class="row-odd"><td><p>date</p></td>
+<td><p>October 2024</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.CheckBit">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">CheckBit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.CheckBit" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.ClearBit">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">ClearBit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.ClearBit" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.FlipBit">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">FlipBit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.FlipBit" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.GetDataBit">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">GetDataBit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.GetDataBit" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.GetDataBits">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">GetDataBits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.GetDataBits" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.RotL">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">RotL</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.RotL" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.SetBit">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">SetBit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.SetBit" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.SetBitTo">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">SetBitTo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.SetBitTo" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.SetDataBitTo">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">SetDataBitTo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.SetDataBitTo" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.binary_ops.TwosCompliment">
+<span class="sig-prename descclassname"><span class="pre">utils.binary_ops.</span></span><span class="sig-name descname"><span class="pre">TwosCompliment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">uint32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.binary_ops.TwosCompliment" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</section>
 <section id="module-utils.constants">
 <span id="utils-constants-module"></span><h2>utils.constants module<a class="headerlink" href="#module-utils.constants" title="Link to this heading">#</a></h2>
 <p><strong>constants.py</strong></p>
@@ -371,16 +426,16 @@ document.write(`
 </table>
 </div>
 </section>
-<section id="module-utils.rf_signal_file">
-<span id="utils-rf-signal-file-module"></span><h2>utils.rf_signal_file module<a class="headerlink" href="#module-utils.rf_signal_file" title="Link to this heading">#</a></h2>
-<p><strong>rf_signal_file.py</strong></p>
+<section id="module-utils.enums">
+<span id="utils-enums-module"></span><h2>utils.enums module<a class="headerlink" href="#module-utils.enums" title="Link to this heading">#</a></h2>
+<p><strong>enums.py</strong></p>
 <div class="pst-scrollable-table-container"><table class="table">
 <tbody>
 <tr class="row-odd"><td><p>file</p></td>
-<td><p>sturdr/utils/rf_signal_file.py</p></td>
+<td><p>sturdr/utils/enums.py</p></td>
 </tr>
 <tr class="row-even"><td><p>brief</p></td>
-<td><p>Helper for reading RF signal data.</p></td>
+<td><p>Satellite navigation enumerations.</p></td>
 </tr>
 <tr class="row-odd"><td><p>date</p></td>
 <td><p>October 2024</p></td>
@@ -389,32 +444,567 @@ document.write(`
 </table>
 </div>
 <dl class="py class">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.rf_signal_file.</span></span><span class="sig-name descname"><span class="pre">RFSignalFile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dt class="sig sig-object py" id="utils.enums.ChannelState">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.enums.</span></span><span class="sig-name descname"><span class="pre">ChannelState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.enums.ChannelState" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Enumeration class for channel state according to the defined state machine architecture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></dt><dd><p>the denominator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>the imaginary part of a complex number</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></dt><dd><p>the numerator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></dt><dd><p>the real part of a complex number</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#utils.rf_signal_file.RFSignalFile.GetMsChunk" title="utils.rf_signal_file.RFSignalFile.GetMsChunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GetMsChunk</span></code></a>(num_ms)</p></td>
-<td><p>Return the next millisecond(s) of data</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>(/)</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#utils.rf_signal_file.RFSignalFile.fclose" title="utils.rf_signal_file.RFSignalFile.fclose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fclose</span></code></a>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>(/)</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>(/)</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(/, bytes[, byteorder, signed])</p></td>
+<td><p>Return the integer represented by the given array of bytes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>(/)</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>(/[, length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.ChannelState.ACQUIRING">
+<span class="sig-name descname"><span class="pre">ACQUIRING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#utils.enums.ChannelState.ACQUIRING" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.ChannelState.IDLE">
+<span class="sig-name descname"><span class="pre">IDLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#utils.enums.ChannelState.IDLE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.ChannelState.OFF">
+<span class="sig-name descname"><span class="pre">OFF</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#utils.enums.ChannelState.OFF" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.ChannelState.TRACKING">
+<span class="sig-name descname"><span class="pre">TRACKING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#utils.enums.ChannelState.TRACKING" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.enums.</span></span><span class="sig-name descname"><span class="pre">GnssSignalTypes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.enums.GnssSignalTypes" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Enumeration class for GNSS satellite broadcast signal types.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></dt><dd><p>the denominator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>the imaginary part of a complex number</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></dt><dd><p>the numerator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></dt><dd><p>the real part of a complex number</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>(/)</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>(/)</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>(/)</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(/, bytes[, byteorder, signed])</p></td>
+<td><p>Return the integer represented by the given array of bytes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>(/)</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>(/[, length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GALILEO_E1">
+<span class="sig-name descname"><span class="pre">GALILEO_E1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GALILEO_E1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GALILEO_E5">
+<span class="sig-name descname"><span class="pre">GALILEO_E5</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GALILEO_E5" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GALILEO_E5a">
+<span class="sig-name descname"><span class="pre">GALILEO_E5a</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GALILEO_E5a" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GALILEO_E5b">
+<span class="sig-name descname"><span class="pre">GALILEO_E5b</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">9</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GALILEO_E5b" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GALILEO_E6">
+<span class="sig-name descname"><span class="pre">GALILEO_E6</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GALILEO_E6" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GPS_L1C">
+<span class="sig-name descname"><span class="pre">GPS_L1C</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GPS_L1C" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GPS_L1CA">
+<span class="sig-name descname"><span class="pre">GPS_L1CA</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GPS_L1CA" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GPS_L2C">
+<span class="sig-name descname"><span class="pre">GPS_L2C</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GPS_L2C" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.GPS_L5">
+<span class="sig-name descname"><span class="pre">GPS_L5</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.GPS_L5" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSignalTypes.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#utils.enums.GnssSignalTypes.UNKNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.enums.</span></span><span class="sig-name descname"><span class="pre">GnssSystem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.enums.GnssSystem" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Enumeration class for GNSS signal constellations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></dt><dd><p>the denominator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>the imaginary part of a complex number</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></dt><dd><p>the numerator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></dt><dd><p>the real part of a complex number</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>(/)</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>(/)</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>(/)</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(/, bytes[, byteorder, signed])</p></td>
+<td><p>Return the integer represented by the given array of bytes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>(/)</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>(/[, length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.BEIDOU">
+<span class="sig-name descname"><span class="pre">BEIDOU</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#utils.enums.GnssSystem.BEIDOU" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.GALILEO">
+<span class="sig-name descname"><span class="pre">GALILEO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#utils.enums.GnssSystem.GALILEO" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.GLONASS">
+<span class="sig-name descname"><span class="pre">GLONASS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#utils.enums.GnssSystem.GLONASS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.GPS">
+<span class="sig-name descname"><span class="pre">GPS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#utils.enums.GnssSystem.GPS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.IRNSS">
+<span class="sig-name descname"><span class="pre">IRNSS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6</span></em><a class="headerlink" href="#utils.enums.GnssSystem.IRNSS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.QZSS">
+<span class="sig-name descname"><span class="pre">QZSS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#utils.enums.GnssSystem.QZSS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.SBAS">
+<span class="sig-name descname"><span class="pre">SBAS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7</span></em><a class="headerlink" href="#utils.enums.GnssSystem.SBAS" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.GnssSystem.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#utils.enums.GnssSystem.UNKNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.enums.LoopLockState">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.enums.</span></span><span class="sig-name descname"><span class="pre">LoopLockState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.enums.LoopLockState" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Enumeration class for signal lock state of internal tracking loops</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></dt><dd><p>the denominator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>the imaginary part of a complex number</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></dt><dd><p>the numerator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></dt><dd><p>the real part of a complex number</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>(/)</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>(/)</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>(/)</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(/, bytes[, byteorder, signed])</p></td>
+<td><p>Return the integer represented by the given array of bytes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>(/)</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>(/[, length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.LoopLockState.NARROW_TRACK">
+<span class="sig-name descname"><span class="pre">NARROW_TRACK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#utils.enums.LoopLockState.NARROW_TRACK" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.LoopLockState.PULL_IN">
+<span class="sig-name descname"><span class="pre">PULL_IN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#utils.enums.LoopLockState.PULL_IN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.LoopLockState.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#utils.enums.LoopLockState.UNKNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.LoopLockState.WIDE_TRACK">
+<span class="sig-name descname"><span class="pre">WIDE_TRACK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#utils.enums.LoopLockState.WIDE_TRACK" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.enums.MeasurementType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.enums.</span></span><span class="sig-name descname"><span class="pre">MeasurementType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.enums.MeasurementType" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Enumeration class for measurement types in the navigator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></dt><dd><p>the denominator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>the imaginary part of a complex number</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></dt><dd><p>the numerator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></dt><dd><p>the real part of a complex number</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>(/)</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>(/)</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>(/)</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(/, bytes[, byteorder, signed])</p></td>
+<td><p>Return the integer represented by the given array of bytes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>(/)</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>(/[, length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.MeasurementType.CN0">
+<span class="sig-name descname"><span class="pre">CN0</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#utils.enums.MeasurementType.CN0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.MeasurementType.DOPPLER">
+<span class="sig-name descname"><span class="pre">DOPPLER</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#utils.enums.MeasurementType.DOPPLER" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.MeasurementType.PHASE">
+<span class="sig-name descname"><span class="pre">PHASE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#utils.enums.MeasurementType.PHASE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.MeasurementType.PSEUDORANGE">
+<span class="sig-name descname"><span class="pre">PSEUDORANGE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#utils.enums.MeasurementType.PSEUDORANGE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.MeasurementType.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#utils.enums.MeasurementType.UNKNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.enums.</span></span><span class="sig-name descname"><span class="pre">TrackingFlags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=&lt;not</span> <span class="pre">given&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.enums.TrackingFlags" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Tracking flags to represent the current stage of tracking. They are to be intepreted in binary 
+format, to allow multiple state represesented in one decimal number. 
+Similar to states in <a class="reference external" href="https://developer.android.com/reference/android/location/GnssMeasurement">https://developer.android.com/reference/android/location/GnssMeasurement</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></dt><dd><p>the denominator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></dt><dd><p>the imaginary part of a complex number</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></dt><dd><p>the numerator of a rational number in lowest terms</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></dt><dd><p>the real part of a complex number</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>(/)</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>(/)</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>(/)</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(/, bytes[, byteorder, signed])</p></td>
+<td><p>Return the integer represented by the given array of bytes.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>(/)</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>(/[, length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.BIT_SYNC">
+<span class="sig-name descname"><span class="pre">BIT_SYNC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.BIT_SYNC" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.CODE_LOCK">
+<span class="sig-name descname"><span class="pre">CODE_LOCK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.CODE_LOCK" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.EPH_DECODED">
+<span class="sig-name descname"><span class="pre">EPH_DECODED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">16</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.EPH_DECODED" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.EPH_KNOWN">
+<span class="sig-name descname"><span class="pre">EPH_KNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">64</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.EPH_KNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.FINE_LOCK">
+<span class="sig-name descname"><span class="pre">FINE_LOCK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">128</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.FINE_LOCK" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.SUBFRAME_SYNC">
+<span class="sig-name descname"><span class="pre">SUBFRAME_SYNC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.SUBFRAME_SYNC" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.TOW_DECODED">
+<span class="sig-name descname"><span class="pre">TOW_DECODED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.TOW_DECODED" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.TOW_KNOWN">
+<span class="sig-name descname"><span class="pre">TOW_KNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">32</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.TOW_KNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.enums.TrackingFlags.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#utils.enums.TrackingFlags.UNKNOWN" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-utils.rf_data_buffer">
+<span id="utils-rf-data-buffer-module"></span><h2>utils.rf_data_buffer module<a class="headerlink" href="#module-utils.rf_data_buffer" title="Link to this heading">#</a></h2>
+<p><strong>rf_data_buffer.py</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<tbody>
+<tr class="row-odd"><td><p>file</p></td>
+<td><p>sturdr/rcvr/rf_data_buffer.py</p></td>
+</tr>
+<tr class="row-even"><td><p>brief</p></td>
+<td><p>Helper for reading RF signal data across multiple processes.</p></td>
+</tr>
+<tr class="row-odd"><td><p>date</p></td>
+<td><p>October 2024</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.rf_data_buffer.</span></span><span class="sig-name descname"><span class="pre">RfDataBuffer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Owner of the RF signal file.</p>
+<p>Implemtation of a circular buffer utilizing <code class="xref py py-obj docutils literal notranslate"><span class="pre">multiprocessing.shared_memory.SharedMemory</span></code> 
+to quickly and easily share data between python instances!</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>bittype</strong></dt><dd></dd>
+<dt><strong>buffer</strong></dt><dd></dd>
+<dt><strong>chunk_size_ms</strong></dt><dd></dd>
+<dt><strong>dtype</strong></dt><dd></dd>
+<dt><strong>file_id</strong></dt><dd></dd>
+<dt><strong>filepath</strong></dt><dd></dd>
+<dt><strong>is_complex</strong></dt><dd></dd>
+<dt><strong>memory</strong></dt><dd></dd>
+<dt><strong>nbytes</strong></dt><dd></dd>
+<dt><strong>samples_per_ms</strong></dt><dd></dd>
+<dt><strong>size</strong></dt><dd></dd>
+<dt><strong>write_ptr</strong></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#utils.rf_data_buffer.RfDataBuffer.Pull" title="utils.rf_data_buffer.RfDataBuffer.Pull"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Pull</span></code></a>(read_ptr, nsamples)</p></td>
+<td><p>Pull data from the circular buffer.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#utils.rf_data_buffer.RfDataBuffer.Push" title="utils.rf_data_buffer.RfDataBuffer.Push"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Push</span></code></a>(nms)</p></td>
+<td><p>Push new data into the circular buffer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#utils.rf_data_buffer.RfDataBuffer.fclose" title="utils.rf_data_buffer.RfDataBuffer.fclose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fclose</span></code></a>()</p></td>
 <td><p>Close open signal file</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#utils.rf_signal_file.RFSignalFile.ftell" title="utils.rf_signal_file.RFSignalFile.ftell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ftell</span></code></a>()</p></td>
-<td><p>Tell the current file location</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#utils.rf_signal_file.RFSignalFile.sread" title="utils.rf_signal_file.RFSignalFile.sread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sread</span></code></a>(sample_length[, skip])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#utils.rf_data_buffer.RfDataBuffer.fread" title="utils.rf_data_buffer.RfDataBuffer.fread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fread</span></code></a>(sample_length[, skip])</p></td>
 <td><p>Read specified amount of samples from the signal file</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#utils.rf_signal_file.RFSignalFile.tread" title="utils.rf_signal_file.RFSignalFile.tread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tread</span></code></a>(time_length[, skip])</p></td>
-<td><p>Read specified amount of time from the signal file</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#utils.rf_data_buffer.RfDataBuffer.ftell" title="utils.rf_data_buffer.RfDataBuffer.ftell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ftell</span></code></a>()</p></td>
+<td><p>Tell the current file location</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="pst-scrollable-table-container"><table class="table">
 <tbody>
+<tr class="row-odd"><td><p><strong>GetNumUnreadSamples</strong></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><strong>UpdateWritePtr</strong></p></td>
+<td></td>
+</tr>
 <tr class="row-odd"><td><p><strong>fseek</strong></p></td>
 <td></td>
 </tr>
@@ -422,61 +1012,126 @@ document.write(`
 </table>
 </div>
 <dl class="py method">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.GetMsChunk">
-<span class="sig-name descname"><span class="pre">GetMsChunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_ms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.GetMsChunk" title="Link to this definition">#</a></dt>
-<dd><p>Return the next millisecond(s) of data</p>
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.GetNumUnreadSamples">
+<span class="sig-name descname"><span class="pre">GetNumUnreadSamples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">read_ptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.GetNumUnreadSamples" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.Pull">
+<span class="sig-name descname"><span class="pre">Pull</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">read_ptr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nsamples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.Pull" title="Link to this definition">#</a></dt>
+<dd><p>Pull data from the circular buffer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>num_ms</strong><span class="classifier">int</span></dt><dd><p>Number of milliseconds requested</p>
+<dt><strong>read_ptr</strong><span class="classifier">int</span></dt><dd><p>Starting index of the requested array</p>
+</dd>
+<dt><strong>nsamples</strong><span class="classifier">int</span></dt><dd><p>Size of the requested array</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>np.ndarray</dt><dd><p>Requested RF data</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>ValueError</dt><dd><p>The number of milliseconds requested should be a multiple of the chunck size for optimal 
-read</p>
+<dt>np.ndarray</dt><dd><p>Requested array</p>
 </dd>
 </dl>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.chunk">
-<span class="sig-name descname"><span class="pre">chunk</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.chunk" title="Link to this definition">#</a></dt>
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.Push">
+<span class="sig-name descname"><span class="pre">Push</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.Push" title="Link to this definition">#</a></dt>
+<dd><p>Push new data into the circular buffer. Shift the write index/pointer.
+NOTE: This should only get executed by the ChannelController/Receiver</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>data</strong><span class="classifier">np.ndarray</span></dt><dd><p>New data to be added to the buffer</p>
+</dd>
+<dt><strong>nms</strong><span class="classifier">int</span></dt><dd><p>Number of milliseconds to push</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ValueError</dt><dd><p>CircularBuffer.maxsize % data.size should be 0!</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.UpdateWritePtr">
+<span class="sig-name descname"><span class="pre">UpdateWritePtr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shift</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.UpdateWritePtr" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.chunk_ms_counter">
-<span class="sig-name descname"><span class="pre">chunk_ms_counter</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.chunk_ms_counter" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.bittype">
+<span class="sig-name descname"><span class="pre">bittype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dtype</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.bittype" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.chunk_size_ms">
-<span class="sig-name descname"><span class="pre">chunk_size_ms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">100</span></em><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.chunk_size_ms" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.buffer">
+<span class="sig-name descname"><span class="pre">buffer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.buffer" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.chunk_size_ms">
+<span class="sig-name descname"><span class="pre">chunk_size_ms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.chunk_size_ms" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.dtype">
+<span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dtype</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.dtype" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.fclose">
-<span class="sig-name descname"><span class="pre">fclose</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.fclose" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.fclose">
+<span class="sig-name descname"><span class="pre">fclose</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.fclose" title="Link to this definition">#</a></dt>
 <dd><p>Close open signal file</p>
 </dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.fseek">
-<span class="sig-name descname"><span class="pre">fseek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.fseek" title="Link to this definition">#</a></dt>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.file_id">
+<span class="sig-name descname"><span class="pre">file_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">BufferedReader</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.file_id" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.filepath">
+<span class="sig-name descname"><span class="pre">filepath</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.filepath" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.ftell">
-<span class="sig-name descname"><span class="pre">ftell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.ftell" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.fread">
+<span class="sig-name descname"><span class="pre">fread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.fread" title="Link to this definition">#</a></dt>
+<dd><p>Read specified amount of samples from the signal file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>time_length</strong><span class="classifier">int</span></dt><dd><p>Number of milliseconds to read</p>
+</dd>
+<dt><strong>skip</strong><span class="classifier">int, optional</span></dt><dd><p>Number of samples to skip, by GENERAL 0</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>rfdata</strong><span class="classifier">np.ndarray</span></dt><dd><p>Data from the file read</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.fseek">
+<span class="sig-name descname"><span class="pre">fseek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.fseek" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.ftell">
+<span class="sig-name descname"><span class="pre">ftell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.ftell" title="Link to this definition">#</a></dt>
 <dd><p>Tell the current file location</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -495,53 +1150,34 @@ read</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.samples_per_ms">
-<span class="sig-name descname"><span class="pre">samples_per_ms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.samples_per_ms" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.is_complex">
+<span class="sig-name descname"><span class="pre">is_complex</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.is_complex" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.sread">
-<span class="sig-name descname"><span class="pre">sread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.sread" title="Link to this definition">#</a></dt>
-<dd><p>Read specified amount of samples from the signal file</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>time_length</strong><span class="classifier">int</span></dt><dd><p>Number of milliseconds to read</p>
-</dd>
-<dt><strong>skip</strong><span class="classifier">int, optional</span></dt><dd><p>Number of samples to skip, by default 0</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>rfdata</strong><span class="classifier">np.ndarray</span></dt><dd><p>Data from the file read</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.memory">
+<span class="sig-name descname"><span class="pre">memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">SharedMemory</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.memory" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="utils.rf_signal_file.RFSignalFile.tread">
-<span class="sig-name descname"><span class="pre">tread</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#utils.rf_signal_file.RFSignalFile.tread" title="Link to this definition">#</a></dt>
-<dd><p>Read specified amount of time from the signal file</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>time_length</strong><span class="classifier">int</span></dt><dd><p>Number of milliseconds to read</p>
-</dd>
-<dt><strong>skip</strong><span class="classifier">int, optional</span></dt><dd><p>Number of samples to skip, by default 0</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>rfdata</strong><span class="classifier">np.ndarray</span></dt><dd><p>Data from the file read</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.nbytes">
+<span class="sig-name descname"><span class="pre">nbytes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.nbytes" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.samples_per_ms">
+<span class="sig-name descname"><span class="pre">samples_per_ms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.samples_per_ms" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.size">
+<span class="sig-name descname"><span class="pre">size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.size" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.rf_data_buffer.RfDataBuffer.write_ptr">
+<span class="sig-name descname"><span class="pre">write_ptr</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#utils.rf_data_buffer.RfDataBuffer.write_ptr" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -562,12 +1198,12 @@ read</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="main.html"
+       href="rcvr.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">main module</p>
+        <p class="prev-next-title">rcvr package</p>
       </div>
     </a>
 </div>
@@ -589,19 +1225,103 @@ read</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-utils.binary_ops">utils.binary_ops module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.CheckBit"><code class="docutils literal notranslate"><span class="pre">CheckBit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.ClearBit"><code class="docutils literal notranslate"><span class="pre">ClearBit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.FlipBit"><code class="docutils literal notranslate"><span class="pre">FlipBit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.GetDataBit"><code class="docutils literal notranslate"><span class="pre">GetDataBit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.GetDataBits"><code class="docutils literal notranslate"><span class="pre">GetDataBits()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.RotL"><code class="docutils literal notranslate"><span class="pre">RotL()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.SetBit"><code class="docutils literal notranslate"><span class="pre">SetBit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.SetBitTo"><code class="docutils literal notranslate"><span class="pre">SetBitTo()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.SetDataBitTo"><code class="docutils literal notranslate"><span class="pre">SetDataBitTo()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.binary_ops.TwosCompliment"><code class="docutils literal notranslate"><span class="pre">TwosCompliment()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-utils.constants">utils.constants module</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-utils.rf_signal_file">utils.rf_signal_file module</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile"><code class="docutils literal notranslate"><span class="pre">RFSignalFile</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.GetMsChunk"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.GetMsChunk()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.chunk"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.chunk</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.chunk_ms_counter"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.chunk_ms_counter</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.chunk_size_ms"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.chunk_size_ms</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.fclose"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.fclose()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.fseek"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.fseek()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.ftell"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.ftell()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.samples_per_ms"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.samples_per_ms</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.sread"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.sread()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_signal_file.RFSignalFile.tread"><code class="docutils literal notranslate"><span class="pre">RFSignalFile.tread()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-utils.enums">utils.enums module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.ChannelState"><code class="docutils literal notranslate"><span class="pre">ChannelState</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.ChannelState.ACQUIRING"><code class="docutils literal notranslate"><span class="pre">ChannelState.ACQUIRING</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.ChannelState.IDLE"><code class="docutils literal notranslate"><span class="pre">ChannelState.IDLE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.ChannelState.OFF"><code class="docutils literal notranslate"><span class="pre">ChannelState.OFF</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.ChannelState.TRACKING"><code class="docutils literal notranslate"><span class="pre">ChannelState.TRACKING</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GALILEO_E1"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GALILEO_E1</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GALILEO_E5"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GALILEO_E5</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GALILEO_E5a"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GALILEO_E5a</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GALILEO_E5b"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GALILEO_E5b</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GALILEO_E6"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GALILEO_E6</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GPS_L1C"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GPS_L1C</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GPS_L1CA"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GPS_L1CA</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GPS_L2C"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GPS_L2C</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.GPS_L5"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.GPS_L5</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSignalTypes.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">GnssSignalTypes.UNKNOWN</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem"><code class="docutils literal notranslate"><span class="pre">GnssSystem</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.BEIDOU"><code class="docutils literal notranslate"><span class="pre">GnssSystem.BEIDOU</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.GALILEO"><code class="docutils literal notranslate"><span class="pre">GnssSystem.GALILEO</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.GLONASS"><code class="docutils literal notranslate"><span class="pre">GnssSystem.GLONASS</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.GPS"><code class="docutils literal notranslate"><span class="pre">GnssSystem.GPS</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.IRNSS"><code class="docutils literal notranslate"><span class="pre">GnssSystem.IRNSS</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.QZSS"><code class="docutils literal notranslate"><span class="pre">GnssSystem.QZSS</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.SBAS"><code class="docutils literal notranslate"><span class="pre">GnssSystem.SBAS</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.GnssSystem.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">GnssSystem.UNKNOWN</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.LoopLockState"><code class="docutils literal notranslate"><span class="pre">LoopLockState</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.LoopLockState.NARROW_TRACK"><code class="docutils literal notranslate"><span class="pre">LoopLockState.NARROW_TRACK</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.LoopLockState.PULL_IN"><code class="docutils literal notranslate"><span class="pre">LoopLockState.PULL_IN</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.LoopLockState.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">LoopLockState.UNKNOWN</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.LoopLockState.WIDE_TRACK"><code class="docutils literal notranslate"><span class="pre">LoopLockState.WIDE_TRACK</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.MeasurementType"><code class="docutils literal notranslate"><span class="pre">MeasurementType</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.MeasurementType.CN0"><code class="docutils literal notranslate"><span class="pre">MeasurementType.CN0</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.MeasurementType.DOPPLER"><code class="docutils literal notranslate"><span class="pre">MeasurementType.DOPPLER</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.MeasurementType.PHASE"><code class="docutils literal notranslate"><span class="pre">MeasurementType.PHASE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.MeasurementType.PSEUDORANGE"><code class="docutils literal notranslate"><span class="pre">MeasurementType.PSEUDORANGE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.MeasurementType.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">MeasurementType.UNKNOWN</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags"><code class="docutils literal notranslate"><span class="pre">TrackingFlags</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.BIT_SYNC"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.BIT_SYNC</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.CODE_LOCK"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.CODE_LOCK</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.EPH_DECODED"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.EPH_DECODED</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.EPH_KNOWN"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.EPH_KNOWN</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.FINE_LOCK"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.FINE_LOCK</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.SUBFRAME_SYNC"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.SUBFRAME_SYNC</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.TOW_DECODED"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.TOW_DECODED</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.TOW_KNOWN"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.TOW_KNOWN</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.enums.TrackingFlags.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">TrackingFlags.UNKNOWN</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-utils.rf_data_buffer">utils.rf_data_buffer module</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.GetNumUnreadSamples"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.GetNumUnreadSamples()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.Pull"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.Pull()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.Push"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.Push()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.UpdateWritePtr"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.UpdateWritePtr()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.bittype"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.bittype</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.buffer"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.buffer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.chunk_size_ms"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.chunk_size_ms</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.dtype"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.dtype</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.fclose"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.fclose()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.file_id"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.file_id</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.filepath"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.filepath</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.fread"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.fread()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.fseek"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.fseek()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.ftell"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.ftell()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.is_complex"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.is_complex</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.memory"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.memory</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.nbytes"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.nbytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.samples_per_ms"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.samples_per_ms</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.size"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.size</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#utils.rf_data_buffer.RfDataBuffer.write_ptr"><code class="docutils literal notranslate"><span class="pre">RfDataBuffer.write_ptr</span></code></a></li>
 </ul>
 </li>
 </ul>
