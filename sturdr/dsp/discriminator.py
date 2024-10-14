@@ -10,12 +10,17 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
             - Groves
         3. "Global Positioning System: Signals, Measurements, and Performance", 2nd Edition, 2006
             - Misra & Enge
+        4. "Position, Navigation, and Timing Technologies in the 21st Century", Volume 1, 2021
+            - Morton, Diggelen, Spilker Jr., Parkinson
 ======  ============================================================================================
 """
 
 import numpy as np
+from numba import njit
 
 # ===== DLL ====================================================================================== #
+
+@njit(cache=True, fastmath=True)
 def DllNneml(IE: np.double, QE: np.double, IL: np.double, QL: np.double):
     """
     Delay Lock Loop - Normalized non-coherent early minus late discriminator
@@ -40,6 +45,7 @@ def DllNneml(IE: np.double, QE: np.double, IL: np.double, QL: np.double):
     L = np.sqrt(IL**2 + QL**2)
     return 0.5 * (E - L) / (E + L)
 
+@njit(cache=True, fastmath=True)
 def DllNcdp(IE: np.double, IP: np.double, IL: np.double):
     """
     Delay Lock Loop - Normalized coherent dot product discriminator
@@ -58,8 +64,10 @@ def DllNcdp(IE: np.double, IP: np.double, IL: np.double):
     tau : np.double
         chip error/misalignment [chip]
     """
-    return 0.25 * (IE - IL) / IP
+    # return 0.25 * (IE - IL) / IP
+    return (np.abs(IE) - np.abs(IL)) / np.abs(IP)
 
+@njit(cache=True, fastmath=True)
 def DllVariance(cn0: np.double, T: np.double):
     """
     Variance in the DLL discriminator
@@ -80,6 +88,8 @@ def DllVariance(cn0: np.double, T: np.double):
     return tmp * (0.25 + 0.5 * tmp)
 
 # ===== PLL ====================================================================================== #
+
+@njit(cache=True, fastmath=True)
 def PllCostas(IP: np.double, QP: np.double):
     """
     Phase Lock Loop - Costas discriminator
@@ -98,6 +108,7 @@ def PllCostas(IP: np.double, QP: np.double):
     """
     return np.atan(QP / IP)
 
+@njit(cache=True, fastmath=True)
 def PllAtan2(IP: np.double, QP: np.double):
     """
     Phase Lock Loop - ATAN2 discriminator, sensitive to data bits
@@ -116,6 +127,7 @@ def PllAtan2(IP: np.double, QP: np.double):
     """
     return np.atan2(QP, IP)
 
+@njit(cache=True, fastmath=True)
 def PllNddc(IP: np.double, QP: np.double):
     """
     Phase Lock Loop - Normalized decision-directed-costas discriminator
@@ -135,6 +147,7 @@ def PllNddc(IP: np.double, QP: np.double):
     P = np.sqrt(IP**2 + QP**2)
     return QP * np.sign(IP) / P
 
+@njit(cache=True, fastmath=True)
 def PllVariance(cn0: np.double, T: np.double):
     """
     Variance in the PLL discriminator
@@ -155,6 +168,8 @@ def PllVariance(cn0: np.double, T: np.double):
     return tmp * (1.0 + 0.5*tmp)
 
 # ===== FLL ====================================================================================== #
+
+@njit(cache=True, fastmath=True)
 def FllAtan2(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double, T: np.double):
     """
     Frequency Lock Loop - ATAN2 discriminator
@@ -181,6 +196,7 @@ def FllAtan2(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double,
     d = IP_1 * IP_2 + QP_1 * QP_2
     return np.atan2(x, d) / T
 
+@njit(cache=True, fastmath=True)
 def FllNddcp(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double, T: np.double):
     """
     Frequency Lock Loop - Nomralized decision-directed-cross-product discriminator
@@ -208,6 +224,7 @@ def FllNddcp(IP_1: np.double, IP_2: np.double, QP_1: np.double, QP_2: np.double,
     d = IP_1 * IP_2 + QP_1 * QP_2
     return x * np.sign(d) / (P * T)
 
+@njit(cache=True, fastmath=True)
 def FllVariance(cn0: np.double, T: np.double):
     """
     Variance in the FLL discriminator

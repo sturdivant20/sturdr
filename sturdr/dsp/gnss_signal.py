@@ -12,9 +12,11 @@ refs    1. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Appr
 """
 
 import numpy as np
+from numba import njit
 
 # ================================================================================================ #
 
+@njit(cache=True, fastmath=True)
 def CorrelateEPL(signal: np.ndarray, code: np.ndarray, tap_spacing: int, noise_spacing: bool=False):
     """
     Generate the standard Early-Prompt-Late correlator values
@@ -34,8 +36,8 @@ def CorrelateEPL(signal: np.ndarray, code: np.ndarray, tap_spacing: int, noise_s
         GNSS correlator values
     """
     len = code.size
-    half_len = int(len / 2)
-    idx = np.arange(len, dtype=int)
+    half_len = np.int32(len / 2)
+    idx = np.arange(len, dtype=np.int32)
     
     # correlate
     E = np.sum(signal * code[(idx + tap_spacing) % len])
@@ -53,8 +55,10 @@ def CorrelateEPL(signal: np.ndarray, code: np.ndarray, tap_spacing: int, noise_s
                N.real, N.imag
     else:
         # return IE, QE, IP, QP, IL, QL, IP_1, QP_1, IP_2, QP_2
-        return E.real, E.imag, P.real, P.imag, L.real, L.imag, p1.real, p1.imag, p2.real, p2.imag
+        return E.real, E.imag, P.real, P.imag, L.real, L.imag, p1.real, p1.imag, p2.real, p2.imag, \
+               np.nan, np.nan
 
+@njit(cache=True, fastmath=True)
 def Correlate(signal: np.ndarray, code: np.ndarray):
     """
     Correlate a signal and code replica
@@ -79,6 +83,7 @@ def Correlate(signal: np.ndarray, code: np.ndarray):
 
 # ================================================================================================ #
 
+@njit(cache=True, fastmath=True)
 def CodeNCO(code: np.ndarray, 
             sampling_freq: np.double, 
             code_freq: np.double, 
@@ -110,13 +115,14 @@ def CodeNCO(code: np.ndarray,
     
     samples_per_code = np.round(sampling_freq / (code_freq / code_len)) + 1
     phase_points = np.mod(remainder_phase + np.arange(samples_per_code) * code_freq / sampling_freq, code_len)
-    upsampled_code = code[phase_points[:-1].astype(int)]
+    upsampled_code = code[phase_points[:-1].astype(np.int32)]
     remainder_phase = np.mod(phase_points[-1], code_len)
     
     return upsampled_code, remainder_phase
 
 # ================================================================================================ #
 
+@njit(cache=True, fastmath=True)
 def CarrierNCO(sampling_freq: np.double, 
                freq: np.double, 
                freq_jitter: np.double,
@@ -154,6 +160,7 @@ def CarrierNCO(sampling_freq: np.double,
 
 # ================================================================================================ #
 
+@njit(cache=True, fastmath=True)
 def shift(arr, num):
     result = np.empty_like(arr)
     if num > 0:
@@ -165,3 +172,47 @@ def shift(arr, num):
     else:
         result[:] = arr
     return result
+
+# ================================================================================================ #
+
+@njit(cache=True, fastmath=True)
+def AccumulateEPL(rfdata: np.ndarray, 
+                  code: np.ndarray, 
+                  tap_spacing: np.double,
+                  sampling_freq: np.double, 
+                  code_len: np.double,
+                  code_freq: np.double,
+                  carrier_freq: np.double,
+                  carrier_jitter: np.double,
+                  rem_code_phase: np.double, 
+                  rem_carrier_phase: np.double,
+                  n_samples: int,
+                  samples_accumulated: int,
+                  half_samples: int,
+        ):
+    E   = 0.0
+    L   = 0.0
+    N   = 0.0
+    P_1 = 0.0
+    P_2 = 0.0
+    
+    d_carrier = (carrier_freq + 0.5 * carrier_jitter / sampling_freq) / sampling_freq
+    d_code    = code_freq / sampling_freq
+    half_code = code_len/2
+    
+    for i in range(n_samples):
+        signal = np.exp(-1j * rem_carrier_phase) * rfdata[i]
+        E += (code[np.int32((rem_code_phase + tap_spacing) % code_len)] * signal)
+        L += (code[np.int32((rem_code_phase - tap_spacing) % code_len)] * signal)
+        N += (code[np.int32((rem_code_phase + half_code) % code_len)] * signal)
+        if samples_accumulated < half_samples:
+            P_1 += (code[np.int32(rem_code_phase % code_len)] * signal)
+        else:
+            P_2 += (code[np.int32(rem_code_phase % code_len)] * signal)
+            
+        # propagate
+        rem_code_phase += d_code
+        rem_carrier_phase += d_carrier
+        samples_accumulated += 1
+    P = P_1 + P_2
+    return E, P, L, P_1, P_2, N, samples_accumulated, rem_carrier_phase, rem_code_phase

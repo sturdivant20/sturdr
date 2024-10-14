@@ -14,7 +14,9 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 """
 
 import numpy as np
+from numba import njit
 
+@njit(cache=True, fastmath=True)
 def PhaseLockDetector(IP_memory: np.double, 
                       QP_memory: np.double, 
                       IP: np.double, 
@@ -52,6 +54,7 @@ def PhaseLockDetector(IP_memory: np.double,
     lock = (Q / I) < 0.268
     return lock, I, Q
 
+@njit(cache=True, fastmath=True)
 def CodeLockDetector(Amp_memory: np.double, 
                      noise_memory: np.double, 
                      IP: np.double, 
@@ -106,6 +109,7 @@ def CodeLockDetector(Amp_memory: np.double,
     lock = cn0_mag > 317.0
     return lock, cn0_mag, A2, n2
 
+@njit(cache=True, fastmath=True)
 def LowPassFilter(new: np.double, old: np.double, alpha: np.double=0.01):
     """
     Implementation of a moving average (low-pass) filter

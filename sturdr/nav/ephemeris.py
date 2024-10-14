@@ -11,11 +11,12 @@ refs    1. "IS-GPS-200N", 2022
 """
 
 import numpy as np
+from numba import njit
 from sturdr.utils.constants import (TWO_PI, WGS84_R0, OMEGA_DOT, GM, J2, OMEGA_DOT, RELATIVISTC_F, 
                                     WEEK, HALF_WEEK)
 from sturdr.utils.enums import GnssSystem
 
-
+@njit(cache=True, fastmath=True)
 def CheckTime(t):
     if t > HALF_WEEK:
         t = t - WEEK
@@ -202,7 +203,7 @@ class KeplerianEphemeris:
         x = xk_orb * COSW - yk_orb * COSI * SINW
         y = xk_orb * SINW + yk_orb * COSI * COSW
         z = yk_orb * SINI
-        pos = np.array([x, y, z], dtype=np.double)
+        pos = np.asarray([x, y, z], dtype=np.double)
         
         # velocity calculations
         xDotk_orb = rDotk * COSU - rk * uDotk * SINU    # x-velocity in orbital frame
@@ -212,7 +213,7 @@ class KeplerianEphemeris:
         vy =  (xk_orb * wDotk * COSW) + (xDotk_orb * SINW) + (yDotk_orb * COSW * COSI) \
              - (yk_orb * (wDotk * SINW * COSI + iDotk * COSW * SINI))
         vz = (yDotk_orb * SINI) + (yk_orb * iDotk * COSI)
-        vel = np.array([vx, vy, vz], dtype=np.double)
+        vel = np.asarray([vx, vy, vz], dtype=np.double)
         
         # acceleration calculations
         if calc_accel:
@@ -223,7 +224,7 @@ class KeplerianEphemeris:
             ax = TMP1 * x + F * (1.0 - TMP2) * (x / rk) + 2.0 * vy * OMEGA_DOT + x * TMP3
             ay = TMP1 * y + F * (1.0 - TMP2) * (y / rk) - 2.0 * vx * OMEGA_DOT + y * TMP3
             az = TMP1 * z + F * (3.0 - TMP2) * (z / rk)
-            acc = np.array([ax, ay, az], dtype=np.double)
+            acc = np.asarray([ax, ay, az], dtype=np.double)
         else:
             acc = np.zeros(3, dtype=np.double)
             
@@ -236,6 +237,6 @@ class KeplerianEphemeris:
             cDotDotk = 2.0 * self.af2 - (n**2 * FESQA * SINE / DEN**2)
         else:
             cDotDotk = 0.0
-        clk = np.array([ck, cDotk, cDotDotk], dtype=np.double)
+        clk = np.asarray([ck, cDotk, cDotDotk], dtype=np.double)
             
         return clk, pos, vel, acc

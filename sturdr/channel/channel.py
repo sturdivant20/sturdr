@@ -20,11 +20,11 @@ from sturdr.utils.enums import GnssSystem, GnssSignalTypes, ChannelState
 
 @dataclass(order=True, slots=True)
 class ChannelStatus:
-    ChannelNum    : int             = -1
+    ChannelNum    : np.uint8        = -1
     Constellation : GnssSystem      = 0
     Signal        : GnssSignalTypes = 0
     ID            : str             = ''
-    week          : int             = np.nan
+    week          : np.uint16       = np.nan
     TOW           : np.double       = np.nan
     State         : ChannelState    = 0
     CodeLock      : bool            = False
@@ -51,19 +51,18 @@ class Channel(ABC, Process):
     event_start       : Event
     event_done        : Event
     
-    
     def __init__(self, config: dict, cid: str, rfbuffer: RfDataBuffer, queue: Queue, num: int):
         Process.__init__(self, name=cid, daemon=True)
         
-        self.config             = config
-        self.channelID          = cid
-        self.rfbuffer           = rfbuffer
-        self.buffer_ptr         = 0
-        self.queue              = queue
-        self.event_start        = Event()
-        self.event_done         = Event()
-        self.channel_status     = ChannelStatus()
-        self.channel_status.ChannelNum = num
+        self.config                     = config
+        self.channelID                  = cid
+        self.rfbuffer                   = rfbuffer
+        self.buffer_ptr                 = 0
+        self.queue                      = queue
+        self.event_start                = Event()
+        self.event_done                 = Event()
+        self.channel_status             = ChannelStatus()
+        self.channel_status.ChannelNum  = num
         return
     
     @abstractmethod
@@ -92,12 +91,9 @@ class Channel(ABC, Process):
         pass
     
     @abstractmethod
-    def NCO(self):
-        """
-        Runs the carrier and code numerically controlled oscillators
-        """
+    def NavDataSync(self):
         pass
     
     @abstractmethod
-    def Decode(self):
+    def Demodulate(self):
         pass

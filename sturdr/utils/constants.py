@@ -43,6 +43,7 @@ GPS_L1CA_CODE_SIZE    = 1023      # number of chips in the C/A code
 
 # ===== NAVIGATION MESSAGES ====================================================================== #
 LNAV_PREAMBLE_BITS = 0b10001011 # GPS L1 C/A preamble bit sequence
+LNAV_INV_PREAMBLE_BITS = 0b01110100 # GPS L1 C/A preamble bit sequence
 LNAV_PREAMBLE_SIZE = 8          # length of GPS L1 C/A preamble
 LNAV_MS_PER_BIT    = 20         # number of milliseconds per GPS L1 C/A data bit
 LNAV_SUBFRAME_SIZE = 300        # number of data bits in a GPS L1 C/A subframe

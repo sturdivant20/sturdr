@@ -6,7 +6,7 @@ authors = [
     { name = "sturdivant20", email = "sturdivant20@gmail.com" }
 ]
 dependencies = [
-    "numpy>=2.1.1",
+    "numpy==2.0.2",
     "matplotlib>=3.9.2",
     "pyqt6>=6.7.1",
     "ipykernel>=6.29.5",

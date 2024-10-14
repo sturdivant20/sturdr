@@ -12,9 +12,11 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 """
 
 import numpy as np
+from numba import jit, njit
 from sturdr.dsp.gnss_signal import CodeNCO, CarrierNCO, shift
 from sturdr.utils.constants import TWO_PI
 
+@njit(cache=True, fastmath=True)
 def SerialSearch(rfdata: np.ndarray, 
                  code: np.ndarray, 
                  doppler_range: np.double, 
@@ -81,11 +83,13 @@ def SerialSearch(rfdata: np.ndarray,
     
     return correlation_map
 
+# @njit(cache=True, fastmath=True) # Fails because of np.fft.fft
 def PcpsSearch(rfdata: np.ndarray, 
-               upsampled_code: np.ndarray, 
+               code: np.ndarray, 
                doppler_range: np.double, 
                doppler_step: np.double, 
                sampling_freq: np.double, 
+               code_freq: np.double,
                intermediate_freq: np.double,
                coherent_integration: int=1,
                non_coherent_integration: int=1):
@@ -96,14 +100,16 @@ def PcpsSearch(rfdata: np.ndarray,
     ----------
     rfdata : np.ndarray
         Data samples recorded by the RF front end
-    upsampled_code : np.ndarray
-        Local code
+    code : np.ndarray
+        Local code (not upsampled)
     doppler_range : np.double
         Max doppler frequency to search [Hz]
     doppler_step : np.double
         Frequency step for doppler search [Z]
     sampling_freq : np.double
         Front end sampleing frequency [Hz]
+    code_freq : np.double
+        GNSS signal code frequency [Hz]
     intermediate_freq : np.double
         Intermediate frequency of the RF signal [Hz]
     coherent_integration : int, optional
@@ -118,6 +124,7 @@ def PcpsSearch(rfdata: np.ndarray,
     """
     # Initialize
     doppler_bins = np.arange(-doppler_range, doppler_range+1, doppler_step)
+    upsampled_code, _ = CodeNCO(code, sampling_freq, code_freq, code.size)
     samples_per_code = upsampled_code.size
     correlation_map = np.zeros((doppler_bins.size, samples_per_code), dtype=np.double) 
     
@@ -143,6 +150,7 @@ def PcpsSearch(rfdata: np.ndarray,
     
     return correlation_map
 
+# @njit(cache=True, fastmath=True) # fails because of unravel_index
 def Peak2PeakComparison(correlation_map: np.ndarray, samples_per_code: int, samples_per_chip: int):
     """
     Compares the two highest peaks of the correlation map
@@ -183,6 +191,7 @@ def Peak2PeakComparison(correlation_map: np.ndarray, samples_per_code: int, samp
     
     return first_peak_idx, acquisition_metric
 
+# @jit(cache=True, fastmath=True) # fails because of unravel_index
 def Peak2NoiseFloorComparison(correlation_map: np.ndarray):
     """
     Compares the two highest peak to the noise floor of the acquisition plane

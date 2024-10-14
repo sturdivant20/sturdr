@@ -10,15 +10,20 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
             - Vila-Valls, Closas, Navarro, Fernandez-Prades
         3. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach", 2007
             - Borre, Akos, Bertelsen, Rinder, Jensen
+        4. "Position, Navigation, and Timing Technologies in the 21st Century", Volume 1, 2021
+            - Morton, Diggelen, Spilker Jr., Parkinson
 ======  ============================================================================================
 """
 
 import numpy as np
+from numba import njit, float64
+from numba.experimental import jitclass
 from sturdr.dsp.discriminator import *
 
 # ===== LOOP FILTERS ============================================================================= #
 # See [Kaplan & Hegarty, 2017] pg. 464
 
+@njit(cache=True, fastmath=True)
 def NaturalFrequency(bw: np.double, order: int):
     """
     Calculate the natual radian frequency of the loop filter given the noise bandwidth
@@ -40,10 +45,12 @@ def NaturalFrequency(bw: np.double, order: int):
     ValueError
         Invlaid loop filter order
     """
-    a = 1.414
+    a = 0.7071 # 1.414
     b = 1.1
     c = 2.4
     
+    if order == 1:
+        return bw / 4
     if order == 2:
         return bw * (4 * a**2) / (a**2 + 1)
     elif order == 3:
@@ -51,6 +58,7 @@ def NaturalFrequency(bw: np.double, order: int):
     else:
         raise ValueError(f"Loop Filter order of {order} is not valid.")
 
+@njit(cache=True, fastmath=True)
 def FLLassistedPLL_2rdOrder(phase_err: np.double, 
                             freq_err: np.double, 
                             vel_accumulator: np.double, 
@@ -82,7 +90,7 @@ def FLLassistedPLL_2rdOrder(phase_err: np.double,
     vel_accumulator : np.double
         Updated velocity accumulator memory
     """
-    a = 1.414
+    a = 0.7071 # 1.414
     
     # velocity accumulator
     update = vel_accumulator + T * (phase_err * w0p**2 + freq_err * w0f)
@@ -90,6 +98,7 @@ def FLLassistedPLL_2rdOrder(phase_err: np.double,
     
     return output, update
 
+@njit(cache=True, fastmath=True)
 def FLLassistedPLL_3rdOrder(phase_err: np.double, 
                             freq_err: np.double, 
                             acc_accumulator: np.double, 
@@ -127,7 +136,7 @@ def FLLassistedPLL_3rdOrder(phase_err: np.double,
         Updated velocity accumulator memory
     """
     
-    a = 1.414
+    a = 0.7071 # 1.414
     b = 1.1
     c = 2.4
     
@@ -137,6 +146,7 @@ def FLLassistedPLL_3rdOrder(phase_err: np.double,
     
     return output, jitter, freq
 
+@njit(cache=True, fastmath=True)
 def PLL_2ndOrder(phase_err: np.double, vel_accumulator: np.double, T: np.double, w0d: np.double):
     """
     2nd order Phase/Delay Lock Loop
@@ -157,13 +167,14 @@ def PLL_2ndOrder(phase_err: np.double, vel_accumulator: np.double, T: np.double,
     _type_
         _description_
     """
-    a = 1.414
+    a = 0.7071 # 1.414
     
     update = vel_accumulator + T * w0d**2*phase_err
     output = 0.5*(vel_accumulator + update) + a*w0d*phase_err 
     
     return output, update
 
+@njit(cache=True, fastmath=True)
 def PLL_3rdOrder(phase_err: np.double, 
                  acc_accumulator: np.double, 
                  vel_accumulator: np.double, 
@@ -205,16 +216,33 @@ def PLL_3rdOrder(phase_err: np.double,
 
 # ===== KALMAN FILTER ============================================================================ #
 
+# spec = [
+#     ('x', float64[:]),
+#     ('u', float64[:]),
+#     ('P', float64[:]),
+#     ('A', float64[:]),
+#     ('B', float64[:]),
+#     ('C', float64[:]),
+#     ('Q', float64[:]),
+#     ('R', float64[:]),
+#     ('T', float64),
+#     ('cn0', float64),
+#     ('kappa', float64),
+#     ('w0d', float64),
+#     ('w0p', float64),
+#     ('w0f', float64),
+# ]
+# @jitclass(spec=spec)
 class TrackingKF:
     __slots__ = 'x', 'u', 'P', 'A', 'B', 'C', 'Q', 'R', 'T', 'cn0', 'kappa', 'w0d', 'w0p', 'w0f'
-    x     : np.ndarray
-    u     : np.ndarray
-    P     : np.ndarray
-    A     : np.ndarray
-    B     : np.ndarray
-    C     : np.ndarray
-    Q     : np.ndarray
-    R     : np.ndarray
+    x     : np.ndarray[np.double]
+    u     : np.ndarray[np.double]
+    P     : np.ndarray[np.double]
+    A     : np.ndarray[np.double]
+    B     : np.ndarray[np.double]
+    C     : np.ndarray[np.double]
+    Q     : np.ndarray[np.double]
+    R     : np.ndarray[np.double]
     T     : np.double
     cn0   : np.double
     kappa : np.double
@@ -271,8 +299,8 @@ class TrackingKF:
         self.__reset_Q()
         self.__reset_C()
         self.__reset_R()
-        self.x = np.array([carrier_phase, doppler, 0.0, code_phase, 0.0])
-        self.u = np.array([intermediate_freq, nominal_code_freq])
+        self.x = np.asarray([carrier_phase, doppler, 0.0, code_phase, 0.0])
+        self.u = np.asarray([intermediate_freq, nominal_code_freq])
         self.P = np.diag([np.pi**2/3, 2*np.pi*500.0, 100.0, 0.1, 10.0])
         return
             
@@ -299,7 +327,7 @@ class TrackingKF:
         self.P = self.A @ self.P @ self.A.T + self.Q
         
         # Correction
-        dy = np.array([phase_err, freq_err, chip_err])
+        dy = np.asarray([phase_err, freq_err, chip_err])
         PCt = self.P @ self.C.T
         K = PCt @ np.linalg.inv(self.C @ PCt + self.R)
         self.P = (np.eye(5) - K @ self.C) @ self.P
@@ -344,7 +372,10 @@ class TrackingKF:
         self.T = T
         self.__reset_A()
         self.__reset_B()
+        self.__reset_C()
         self.__reset_Q()
+        # self.__reset_R()
+        # self.P = np.diag([np.pi**2/3, 2*np.pi*500.0, 100.0, 0.1, 10.0])
         return
     
     def UpdateCarrierAidingCoeff(self, 
@@ -385,7 +416,7 @@ class TrackingKF:
             
     def __reset_A(self):
         T, k = self.T, self.kappa
-        self.A = np.array(
+        self.A = np.asarray(
             [
                 [1.0,   T,   0.5*T**2, 0.0, 0.0],
                 [0.0, 1.0,          T, 0.0, 0.0],
@@ -398,7 +429,7 @@ class TrackingKF:
         return
     
     def __reset_B(self):
-        self.B = np.array(
+        self.B = np.asarray(
             [
                 [self.T,    0.0],
                 [   0.0,    0.0],
@@ -411,7 +442,16 @@ class TrackingKF:
         return
     
     def __reset_C(self):
-        self.C = np.array(
+        # T, k = self.T, self.kappa
+        # self.C = np.asarray(
+        #     [
+        #         [1.0,   T/2,   T**2/6, 0.0, 0.0], 
+        #         [0.0,   1.0,      T/2, 0.0, 0.0], 
+        #         [0.0, k*T/2, k*T**2/6, 1.0, T/2]
+        #     ],
+        #     dtype=np.double
+        # )
+        self.C = np.asarray(
             [
                 [1.0, 0.0, 0.0, 0.0, 0.0], 
                 [0.0, 1.0, 0.0, 0.0, 0.0], 
@@ -423,7 +463,7 @@ class TrackingKF:
         
     def __reset_Q(self):
         T, w0d, w0p, w0f, k = self.T, self.w0d, self.w0p, self.w0f, self.kappa
-        self.Q = 100 * np.array(
+        self.Q = np.asarray(
             [
                 [     (w0f*T**5)/20 + (w0p*T**3)/3,   (T**2*(w0f*T**2 + 4*w0p))/8,   (T**3*w0f)/6,                  (T**3*k*(3*w0f*T**2 + 20*w0p))/60,            0],
                 [      (w0f*T**4)/8 + (w0p*T**2)/2,          (w0f*T**3)/3 + w0p*T,   (T**2*w0f)/2,                      (T**2*k*(w0f*T**2 + 4*w0p))/8,            0],
@@ -436,7 +476,7 @@ class TrackingKF:
         return
     
     def __reset_R(self):
-        self.R = np.array(
+        self.R = np.asarray(
             [
                 [PllVariance(self.cn0, self.T), 0.0, 0.0], # [rad^2]
                 [0.0, FllVariance(self.cn0, self.T), 0.0], # [(rad/s)^2]

@@ -130,6 +130,13 @@ class RfDataBuffer:
             
         return
     
+    def NextChunk(self):
+        """
+        Push new data into the circular buffer. 
+        """
+        self.buffer = self.fread(self.chunk_size_ms * self.samples_per_ms)
+        return
+    
     def Pull(self, read_ptr: int, nsamples: int):
         """
         Pull data from the circular buffer.
