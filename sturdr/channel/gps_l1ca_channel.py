@@ -426,17 +426,17 @@ class GpsL1caChannel(Channel):
 
     def Demodulate(self):
         # first sync to gps preamble
-        if not self.lnav_parser.preamble_found:
-            self.lnav_parser.SyncToPreamble(self.IP > 0)
+        # if not self.lnav_parser.preamble_found:
+        #     self.lnav_parser.SyncToPreamble(self.IP > 0)
             
-        # keep replaceing bits while phase locked
-        else:
-            self.lnav_parser.NextBit(self.IP > 0)
+        # # keep replaceing bits while phase locked
+        # else:
+        self.lnav_parser.NextBit(self.IP > 0)
         
         if not self.channel_status.Ephemeris:
             if self.lnav_parser.subframe1 and self.lnav_parser.subframe2 and self.lnav_parser.subframe3:
                 self.channel_status.Ephemeris = True
-                print(f"{self.channel_status.ID} Ephemeris:")
+                print(f"\n{self.channel_status.ID} Ephemeris:")
                 print(f"-----------------------------------")
                 print(f"week     = {self.lnav_parser.week}")
                 print(f"ura      = {self.lnav_parser.ura}")
@@ -464,7 +464,7 @@ class GpsL1caChannel(Channel):
                 print(f"omega    = {self.lnav_parser.omega}")
                 print(f"omegaDot = {self.lnav_parser.omegaDot}")
                 print(f"IODE_SF3 = {self.lnav_parser.iode}")
-                print(f"iDot     = {self.lnav_parser.iDot}")
+                print(f"iDot     = {self.lnav_parser.iDot}\n")
     
 # ===== GPS L1 C/A Code Generator ================================================================ #
 

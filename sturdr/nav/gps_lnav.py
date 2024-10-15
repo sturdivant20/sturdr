@@ -14,6 +14,10 @@ refs    1. "IS-GPS-200N", 2022
 
 # TODO: clean up preamble synchronization process
 # TODO: track multiple preamble detections at ones to not skip 6 seconds before next attempt
+#       -> one detected begin placing bits into word array (subframe)
+#       -> if detection is invalid, shift bits forward in the word array until bits 2-9 match the preamble again
+#           -> be mindful of uint32 vs 30 bit words
+#       -> repeat until preamble is detected twice, 300 bits apart
 
 import numpy as np
 from sturdr.nav.ephemeris import KeplerianEphemeris
@@ -33,7 +37,8 @@ GPS_D30 = np.asarray([4,6,7,9,10,11,12,14,16,20,23,24,25], dtype = np.uint8)    
 
 class GpsLnavParser(KeplerianEphemeris):
     __slots__ = 'subframe', 'bit_count', 'word_count', 'TOW', 'week', 'signalID', 'subframe1', \
-                'subframe2', 'subframe3', 'preamble_found', 'bits_since_preamble', 'prev_32_bits'
+                'subframe2', 'subframe3', 'preamble_found', 'bits_since_preamble', 'prev_32_bits', \
+                'preamble_detections'
     subframe            : np.ndarray[np.uint32]
     bit_count           : np.uint16
     word_count          : np.uint8
@@ -43,8 +48,9 @@ class GpsLnavParser(KeplerianEphemeris):
     subframe2           : bool
     subframe3           : bool
     preamble_found      : bool
-    bits_since_preamble : np.uint16
+    bits_since_preamble : np.int16
     prev_32_bits        : np.uint32
+    preamble_detections : list[np.int16]
     
     def __init__(self):
         KeplerianEphemeris.__init__(self)
@@ -55,84 +61,101 @@ class GpsLnavParser(KeplerianEphemeris):
         self.subframe2           = False
         self.subframe3           = False
         self.preamble_found      = False
-        self.bits_since_preamble = 0
+        self.bits_since_preamble = -1
         self.prev_32_bits        = 0
+        self.preamble_detections = []
         return
     
-    def SyncToPreamble(self, bit: bool):
-        # shift saved bits left 1
-        self.prev_32_bits = np.uint32((self.prev_32_bits << 1) & 0xFFFFFFFF)
-        
-        # save next bit
-        self.prev_32_bits = ModifyBit(self.prev_32_bits, 31, bit)
-        
-        # see if last 8 are now equal to the preamble
-        test = np.uint8(self.prev_32_bits & 0x000000FF)
-            
-        # look for preamble
-        if self.bits_since_preamble == 0:
-            # is preamble identified?
-            if (test == LNAV_PREAMBLE_BITS) or (test == LNAV_INV_PREAMBLE_BITS):
-                print("first preamble found")
-                # save last 10 into the first saved word
-                for i in range(10):
-                    self.subframe[0] = ModifyBit(self.subframe[0], i, CheckBit(self.prev_32_bits, 22+i))
-                self.bits_since_preamble = 9 # 9 because starting from 1 not 0
-                self.bit_count = 10
-        
-        # see if preamble repeats
-        elif self.bits_since_preamble >= 300:
-            # is preamble identified again?
-            if self.bits_since_preamble == 308:
-                if (test == LNAV_PREAMBLE_BITS) or (test == LNAV_INV_PREAMBLE_BITS):
-                    # preamble identified!
-                    print("preamble identified!")
-                    self.preamble_found = True
-                    
-                    # parse subframe of data saved
-                    self.ParseSubframe()
-                    
-                    # save last 10 into the beginning of next word
-                    for i in range(10):
-                        self.subframe[0] = ModifyBit(self.subframe[0], i, CheckBit(self.prev_32_bits, 22+i))
-                    self.word_count = 0
-                    self.bit_count = 10
-                else: 
-                    print("preamble incorrectly identified!")
-                    self.bits_since_preamble = 0
-                    self.word_count = 0
-            else:
-                self.bits_since_preamble += 1
-                          
-        # save bits until check for repeating preamble
-        else:
-            # print("SyncToPreamble here 2")
-            self.NextBit(bit)
-            self.bits_since_preamble += 1
-                
-        return self.preamble_found
-    
     def NextBit(self, bit: bool):
-        self.subframe[self.word_count] = ModifyBit(self.subframe[self.word_count], self.bit_count, bit)
+        # data bits ordered [-2 -1 0 ... 29]
+        
+        # shift saved bits left 1 and save next bit (enforce uint32 size)
+        self.prev_32_bits = np.uint32((self.prev_32_bits << 1) & 0xFFFFFFFF)
+        self.prev_32_bits = ModifyBit(self.prev_32_bits, 31, bit)
         self.bit_count += 1
         
-        if self.bit_count > 31:
-            # check if subframe is now complete
-            old_count = self.word_count
-            self.word_count += 1
-            if self.word_count > 9:
-                if self.preamble_found:
+        # ---------------------------------------------------------------------------------------- #
+        # if we have not acquired the preamble, we must do that
+        if not self.preamble_found:
+            # check last 8 bits for the preamble
+            test = np.uint8(self.prev_32_bits & 0x000000FF)
+            if (test == LNAV_PREAMBLE_BITS) or (test == LNAV_INV_PREAMBLE_BITS):
+                # initial correct preamble detection
+                if self.bits_since_preamble == -1:
+                    # print("preamble detected")
+                    self.bit_count = 8
+                    self.word_count = 0
+                    self.bits_since_preamble = 0
+                # second correct preamble detection
+                elif self.bits_since_preamble == 300:
+                    # print("correct preamble detected!")
+                    self.preamble_found = True
                     self.ParseSubframe()
-                self.word_count = 0
+                    self.bit_count = 8
+                    self.word_count = 0
+                    self.bits_since_preamble = 0
+                else:
+                    self.preamble_detections.append(self.bits_since_preamble)
+                    
+            # if we are here, the preamble did not sucessfully sync, reset to the next detection
+            if self.bits_since_preamble == 300:
+                # print("incorrect preamble detected :(")
+                bits_to_shift = self.preamble_detections[0] % 30 + 1
+                words_to_shift = self.preamble_detections[0] // 30
+                
+                # first, shift by full words (30 bits)
+                if words_to_shift > 0:
+                    self.subframe[:-words_to_shift] = self.subframe[words_to_shift:]
+                    self.subframe[-words_to_shift:] = 0
+                
+                # second, shift by remaining bits
+                if bits_to_shift > 0:
+                    for i in range(9 - words_to_shift):
+                        curr_bits = np.uint32(((self.subframe[i] & 0xFFFFFFFC) << (bits_to_shift-1)) & 0xFFFFFFFF)
+                        next_bits = (self.subframe[i+1] >> (31 - bits_to_shift))
+                        self.subframe[i] = curr_bits | next_bits
+                     
+                # update
+                self.bits_since_preamble -= self.preamble_detections[0]
+                self.bit_count = 32 - bits_to_shift
+                self.word_count = 9 - words_to_shift
+                
+                # reset detections and rid of used detection
+                self.preamble_detections = [x - self.preamble_detections[0] for x in self.preamble_detections]
+                self.preamble_detections.pop(0)
+                # print(f"{self.subframe[0]:032b}")
+                print()
             
-            # Bit [-2, -1] of next word is bit [30, 31] or current word
-            self.subframe[self.word_count] = ModifyBit(self.subframe[self.word_count], 0, CheckBit(self.subframe[old_count], 30))
-            self.subframe[self.word_count] = ModifyBit(self.subframe[self.word_count], 1, CheckBit(self.subframe[old_count], 31))
-            self.bit_count = 2
-            
+            # increment bit count if necessary
+            if self.bits_since_preamble >= 0:
+                self.bits_since_preamble += 1
+        # ---------------------------------------------------------------------------------------- #
+        
+        # if 30 new bits have been parsed, save into gps word
+        if self.bit_count == 30:
+            self.subframe[self.word_count] = self.prev_32_bits
+            # print(f"word_count = {self.word_count:02d}, {self.subframe[self.word_count]:032b}")
+            self.bit_count = 0
+            self.word_count += 1
+        
+        # if 10 words have been parsed, reset to 0 and parse subframe
+        if self.word_count == 10:
+            self.word_count = 0
+            if self.preamble_found:
+                self.ParseSubframe()
         return
     
     def ParseSubframe(self):
+        """
+        Attempts to parse subframe
+
+        Raises
+        ------
+        ValueError
+            _description_
+        ValueError
+            _description_
+        """
         # data bits ordered [-2 -1 0 ... 29]
         for i in range(self.subframe.size):
             D29star = CheckBit(self.subframe[i], 0)
@@ -146,7 +169,7 @@ class GpsLnavParser(KeplerianEphemeris):
             if not self.ParityCheck(self.subframe[i], D29star, D30star):
                 raise ValueError("Invalid parity check!")
             
-        # get subframe id
+        # get subframe id (IS-GPS-200N pg. 92)
         subframe_id = np.uint8((self.subframe[1] & 0x00000700) >> 8)  # bits 20-22
         # print(f"subframe_id = {subframe_id}")
         
@@ -181,7 +204,7 @@ class GpsLnavParser(KeplerianEphemeris):
 
         Parameters
         ----------
-        i : np.uint32
+        gpsword : np.uint32
             GPS word to evaluate
 
         Returns
@@ -204,6 +227,9 @@ class GpsLnavParser(KeplerianEphemeris):
         return False
         
     def LoadPreamble(self):
+        """
+        IS-GPS-200N pg. 92
+        """
         # word 1
         # tlm_message = np.uint16((self.subframe[0] & 0x003FFF00) >> 8)     # bits 9-22
         # integrity_status_flag = bool((self.subframe[0] & 0x00000080) >> 7)# bit 23
@@ -221,6 +247,10 @@ class GpsLnavParser(KeplerianEphemeris):
         return
     
     def LoadSubframe1(self):
+        """
+        IS-GPS-200N pg. 80
+        IS-GPS-200N pg. 97
+        """
         # word 1-2
         self.LoadPreamble()
         
@@ -231,7 +261,7 @@ class GpsLnavParser(KeplerianEphemeris):
         self.health = np.uint8((self.subframe[2] & 0x00003F00) >> 8)    # bits 17-22
         
         # word 7
-        self.tgd = TwosComp((self.subframe[6] & 0x00003FC0) >> 6, 8) * (2**-31)   # bits 9-24
+        self.tgd = TwosComp((self.subframe[6] & 0x00003FC0) >> 6, 8) * (2**-31)   # bits 17-24
         
         # word 8
         tmp1 = (self.subframe[2] & 0x000000C0) >> 6                         # bits 23-24 (word 3)
@@ -259,6 +289,10 @@ class GpsLnavParser(KeplerianEphemeris):
         return
     
     def LoadSubframe2(self):
+        """
+        IS-GPS-200N pg. 81
+        IS-GPS-200N pg. 105
+        """
         # word 1-2
         self.LoadPreamble()
         
@@ -302,6 +336,7 @@ class GpsLnavParser(KeplerianEphemeris):
     
     def LoadSubframe3(self):
         """
+        IS-GPS-200N pg. 82
         IS-GPS-200N pg. 105
         """
         # word 1-2
@@ -330,7 +365,7 @@ class GpsLnavParser(KeplerianEphemeris):
         
         # word 10
         self.iode = np.double((self.subframe[9] & 0x3FC00000) >> 22)                    # bits 1-8
-        self.iDot = TwosComp((self.subframe[8] & 0x003FFF00) >> 8, 14) * (PI * 2**-43)  # bits 9-22
+        self.iDot = TwosComp((self.subframe[9] & 0x003FFF00) >> 8, 14) * (PI * 2**-43)  # bits 9-22
         
         # print(f"cic = {self.cic}")
         # print(f"cis = {self.cis}")
