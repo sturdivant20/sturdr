@@ -64,10 +64,13 @@ class GpsLnavParser(KeplerianEphemeris):
         self.bits_since_preamble = -1
         self.prev_32_bits        = 0
         self.preamble_detections = []
+        self.TOW = np.nan
+        self.week = np.nan
         return
     
     def NextBit(self, bit: bool):
         # data bits ordered [-2 -1 0 ... 29]
+        subframe_parsed = False
         
         # shift saved bits left 1 and save next bit (enforce uint32 size)
         self.prev_32_bits = np.uint32((self.prev_32_bits << 1) & 0xFFFFFFFF)
@@ -94,6 +97,7 @@ class GpsLnavParser(KeplerianEphemeris):
                     self.bit_count = 8
                     self.word_count = 0
                     self.bits_since_preamble = 0
+                    subframe_parsed = True
                 else:
                     self.preamble_detections.append(self.bits_since_preamble)
                     
@@ -117,14 +121,14 @@ class GpsLnavParser(KeplerianEphemeris):
                      
                 # update
                 self.bits_since_preamble -= self.preamble_detections[0]
-                self.bit_count = 32 - bits_to_shift
+                self.bit_count = 31 - bits_to_shift + 8 # +8 to account for preamble
                 self.word_count = 9 - words_to_shift
                 
                 # reset detections and rid of used detection
                 self.preamble_detections = [x - self.preamble_detections[0] for x in self.preamble_detections]
                 self.preamble_detections.pop(0)
                 # print(f"{self.subframe[0]:032b}")
-                print()
+                # print()
             
             # increment bit count if necessary
             if self.bits_since_preamble >= 0:
@@ -143,7 +147,8 @@ class GpsLnavParser(KeplerianEphemeris):
             self.word_count = 0
             if self.preamble_found:
                 self.ParseSubframe()
-        return
+                subframe_parsed = True
+        return subframe_parsed
     
     def ParseSubframe(self):
         """
@@ -176,22 +181,22 @@ class GpsLnavParser(KeplerianEphemeris):
         # parse subframe
         match subframe_id:
             case 1:
-                print("\nSubframe 1")
+                # print("\nSubframe 1")
                 self.LoadSubframe1()
                 self.subframe1 = True
             case 2:
-                print("\nSubframe 2")
+                # print("\nSubframe 2")
                 self.LoadSubframe2()
                 self.subframe2 = True
             case 3:
-                print("\nSubframe 3")
+                # print("\nSubframe 3")
                 self.LoadSubframe3()
                 self.subframe3 = True
             case 4:
-                print("\nSubframe 4")
+                # print("\nSubframe 4")
                 self.LoadSubframe4()
             case 5:
-                print("\nSubframe 5")
+                # print("\nSubframe 5")
                 self.LoadSubframe5()
             case _:
                 raise ValueError("Invalid parity check!")

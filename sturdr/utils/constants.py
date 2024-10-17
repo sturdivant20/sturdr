@@ -33,7 +33,8 @@ J3            = -2.5323000e-06   # Third zonal harmonic coefficient
 J4            = -1.6204000e-06   # Fourth zonal harmonic coefficient
 RELATIVISTC_F = -4.442807633e-10 # Relativistic clock correction [s/m^(1/2)]
 OMEGA_DOT     = 7.2921151467e-5  # Earth's rotation rate [rad/s]
-GM            = 3.986004415e14   # Earth's gravitational constant [m^3/s^2]
+# GM            = 3.986004415e14   # Earth's gravitational constant [m^3/s^2]
+GM            = 3.986005e14
 
 # ===== GNSS CONSTELLATIONS ====================================================================== #
 GPS_L1CA_CARRIER_FREQ = 1575.42e6 # [Hz]

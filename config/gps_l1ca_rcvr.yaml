@@ -1,10 +1,10 @@
 GENERAL:
   scenario        : GPS_L1CA_TEST
   max_channels    : 12
-  ms_to_process   : 60000
+  ms_to_process   : 36000
   ms_chunk_size   : 100
+  ms_read_size    : 20
   in_file         : ./rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin
-  # in_file         : ./rfdata/GPS_Class_2023_Static_IF_Data_2nd_set.bin
   out_folder      : results
   reference_pos_x : 422596.629
   reference_pos_y : -5362864.287

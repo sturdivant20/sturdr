@@ -50,15 +50,18 @@ def main():
     for j in range(len(prn)):
         channel.append(GpsL1caChannel(config, f'Test_GPS{prn[j]}_Channel', rfbuffer, queue, j))
         channel[j].SetSatellite(prn[j])
-        # channel[j].start()
+        channel[j].start()
 
     # initialize output
-    L = 36000
-    L2 = 20
+    L = config['GENERAL']['ms_to_process']
+    L2 = config['GENERAL']['ms_read_size']
     L_size = int(L / L2)
     iq = np.zeros((6, L_size, len(prn)))
     doppler = np.zeros((L_size, len(prn)))
     cn0 = np.zeros((L_size, len(prn)))
+    TOW = np.zeros(len(prn))
+    ID  = [''] * len(prn)
+    nominal_t = 0.068802
     
     loop_t = time.time()
     # run loop
@@ -67,54 +70,67 @@ def main():
         rfbuffer.Push(L2)
         # rfbuffer.NextChunk()
         
-        # process data
-        if channel[0].channel_status.State == ChannelState.TRACKING:
-            channel[0].Track()
-        elif channel[0].channel_status.State == ChannelState.ACQUIRING:
-            channel[0].Acquire()
-        
-        # # inform the channels of new data
-        # for ch in channel:
-        #     ch.event_start.set()
+        # # process data
+        # for j in range(len(prn)):
+        #     if channel[j].channel_status.State == ChannelState.TRACKING:
+        #         channel[j].Track()
+        #     elif channel[j].channel_status.State == ChannelState.ACQUIRING:
+        #         channel[j].Acquire()
+        #     TOW[j] = channel[j].channel_status.header.TOW
+        #     ID[j] = channel[j].channel_status.header.ID
             
-        # # wait for the channels to process new data
-        # for ch in channel:
-        #     ch.event_done.wait()
-        #     ch.event_done.clear()
+        #     if channel[j].channel_status.Ephemeris:
+        #         print(f"SV_POS: {np.array2string(channel[j].nav_packet.SatPos, precision=3, floatmode='fixed')}")
         
-        # # process results
-        # while queue.qsize() > 0:
-        #     packet       = queue.get()
-        #     j            = packet.ChannelNum
-        #     iq[0,i,j]    = packet.IP
-        #     iq[1,i,j]    = packet.QP
-        #     doppler[i,j] = packet.Doppler
-        #     cn0[i,j]     = packet.CN0
+        # inform the channels of new data
+        for ch in channel:
+            ch.event_start.set()
+            
+        # request navigation data
+            
+        # wait for the channels to process new data
+        for ch in channel:
+            ch.event_done.wait()
+            ch.event_done.clear()
+        
+        # process results
+        while queue.qsize() > 0:
+            packet       = queue.get()
+            j            = packet.header.ChannelNum
+            TOW[j]       = packet.header.TOW
+            ID[j]        = packet.header.ID
+            iq[0,i,j]    = packet.IP
+            iq[1,i,j]    = packet.QP
+            doppler[i,j] = packet.Doppler
+            cn0[i,j]     = packet.CN0
+            
+        # if not np.any(np.isnan(TOW)):
+        #     print(f"Delta TOW = {np.array2string(1000*(TOW-np.min(TOW)), precision=6, floatmode='fixed')} ms")
             
     end_t = time.time()
     print(f"Total Time = {1000 * (end_t - start_t)} ms")
     print(f"Loop Time = {1000 * (end_t - loop_t)} ms")
             
-    # # plot IP and QP
-    # plt.figure()
-    # for j in range(len(prn)):
-    #     plt.plot(iq[0,:,j], '.', label=f'IP GPS{prn[j]}')
-    #     plt.plot(iq[1,:,j], '.', label=f'QP GPS{prn[j]}')
-    # plt.legend()
+    # plot IP and QP
+    plt.figure()
+    for j in range(len(prn)):
+        plt.plot(iq[0,:,j], '.', label=f'IP GPS{prn[j]}')
+        plt.plot(iq[1,:,j], '.', label=f'QP GPS{prn[j]}')
+    plt.legend()
 
-    # # plot carrier doppler
-    # plt.figure()
-    # for j in range(len(prn)):
-    #     plt.plot(doppler[:,j], label=f'Doppler GPS{prn[j]}')
-    # plt.legend()
+    # plot carrier doppler
+    plt.figure()
+    for j in range(len(prn)):
+        plt.plot(doppler[:,j], label=f'Doppler GPS{prn[j]}')
+    plt.legend()
 
-    # # plot cn0
-    # plt.figure()
-    # for j in range(len(prn)):
-    #     plt.plot(cn0[:,j], label=f'C/N0 GPS{prn[j]}')
-    # plt.legend()
+    # plot cn0
+    plt.figure()
+    for j in range(len(prn)):
+        plt.plot(cn0[:,j], label=f'C/N0 GPS{prn[j]}')
+    plt.legend()
 
-    # plt.show()
+    plt.show()
 
     return
     
