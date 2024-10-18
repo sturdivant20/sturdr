@@ -21,7 +21,7 @@ def PhaseLockDetector(IP_memory: np.double,
                       QP_memory: np.double, 
                       IP: np.double, 
                       QP: np.double, 
-                      alpha: np.double=0.01):
+                      alpha: np.double=5e-3):
     """
     Carrier phase lock detector (Kaplan)
 
@@ -62,7 +62,7 @@ def CodeLockDetector(Amp_memory: np.double,
                      IN: np.double, 
                      QN: np.double, 
                      dt: np.double, 
-                     alpha: np.double=0.01): 
+                     alpha: np.double=5e-3): 
     """
     Code lock detector and Carrier-to-Noise ratio estimator, must be reset if integration period 
     changes
@@ -97,20 +97,18 @@ def CodeLockDetector(Amp_memory: np.double,
     n2 : np.double
         New (filtered) noise power value
     """
-    # if Amp_memory > 0:
+    # Easy C/N0 estimator
     A2 = LowPassFilter(IP**2 + QP**2, Amp_memory, alpha)
     n2 = LowPassFilter(IN**2 + QN**2, noise_memory, alpha)
-    # else:
-    #     A2 = IP**2 + QP**2
-    #     n2 = IN**2 + QN**2
-    cn0_mag = A2 / (2.0 * dt * n2)
+    noise = 2.0 * n2
+    cn0_mag = (A2 - noise) / (noise * dt)
     
     # cn0 should be greater than 25 dB (~317)
     lock = cn0_mag > 317.0
     return lock, cn0_mag, A2, n2
 
 @njit(cache=True, fastmath=True)
-def LowPassFilter(new: np.double, old: np.double, alpha: np.double=0.01):
+def LowPassFilter(new: np.double, old: np.double, alpha: np.double=5e-3):
     """
     Implementation of a moving average (low-pass) filter
 
@@ -128,5 +126,6 @@ def LowPassFilter(new: np.double, old: np.double, alpha: np.double=0.01):
     output : np.double
         Filtered value
     """
-    output = (1.0 - alpha) * old + alpha * new
+    # output = (1.0 - alpha) * old + alpha * new
+    output = old + alpha * (new - old)
     return output

@@ -14,14 +14,14 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 """
 
 import numpy as np
-from numba import njit, uint8
-from numba.typed import Dict
-from multiprocessing import shared_memory, Queue, Event
+from numba import njit
+import multiprocessing
+from multiprocessing import Queue, Barrier
 
 from sturdr.channel.channel import Channel, ChannelPacket, NavPacket
 from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
 from sturdr.dsp.tracking import NaturalFrequency, TrackingKF
-from sturdr.dsp.gnss_signal import CodeNCO, CarrierNCO, CorrelateEPL, AccumulateEPL
+from sturdr.dsp.gnss_signal import AccumulateEPL
 from sturdr.dsp.discriminator import PllCostas, DllNneml, DllNcdp, FllAtan2
 from sturdr.dsp.lock_detector import CodeLockDetector, PhaseLockDetector
 from sturdr.nav.gps_lnav import GpsLnavParser
@@ -94,8 +94,15 @@ class GpsL1caChannel(Channel):
     
 # ------------------------------------------------------------------------------------------------ #
 
-    def __init__(self, config: dict, cid: str, rfbuffer: RfDataBuffer, queue: Queue, num: int):
-        Channel.__init__(self, config, cid, rfbuffer, queue, num)
+    def __init__(self, 
+                 config: dict, 
+                 cid: str, 
+                 rfbuffer: RfDataBuffer, 
+                 data_queue: Queue, 
+                 start_barrier: multiprocessing.synchronize.Barrier, 
+                 done_barrier: multiprocessing.synchronize.Barrier, 
+                 num: int):
+        Channel.__init__(self, config, cid, rfbuffer, data_queue, start_barrier, done_barrier, num)
         self.channel_status.header.Constellation = GnssSystem.GPS
         self.channel_status.header.Signal = GnssSignalTypes.GPS_L1CA
         self.channel_status.State = ChannelState.IDLE
@@ -161,8 +168,7 @@ class GpsL1caChannel(Channel):
         # print("Run", flush=True)
         while True:
             # wait for new data to process
-            self.event_start.wait()
-            self.event_start.clear()
+            self.start_barrier.wait()
             
             # update the write pointer location for this process
             #   -> necessary because `rfbuffer` is in `another Process` which cannot be seen in 
@@ -175,9 +181,11 @@ class GpsL1caChannel(Channel):
             elif self.channel_status.State == ChannelState.ACQUIRING:
                 self.Acquire()
             
-            # send the signal that the channel is finished            
-            self.queue.put(self.channel_status)
-            self.event_done.set()
+            # send processed results to logging/data queue          
+            self.data_queue.put(self.channel_status)
+            
+            # send the signal that the channel is finished      
+            self.done_barrier.wait()
         return
 
 # ------------------------------------------------------------------------------------------------ #
@@ -252,7 +260,10 @@ class GpsL1caChannel(Channel):
             self.channel_status.Doppler = self.carrier_doppler / NP_TWO_PI
             
             # TODO: print/log output
-            # print("Acquisition Success", flush=True)
+            self.logger.info(f'Channel {self.channel_status.header.ChannelNum}: ' \
+                             f'{self.channel_status.header.ID} acquired! ' \
+                             f'Doppler (Hz): {np.round(self.channel_status.Doppler).astype(np.int32)}, ' \
+                             f'Code Phase (samples): {np.round(first_peak_idx[1]).astype(np.int32)}')
         else:
             self.channel_status.State = ChannelState.IDLE
             # print("Acquisition Failed", flush=True)
@@ -324,21 +335,22 @@ class GpsL1caChannel(Channel):
                 samples_to_read = 0
                 
                 # check that data can be parsed and syncronize to the bits
-                # TODO: move this into NavDataSync
                 if not self.channel_status.DataLock:
                     # check for bit flip
                     if self.NavDataSync():
                         continue
                             
                 # if data bits are syncronized, try demodulation
-                # TODO: move this into Demodulate
                 else:
                     self.Demodulate()
                 
                 # discriminators
                 phase_err = PllCostas(self.IP, self.QP)                                   # [rad]
                 freq_err = FllAtan2(self.IP_1, self.IP_2, self.QP_1, self.QP_2, self.T/2) # [rad/s]
-                chip_err = DllNneml(self.IE, self.QE, self.IL, self.QL)                   # [chip]
+                if self.channel_status.CarrierLock:
+                    chip_err = DllNcdp(self.IE, self.IP, self.IL)                         # [chip]
+                else:
+                    chip_err = DllNneml(self.IE, self.QE, self.IL, self.QL)               # [chip]
                 
                 # loop filter
                 t = self.total_samples / self.config['RFSIGNAL']['sampling_freq']
@@ -357,7 +369,7 @@ class GpsL1caChannel(Channel):
                 # lock detectors
                 self.channel_status.CodeLock, self.cn0_mag, self.amp_memory, self.noise_memory = \
                     CodeLockDetector(self.amp_memory, self.noise_memory, self.IP, self.QP, self.IN, \
-                                    self.QN, self.T)
+                                    self.QN, t)
                 self.channel_status.CarrierLock, self.IP_memory, self.QP_memory = PhaseLockDetector( \
                     self.IP_memory, self.QP_memory, self.IP, self.QP)
                 self.kf.UpdateCn0(self.cn0_mag)
@@ -391,27 +403,30 @@ class GpsL1caChannel(Channel):
         self.channel_status.header.TOW = self.last_parsed_tow + \
             self.samples_since_tow / self.config['RFSIGNAL']['sampling_freq']
             
-        # update nav packet
-        # TODO: make navigation queue/event
-        if self.channel_status.Ephemeris:
-            self.nav_packet.header.ChannelNum = self.channel_status.header.ChannelNum
-            self.nav_packet.header.Constellation = self.channel_status.header.Constellation
-            self.nav_packet.header.Signal = self.channel_status.header.Signal
-            self.nav_packet.header.ID = self.channel_status.header.ID
-            self.nav_packet.header.week = self.channel_status.header.week
-            self.nav_packet.header.TOW = self.channel_status.header.TOW
-            self.nav_packet.SampleCount = self.samples_since_tow
-            self.nav_packet.Doppler = self.channel_status.Doppler
-            self.nav_packet.CN0 = self.channel_status.CN0
-            clk,pos,vel,acc = self.lnav_parser.GetNavStates(self.nav_packet.header.TOW, False)
-            self.nav_packet.SatPos = pos
-            self.nav_packet.SatVel = vel
-            self.nav_packet.ClkCorr = clk[0]
+        # # update nav packet
+        # # TODO: make navigation queue/event
+        # if self.channel_status.Ephemeris:
+        #     self.nav_packet.header.ChannelNum = self.channel_status.header.ChannelNum
+        #     self.nav_packet.header.Constellation = self.channel_status.header.Constellation
+        #     self.nav_packet.header.Signal = self.channel_status.header.Signal
+        #     self.nav_packet.header.ID = self.channel_status.header.ID
+        #     self.nav_packet.header.week = self.channel_status.header.week
+        #     self.nav_packet.header.TOW = self.channel_status.header.TOW
+        #     self.nav_packet.SampleCount = self.samples_since_tow
+        #     self.nav_packet.Doppler = self.channel_status.Doppler
+        #     self.nav_packet.CN0 = self.channel_status.CN0
+        #     clk,pos,vel,acc = self.lnav_parser.GetNavStates(self.nav_packet.header.TOW, False)
+        #     self.nav_packet.SatPos = pos
+        #     self.nav_packet.SatVel = vel
+        #     self.nav_packet.ClkCorr = clk[0]
         return
     
 # ------------------------------------------------------------------------------------------------ #
 
     def NavDataSync(self):
+        """
+        Synchronize to the data bit and extend the integration periods
+        """
         # check for bit flip
         if np.sign(self.IP) != np.sign(self.channel_status.IP):
             self.bit_sync_hist[self.counter % 20] += 1
@@ -449,6 +464,9 @@ class GpsL1caChannel(Channel):
 # ------------------------------------------------------------------------------------------------ #
 
     def Demodulate(self):
+        """
+        Demodulate the navigation data and parse ephemerides.
+        """
         # keep replaceing bits while phase locked
         if self.lnav_parser.NextBit(self.IP > 0):
             # reset sample counter after a subframe has been parsed
@@ -460,35 +478,36 @@ class GpsL1caChannel(Channel):
         if not self.channel_status.Ephemeris:
             if self.lnav_parser.subframe1 and self.lnav_parser.subframe2 and self.lnav_parser.subframe3:
                 self.channel_status.Ephemeris = True
-                print(f"\n{self.channel_status.header.ID} Ephemeris:")
-                print(f"-----------------------------------")
-                print(f"week     = {self.lnav_parser.week}")
-                print(f"ura      = {self.lnav_parser.ura}")
-                print(f"health   = {self.lnav_parser.health}")
-                print(f"T_GD     = {self.lnav_parser.tgd}")
-                print(f"IODC     = {self.lnav_parser.iodc}")
-                print(f"t_oc     = {self.lnav_parser.toc}")
-                print(f"af2      = {self.lnav_parser.af2}")
-                print(f"af1      = {self.lnav_parser.af1}")
-                print(f"af0      = {self.lnav_parser.af0}")
-                print(f"IODE_SF2 = {self.lnav_parser.iode}")
-                print(f"C_rs     = {self.lnav_parser.crs}")
-                print(f"deltan   = {self.lnav_parser.deltan}")
-                print(f"M_0      = {self.lnav_parser.m0}")
-                print(f"C_uc     = {self.lnav_parser.cuc}")
-                print(f"e        = {self.lnav_parser.e}")
-                print(f"C_us     = {self.lnav_parser.cus}")
-                print(f"sqrtA    = {self.lnav_parser.sqrtA}")
-                print(f"t_oe     = {self.lnav_parser.toe}")
-                print(f"C_ic     = {self.lnav_parser.cic}")
-                print(f"omega0   = {self.lnav_parser.omega0}")
-                print(f"C_is     = {self.lnav_parser.cis}")
-                print(f"i_0      = {self.lnav_parser.i0}")
-                print(f"C_rc     = {self.lnav_parser.crc}")
-                print(f"omega    = {self.lnav_parser.omega}")
-                print(f"omegaDot = {self.lnav_parser.omegaDot}")
-                print(f"IODE_SF3 = {self.lnav_parser.iode}")
-                print(f"iDot     = {self.lnav_parser.iDot}\n")
+                self.logger.debug(f"Channel {self.channel_status.header.ChannelNum} - {self.channel_status.header.ID} Ephemeris:\n"
+                                 f"                                  -----------------------------------\n"
+                                 f"                                  week     = {self.lnav_parser.week}\n"
+                                 f"                                  ura      = {self.lnav_parser.ura}\n"
+                                 f"                                  health   = {self.lnav_parser.health}\n"
+                                 f"                                  T_GD     = {self.lnav_parser.tgd}\n"
+                                 f"                                  IODC     = {self.lnav_parser.iodc}\n"
+                                 f"                                  t_oc     = {self.lnav_parser.toc}\n"
+                                 f"                                  af2      = {self.lnav_parser.af2}\n"
+                                 f"                                  af1      = {self.lnav_parser.af1}\n"
+                                 f"                                  af0      = {self.lnav_parser.af0}\n"
+                                 f"                                  IODE_SF2 = {self.lnav_parser.iode}\n"
+                                 f"                                  C_rs     = {self.lnav_parser.crs}\n"
+                                 f"                                  deltan   = {self.lnav_parser.deltan}\n"
+                                 f"                                  M_0      = {self.lnav_parser.m0}\n"
+                                 f"                                  C_uc     = {self.lnav_parser.cuc}\n"
+                                 f"                                  e        = {self.lnav_parser.e}\n"
+                                 f"                                  C_us     = {self.lnav_parser.cus}\n"
+                                 f"                                  sqrtA    = {self.lnav_parser.sqrtA}\n"
+                                 f"                                  t_oe     = {self.lnav_parser.toe}\n"
+                                 f"                                  C_ic     = {self.lnav_parser.cic}\n"
+                                 f"                                  omega0   = {self.lnav_parser.omega0}\n"
+                                 f"                                  C_is     = {self.lnav_parser.cis}\n"
+                                 f"                                  i_0      = {self.lnav_parser.i0}\n"
+                                 f"                                  C_rc     = {self.lnav_parser.crc}\n"
+                                 f"                                  omega    = {self.lnav_parser.omega}\n"
+                                 f"                                  omegaDot = {self.lnav_parser.omegaDot}\n"
+                                 f"                                  IODE_SF3 = {self.lnav_parser.iode}\n"
+                                 f"                                  iDot     = {self.lnav_parser.iDot}"
+                )
                 
 # ------------------------------------------------------------------------------------------------ #
 

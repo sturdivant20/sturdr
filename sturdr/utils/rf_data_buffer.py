@@ -21,13 +21,14 @@ class RfDataBuffer:
     to quickly and easily share data between python instances!
     """
     
-    __slots__ = 'file_id', 'filepath', 'is_complex', 'bittype', 'chunk_size_ms', 'samples_per_ms', \
-                'memory', 'buffer', 'nbytes', 'size', 'dtype', 'write_ptr'
+    __slots__ = 'file_id', 'filepath', 'is_complex', 'bittype', 'chunk_size_ms', 'read_size_ms', \
+                'samples_per_ms', 'memory', 'buffer', 'nbytes', 'size', 'dtype', 'write_ptr'
     file_id         : io.BufferedReader             # open/active file
     filepath        : str                           # path to file
     is_complex      : bool                          # is data in complex pairs?
     bittype         : np.dtype                      # data type of incoming RF data
     chunk_size_ms   : int                           # chunk size of stored data in milliseconds
+    read_size_ms    : int                           # size of each data read
     samples_per_ms  : int                           # samples in 1 millisecond of RF data
     memory          : shared_memory.SharedMemory    # location/pointer to shared memory location
     buffer          : np.ndarray                    # buffer inside of memory
@@ -53,6 +54,7 @@ class RfDataBuffer:
         
         # Parse objects from config
         self.chunk_size_ms = 100
+        self.read_size_ms = 20
         if isinstance(args[0], configparser.ConfigParser) or isinstance(args[0], dict):
             self.filepath      = str(args[0]['GENERAL']['in_file'])
             sampling_freq = float(args[0]['RFSIGNAL']['sampling_freq'])
@@ -60,6 +62,8 @@ class RfDataBuffer:
             bittype = int(args[0]['RFSIGNAL']['bit_depth'])
             if 'ms_chunk_size' in args[0]['GENERAL']:
                 self.chunk_size_ms = int(args[0]['GENERAL']['ms_chunk_size'])
+            if 'ms_read_size' in args[0]['GENERAL']:
+                self.read_size_ms = int(args[0]['GENERAL']['ms_read_size'])
         else:
             self.filepath = args[0]
             sampling_freq = args[1]
@@ -67,6 +71,8 @@ class RfDataBuffer:
             bittype = args[3]
             if len(args) > 4:
                 self.chunk_size_ms = args[4]
+            if len(args) > 5:
+                self.read_size_ms = args[5]
         
         # Check if IQ or real data
         if self.is_complex:
@@ -134,7 +140,7 @@ class RfDataBuffer:
         """
         Push new data into the circular buffer. 
         """
-        self.buffer = self.fread(self.chunk_size_ms * self.samples_per_ms)
+        self.Push(self.read_size_ms)
         return
     
     def Pull(self, read_ptr: int, nsamples: int):

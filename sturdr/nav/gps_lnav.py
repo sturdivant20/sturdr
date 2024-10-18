@@ -157,9 +157,9 @@ class GpsLnavParser(KeplerianEphemeris):
         Raises
         ------
         ValueError
-            _description_
+            Invalid parity check!
         ValueError
-            _description_
+            Invalid subframe ID!
         """
         # data bits ordered [-2 -1 0 ... 29]
         for i in range(self.subframe.size):
@@ -199,7 +199,7 @@ class GpsLnavParser(KeplerianEphemeris):
                 # print("\nSubframe 5")
                 self.LoadSubframe5()
             case _:
-                raise ValueError("Invalid parity check!")
+                raise ValueError("Invalid subframe ID!")
                 
         return
         

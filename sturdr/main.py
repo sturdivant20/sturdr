@@ -18,119 +18,129 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 ======  ============================================================================================
 """
 
-import numpy as np
 import yaml
-from pprint import pprint
-from multiprocessing import shared_memory, Queue, Event
+import logging
+from multiprocessing import Queue
 import matplotlib.pyplot as plt
-import time
 
-from sturdr.utils.rf_data_buffer import RfDataBuffer
-from sturdr.channel.gps_l1ca_channel import GpsL1caChannel
-from sturdr.utils.enums import ChannelState
+# from sturdr.utils.rf_data_buffer import RfDataBuffer
+# from sturdr.channel.gps_l1ca_channel import GpsL1caChannel
+# from sturdr.utils.enums import ChannelState
+from sturdr.rcvr.channel_controller import ChannelController
+from sturdr.rcvr.logger import Logger
 
 def main():
     """
     Main Function
     """
-    
-    start_t = time.time()
-    
     # Load Configuration
     config_file = './config/gps_l1ca_rcvr.yaml'
     with open(config_file, 'r') as file:
         config = yaml.safe_load(file)
     # pprint(config)
     
-    # initialize channels
-    prn = [1] #[1, 7, 14, 17, 19, 21, 30]
-    channel = []
-    queue = Queue()
-    rfbuffer = RfDataBuffer(config)
-    for j in range(len(prn)):
-        channel.append(GpsL1caChannel(config, f'Test_GPS{prn[j]}_Channel', rfbuffer, queue, j))
-        channel[j].SetSatellite(prn[j])
-        channel[j].start()
-
-    # initialize output
-    L = config['GENERAL']['ms_to_process']
-    L2 = config['GENERAL']['ms_read_size']
-    L_size = int(L / L2)
-    iq = np.zeros((6, L_size, len(prn)))
-    doppler = np.zeros((L_size, len(prn)))
-    cn0 = np.zeros((L_size, len(prn)))
-    TOW = np.zeros(len(prn))
-    ID  = [''] * len(prn)
-    nominal_t = 0.068802
+    # initialize SturDR logger
+    log_queue = Queue()
+    log_process = Logger(log_queue)
+    log_process.start()
     
-    loop_t = time.time()
-    # run loop
-    for i in range(0,L_size):
-        # read the next ms of data
-        rfbuffer.Push(L2)
-        # rfbuffer.NextChunk()
-        
-        # # process data
-        # for j in range(len(prn)):
-        #     if channel[j].channel_status.State == ChannelState.TRACKING:
-        #         channel[j].Track()
-        #     elif channel[j].channel_status.State == ChannelState.ACQUIRING:
-        #         channel[j].Acquire()
-        #     TOW[j] = channel[j].channel_status.header.TOW
-        #     ID[j] = channel[j].channel_status.header.ID
-            
-        #     if channel[j].channel_status.Ephemeris:
-        #         print(f"SV_POS: {np.array2string(channel[j].nav_packet.SatPos, precision=3, floatmode='fixed')}")
-        
-        # inform the channels of new data
-        for ch in channel:
-            ch.event_start.set()
-            
-        # request navigation data
-            
-        # wait for the channels to process new data
-        for ch in channel:
-            ch.event_done.wait()
-            ch.event_done.clear()
-        
-        # process results
-        while queue.qsize() > 0:
-            packet       = queue.get()
-            j            = packet.header.ChannelNum
-            TOW[j]       = packet.header.TOW
-            ID[j]        = packet.header.ID
-            iq[0,i,j]    = packet.IP
-            iq[1,i,j]    = packet.QP
-            doppler[i,j] = packet.Doppler
-            cn0[i,j]     = packet.CN0
-            
-        # if not np.any(np.isnan(TOW)):
-        #     print(f"Delta TOW = {np.array2string(1000*(TOW-np.min(TOW)), precision=6, floatmode='fixed')} ms")
-            
-    end_t = time.time()
-    print(f"Total Time = {1000 * (end_t - start_t)} ms")
-    print(f"Loop Time = {1000 * (end_t - loop_t)} ms")
-            
-    # plot IP and QP
-    plt.figure()
-    for j in range(len(prn)):
-        plt.plot(iq[0,:,j], '.', label=f'IP GPS{prn[j]}')
-        plt.plot(iq[1,:,j], '.', label=f'QP GPS{prn[j]}')
-    plt.legend()
+    # the queue and log level must be added to the logger in the main process/thread
+    logger = logging.getLogger('SturDR_Logger')
+    logger.addHandler(logging.handlers.QueueHandler(log_queue))
+    logger.setLevel(logging.INFO)
+    
+    
+    # initialize channel controller
+    channel_controller = ChannelController(config, log_queue)
+    channel_controller.start()
+    # logger.info(f"Total Time = {1000 * (end_t - start_t)} ms")
+    # log_queue.put(None)
+    
+    # # initialize channels
+    # prn = [1, 7, 14, 17, 19, 21, 30]
+    # channel = []
+    # rfbuffer = RfDataBuffer(config)
+    # queue = Queue()
+    # barrier1 = Barrier(len(prn)+1)
+    # barrier2 = Barrier(len(prn)+1)
+    # for j in range(len(prn)):
+    #     channel.append(GpsL1caChannel(config, f'Test_GPS{prn[j]}_Channel', rfbuffer, queue, barrier1, barrier2, j))
+    #     channel[j].SetSatellite(prn[j])
+    #     channel[j].start()
 
-    # plot carrier doppler
-    plt.figure()
-    for j in range(len(prn)):
-        plt.plot(doppler[:,j], label=f'Doppler GPS{prn[j]}')
-    plt.legend()
+    # # initialize output
+    # L = config['GENERAL']['ms_to_process']
+    # L2 = config['GENERAL']['ms_read_size']
+    # L_size = int(L / L2)
+    # iq = np.zeros((6, L_size, len(prn)))
+    # doppler = np.zeros((L_size, len(prn)))
+    # cn0 = np.zeros((L_size, len(prn)))
+    # TOW = np.zeros(len(prn))
+    # ID  = [''] * len(prn)
+    
+    # loop_t = time.time()
+    # # run loop
+    # for i in range(0,L_size):
+    #     # read the next ms of data
+    #     # rfbuffer.Push(L2)
+    #     rfbuffer.NextChunk()
+        
+    #     # # process data
+    #     # for j in range(len(prn)):
+    #     #     if channel[j].channel_status.State == ChannelState.TRACKING:
+    #     #         channel[j].Track()
+    #     #     elif channel[j].channel_status.State == ChannelState.ACQUIRING:
+    #     #         channel[j].Acquire()
+    #     #     TOW[j] = channel[j].channel_status.header.TOW
+    #     #     ID[j] = channel[j].channel_status.header.ID
+            
+    #     #     if channel[j].channel_status.Ephemeris:
+    #     #         print(f"SV_POS: {np.array2string(channel[j].nav_packet.SatPos, precision=3, floatmode='fixed')}")
+        
+    #     # inform the channels of new data
+    #     barrier1.wait()
+        
+    #     # wait for the channels to process new data
+    #     barrier2.wait()
+        
+    #     # process channel results
+    #     while queue.qsize() > 0:
+    #         packet       = queue.get()
+    #         j            = packet.header.ChannelNum
+    #         TOW[j]       = packet.header.TOW
+    #         ID[j]        = packet.header.ID
+    #         iq[0,i,j]    = packet.IP
+    #         iq[1,i,j]    = packet.QP
+    #         doppler[i,j] = packet.Doppler
+    #         cn0[i,j]     = packet.CN0
+            
+    #     # if not np.any(np.isnan(TOW)):
+    #     #     print(f"Delta TOW = {np.array2string(1000*(TOW-np.min(TOW)), precision=6, floatmode='fixed')} ms")
+            
+    # end_t = time.time()
+    # print(f"Total Time = {1000 * (end_t - start_t)} ms")
+    # print(f"Loop Time = {1000 * (end_t - loop_t)} ms")
+            
+    # # plot IP and QP
+    # plt.figure()
+    # for j in range(len(prn)):
+    #     plt.plot(iq[0,:,j], '.', label=f'IP GPS{prn[j]}')
+    #     plt.plot(iq[1,:,j], '.', label=f'QP GPS{prn[j]}')
+    # plt.legend()
 
-    # plot cn0
-    plt.figure()
-    for j in range(len(prn)):
-        plt.plot(cn0[:,j], label=f'C/N0 GPS{prn[j]}')
-    plt.legend()
+    # # plot carrier doppler
+    # plt.figure()
+    # for j in range(len(prn)):
+    #     plt.plot(doppler[:,j], label=f'Doppler GPS{prn[j]}')
+    # plt.legend()
 
-    plt.show()
+    # # plot cn0
+    # plt.figure()
+    # for j in range(len(prn)):
+    #     plt.plot(cn0[:,j], label=f'C/N0 GPS{prn[j]}')
+    # plt.legend()
+
+    # plt.show()
 
     return
     

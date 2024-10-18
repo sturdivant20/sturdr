@@ -11,10 +11,13 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 ======  ============================================================================================
 """
 
+import logging.handlers
 import numpy as np
+import logging
+import multiprocessing
+from multiprocessing import Process, Queue, Barrier
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from multiprocessing import Process, shared_memory, Queue, Event
 from sturdr.utils.rf_data_buffer import RfDataBuffer
 from sturdr.utils.enums import GnssSystem, GnssSignalTypes, ChannelState
 
@@ -55,34 +58,41 @@ class Channel(ABC, Process):
     Abstract class for Channel object definitions.
     """
     __slots__ = 'config', 'channelID', 'channel_status', 'nav_packet', 'rfbuffer', 'buffer_ptr', \
-                'queue', 'event_start', 'event_done', 'nav_request', 'nav_publish'
-    config            : dict            # dict of receiver config
-    channelID         : str             # channel id
-    channel_status    : ChannelPacket   # Status to be shared across threads/processes
-    nav_packet        : NavPacket       # Status to be shared across threads/processes
-    rfbuffer          : RfDataBuffer    # file parser and memory manager
-    buffer_ptr        : int             # pointer to current index in rfbuffer data
-    queue             : Queue           # queue/pipe for channels finishing current timestep
-    event_start       : Event
-    event_done        : Event
-    nav_request       : Event
-    nav_publish       : Event
+                'data_queue', 'start_barrier', 'end_barrier'
+    config            : dict                                # dict of receiver config
+    channelID         : str                                 # channel id
+    channel_status    : ChannelPacket                       # Status to be shared across threads/processes
+    nav_packet        : NavPacket                           # Status to be shared across threads/processes
+    rfbuffer          : RfDataBuffer                        # file parser and memory manager
+    buffer_ptr        : int                                 # pointer to current index in rfbuffer data
+    data_queue        : Queue                               # queue/pipe for channels finishing current timestep
+    start_barrier     : multiprocessing.synchronize.Barrier # barrier for synchronzing when new data is available
+    done_barrier      : multiprocessing.synchronize.Barrier # barrier for synchronzing when new data has been processed
+    logger            : logging.Logger                      # thread safe logger
     
-    def __init__(self, config: dict, cid: str, rfbuffer: RfDataBuffer, queue: Queue, num: int):
+    def __init__(self, 
+                 config: dict, 
+                 cid: str, 
+                 rfbuffer: RfDataBuffer, 
+                 data_queue: Queue,
+                 start_barrier: multiprocessing.synchronize.Barrier, 
+                 done_barrier: multiprocessing.synchronize.Barrier, 
+                 num: int):
         Process.__init__(self, name=cid, daemon=True)
         
         self.config                            = config
         self.channelID                         = cid
         self.rfbuffer                          = rfbuffer
         self.buffer_ptr                        = 0
-        self.queue                             = queue
-        self.event_start                       = Event()
-        self.event_done                        = Event()
-        self.nav_request                       = Event()
-        self.nav_publish                       = Event()
+        self.data_queue                        = data_queue
         self.channel_status                    = ChannelPacket()
         self.nav_packet                        = NavPacket()
         self.channel_status.header.ChannelNum  = num
+        self.start_barrier                     = start_barrier
+        self.done_barrier                      = done_barrier
+        
+        # find and initialize logger
+        self.logger = logging.getLogger('SturDR_Logger')
         return
     
     @abstractmethod
@@ -112,8 +122,14 @@ class Channel(ABC, Process):
     
     @abstractmethod
     def NavDataSync(self):
+        """
+        Synchronize to the data bit and extend the integration periods
+        """
         pass
     
     @abstractmethod
     def Demodulate(self):
+        """
+        Demodulate the navigation data and parse ephemerides.
+        """
         pass
