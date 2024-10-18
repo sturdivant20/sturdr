@@ -26,10 +26,9 @@ class ChannelController(Process):
     :obj:`multiprocessing.shared_memory.SharedMemory` circular buffer of RF signal data.
     """
     
-    __slots__ = 'config', 'rfbuffer', 'memory', 'process_queue', 'log_queue', 'logger', 'channels', 'nchannels'
+    __slots__ = 'config', 'rfbuffer', 'memory', 'log_queue', 'logger', 'channels', 'nchannels'
     config        : dict                                # Receiver config
     rfbuffer      : RfDataBuffer                        # file parser and memory manager
-    process_queue : Queue                               # queue/pipe for channels finishing current timestep
     log_queue     : Queue                               # queue/pipe for logging
     logger        : logging.Logger                      # thread safe logger
     start_barrier : multiprocessing.synchronize.Barrier # Syncronizes the start of data proccessing from shared memory
@@ -60,7 +59,6 @@ class ChannelController(Process):
         
         # initialize RfDataBuffer, shared memory, and memory queue
         self.rfbuffer = RfDataBuffer(config)
-        self.process_queue  = Queue()
         self.start_barrier = Barrier(self.nchannels + 1)
         self.done_barrier = Barrier(self.nchannels + 1)
     
@@ -78,7 +76,7 @@ class ChannelController(Process):
                             config=self.config,
                             cid=channel_id,
                             rfbuffer=self.rfbuffer,
-                            data_queue=self.process_queue,
+                            log_queue=self.log_queue,
                             start_barrier=self.start_barrier,
                             done_barrier=self.done_barrier,
                             num=i
@@ -87,6 +85,7 @@ class ChannelController(Process):
                 
                 # log channel spawning
                 self.logger.debug(f"Channel Controller: {channel_id} spawned.")
+                channel_count += 1
         return
     
     def run(self):
@@ -117,8 +116,6 @@ class ChannelController(Process):
             
             # wait for the channels and process new data
             self.done_barrier.wait()
-            while self.process_queue.qsize() > 0:
-                packet       = self.process_queue.get()
             
             # increment total time processed
             ms_processed += self.config['GENERAL']['ms_read_size']

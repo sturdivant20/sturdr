@@ -41,13 +41,13 @@ def main():
     
     # initialize SturDR logger
     log_queue = Queue()
-    log_process = Logger(log_queue)
+    log_process = Logger(config, log_queue)
     log_process.start()
     
     # the queue and log level must be added to the logger in the main process/thread
     logger = logging.getLogger('SturDR_Logger')
     logger.addHandler(logging.handlers.QueueHandler(log_queue))
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     
     
     # initialize channel controller

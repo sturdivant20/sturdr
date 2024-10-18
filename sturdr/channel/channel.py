@@ -22,50 +22,52 @@ from sturdr.utils.rf_data_buffer import RfDataBuffer
 from sturdr.utils.enums import GnssSystem, GnssSignalTypes, ChannelState
 
 @dataclass(order=True, slots=True)
-class Header:
+class ChannelPacket:
     ChannelNum    : np.uint8        = -1
     Constellation : GnssSystem      = 0
     Signal        : GnssSignalTypes = 0
     ID            : str             = ''
-    week          : np.uint16       = np.nan
-    TOW           : np.double       = np.nan
-
-@dataclass(order=True, slots=True)
-class ChannelPacket:
-    header        : Header          = field(default_factory=lambda: Header())
     State         : ChannelState    = ChannelState.OFF
     CodeLock      : bool            = False
     CarrierLock   : bool            = False
     DataLock      : bool            = False
     Ephemeris     : bool            = False
+    Week          : np.uint16       = np.nan
+    ToW           : np.double       = np.nan
+    CNo           : np.double       = np.nan
     Doppler       : np.double       = np.nan
-    CN0           : np.double       = np.nan
+    SampleCount   : np.uint64       = np.nan
     IP            : np.double       = np.nan
     QP            : np.double       = np.nan
+    IE            : np.double       = np.nan
+    QE            : np.double       = np.nan
+    IL            : np.double       = np.nan
+    QL            : np.double       = np.nan
+    IN            : np.double       = np.nan
+    QN            : np.double       = np.nan
     
-@dataclass(order=True, slots=True)
-class NavPacket:
-    header        : Header                = field(default_factory=lambda: Header())
-    SampleCount   : np.uint64             = np.nan
-    Doppler       : np.double             = np.nan
-    CN0           : np.double             = np.nan
-    SatPos        : np.ndarray[np.double] = field(default_factory=lambda: np.asarray([np.nan, np.nan, np.nan]))
-    SatVel        : np.ndarray[np.double] = field(default_factory=lambda: np.asarray([np.nan, np.nan, np.nan]))
-    ClkCorr       : np.double             = np.nan
+# @dataclass(order=True, slots=True)
+# class NavPacket:
+#     header        : Header                = field(default_factory=lambda: Header())
+#     SampleCount   : np.uint64             = np.nan
+#     Doppler       : np.double             = np.nan
+#     CN0           : np.double             = np.nan
+#     SatPos        : np.ndarray[np.double] = field(default_factory=lambda: np.asarray([np.nan, np.nan, np.nan]))
+#     SatVel        : np.ndarray[np.double] = field(default_factory=lambda: np.asarray([np.nan, np.nan, np.nan]))
+#     ClkCorr       : np.double             = np.nan
 
 class Channel(ABC, Process):
     """
     Abstract class for Channel object definitions.
     """
-    __slots__ = 'config', 'channelID', 'channel_status', 'nav_packet', 'rfbuffer', 'buffer_ptr', \
-                'data_queue', 'start_barrier', 'end_barrier'
+    __slots__ = 'config', 'channelID', 'channel_status', 'rfbuffer', 'buffer_ptr', \
+                'log_queue', 'start_barrier', 'end_barrier'
     config            : dict                                # dict of receiver config
     channelID         : str                                 # channel id
     channel_status    : ChannelPacket                       # Status to be shared across threads/processes
-    nav_packet        : NavPacket                           # Status to be shared across threads/processes
     rfbuffer          : RfDataBuffer                        # file parser and memory manager
     buffer_ptr        : int                                 # pointer to current index in rfbuffer data
-    data_queue        : Queue                               # queue/pipe for channels finishing current timestep
+    log_queue         : Queue                               # queue/pipe for channels finishing current timestep
     start_barrier     : multiprocessing.synchronize.Barrier # barrier for synchronzing when new data is available
     done_barrier      : multiprocessing.synchronize.Barrier # barrier for synchronzing when new data has been processed
     logger            : logging.Logger                      # thread safe logger
@@ -74,22 +76,21 @@ class Channel(ABC, Process):
                  config: dict, 
                  cid: str, 
                  rfbuffer: RfDataBuffer, 
-                 data_queue: Queue,
+                 log_queue: Queue,
                  start_barrier: multiprocessing.synchronize.Barrier, 
                  done_barrier: multiprocessing.synchronize.Barrier, 
                  num: int):
         Process.__init__(self, name=cid, daemon=True)
         
-        self.config                            = config
-        self.channelID                         = cid
-        self.rfbuffer                          = rfbuffer
-        self.buffer_ptr                        = 0
-        self.data_queue                        = data_queue
-        self.channel_status                    = ChannelPacket()
-        self.nav_packet                        = NavPacket()
-        self.channel_status.header.ChannelNum  = num
-        self.start_barrier                     = start_barrier
-        self.done_barrier                      = done_barrier
+        self.config                     = config
+        self.channelID                  = cid
+        self.rfbuffer                   = rfbuffer
+        self.buffer_ptr                 = 0
+        self.log_queue                  = log_queue
+        self.channel_status             = ChannelPacket()
+        self.channel_status.ChannelNum  = num
+        self.start_barrier              = start_barrier
+        self.done_barrier               = done_barrier
         
         # find and initialize logger
         self.logger = logging.getLogger('SturDR_Logger')

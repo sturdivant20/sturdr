@@ -7,9 +7,14 @@ date    October 2024
 ======  ============================================================================================
 """
 
+import os
+import io
 import logging
 import logging.handlers
+import csv
 from multiprocessing import Process, Queue
+from dataclasses import asdict
+from sturdr.channel.channel import ChannelPacket
 
 # TODO: add support for logging channel data to csv files
 # TODO: add support for logging navigation data to csv file
@@ -24,6 +29,17 @@ Y = "\u001b[33m"    # yellow
 R = "\u001b[31m"    # red
 BOLD = "\u001b[1m"
 RESET = "\u001b[0m"
+
+def EnsurePathExists(path: str):
+    """
+    Make sure directory chosen exists
+
+    Parameters
+    ----------
+    path : str
+        path to check
+    """
+    os.makedirs(os.path.realpath(path), exist_ok=True)
 
 # ================================================================================================ #
 
@@ -58,16 +74,28 @@ class Logger(logging.Logger, Process):
     """
     A thread safe logging module.
     """
-    __slots__ = 'queue'
+    __slots__ = 'queue', 'log_filename', 'log_file', 'writer'
     queue : Queue
+    log_filename : str
+    log_file : io.BufferedWriter
+    writer : csv.DictWriter
     
-    def __init__(self, queue: Queue, name: str='SturDR_Logger', level: logging._levelToName=logging.DEBUG):
+    def __init__(self, config: dict, queue: Queue, name: str='SturDR_Logger', level: logging._levelToName=logging.DEBUG):
         logging.Logger.__init__(self, name, level)
         Process.__init__(self, name=name)
         
+        # create a log file
+        EnsurePathExists(config['GENERAL']['out_folder'])
+        self.log_filename = f"{config['GENERAL']['out_folder']}/{config['GENERAL']['scenario']}.csv"
+        self.log_file = open(self.log_filename, 'w', newline='')
+        fields = ['ChannelNum', 'Constellation', 'Signal', 'ID', 'State', 'CodeLock', \
+                  'CarrierLock', 'DataLock', 'Ephemeris', 'Week', 'ToW', 'CNo', 'Doppler', \
+                  'SampleCount', 'IP', 'QP', 'IE', 'QE', 'IL', 'QL', 'IN', 'QN']
+        self.writer = csv.DictWriter(self.log_file, fieldnames=fields)
+        self.writer.writeheader()
+        
         # attach to the logging queue
         self.queue = queue
-        # self.addHandler(logging.handlers.QueueHandler(self.queue))
         
         # create the iostream handler for terminal printing
         console = logging.StreamHandler()
@@ -75,12 +103,24 @@ class Logger(logging.Logger, Process):
         self.addHandler(console)
         return
     
+    def __del__(self):
+        self.log_file.close()
+        return
+    
     def run(self):
         while True:
             msg = self.queue.get()
-            if msg is None:
+            if isinstance(msg, ChannelPacket):
+                # this packet should be saved to the CSV file
+                self.writer.writerow(asdict(msg))
+                
+            elif msg is None:
+                # this is the message to terminate the logger
                 break
-            self.handle(msg)
+            
+            else:
+                # else it is a standard log message to be print to the terminal
+                self.handle(msg)
         return
     
 # if __name__ == '__main__':

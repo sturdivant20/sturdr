@@ -6,7 +6,11 @@ dist/
 wheels/
 *.egg-info
 .vscode
-rfdata
 
 # venv
 .venv
+
+# results logs/data
+data
+rfdata
+results
