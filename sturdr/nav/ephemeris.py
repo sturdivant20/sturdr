@@ -12,44 +12,83 @@ refs    1. "IS-GPS-200N", 2022
 
 import numpy as np
 from numba import njit
+from dataclasses import dataclass, field
 from sturdr.utils.constants import (TWO_PI, WGS84_R0, OMEGA_DOT, GM, J2, OMEGA_DOT, RELATIVISTC_F, 
                                     WEEK, HALF_WEEK)
-from sturdr.utils.enums import GnssSystem
+
+# ================================================================================================ #
+
+@dataclass(order=True, slots=True)
+class Ephemerides:
+    id          : str       = ''
+    iode        : np.double = np.nan     # Issue of data Ephemeris
+    iodc        : np.double = np.nan     # Issue of data Clock
+    toe         : np.double = np.nan     # Time of Ephemeris
+    toc         : np.double = np.nan     # Time of clock
+    tgd         : np.double = np.nan     # Time, group delay
+    af2         : np.double = np.nan     # 2nd order clock correction coefficient
+    af1         : np.double = np.nan     # 1st order clock correction coefficient
+    af0         : np.double = np.nan     # 0th order clock correction coefficient
+    e           : np.double = np.nan     # Eccentricity
+    sqrtA       : np.double = np.nan     # Square root of semi-major axis
+    deltan      : np.double = np.nan     # Mean motion difference
+    m0          : np.double = np.nan     # Mean anomaly
+    omega0      : np.double = np.nan     # Longitude of ascending node
+    omega       : np.double = np.nan     # Argument of perigee
+    omegaDot    : np.double = np.nan     # Rate of right ascension
+    i0          : np.double = np.nan     # Inclination angle
+    iDot        : np.double = np.nan     # Rate of inclination angle
+    cuc         : np.double = np.nan     # Cos-harmonic correction coefficient to the argument of latitude
+    cus         : np.double = np.nan     # Sin-harmonic correction coefficient to the argument of latitude
+    cic         : np.double = np.nan     # Cos-harmonic correction coefficient to the angle of inclination
+    cis         : np.double = np.nan     # Sin-harmonic correction coefficient to the angle of inclination
+    crc         : np.double = np.nan     # Cos-harmonic correction coefficient to the orbit radius
+    crs         : np.double = np.nan     # Sin-harmonic correction coefficient to the orbit radius
+    ura         : np.double = np.nan     # Estimated accuracy
+    health      : np.double = np.nan     # Satellite health
 
 # ================================================================================================ #
 
 class KeplerianEphemeris:
-    __slots__ = 'iode', 'iodc', 'toe', 'toc', 'tgd', 'af2', 'af1', \
-                'af0', 'e', 'sqrtA', 'deltan', 'm0', 'omega0', 'omega', 'omegaDot', 'i0', 'iDot', \
-                'cuc', 'cus', 'cic', 'cis', 'crc', 'crs', 'ura', 'health'
-    iode        : np.double     # Issue of data Ephemeris
-    iodc        : np.double     # Issue of data Clock
-    toe         : np.double     # Time of Ephemeris
-    toc         : np.double     # Time of clock
-    tgd         : np.double     # Time, group delay
-    af2         : np.double     # 2nd order clock correction coefficient
-    af1         : np.double     # 1st order clock correction coefficient
-    af0         : np.double     # 0th order clock correction coefficient
-    e           : np.double     # Eccentricity
-    sqrtA       : np.double     # Square root of semi-major axis
-    deltan      : np.double     # Mean motion difference
-    m0          : np.double     # Mean anomaly
-    omega0      : np.double     # Longitude of ascending node
-    omega       : np.double     # Argument of perigee
-    omegaDot    : np.double     # Rate of right ascension
-    i0          : np.double     # Inclination angle
-    iDot        : np.double     # Rate of inclination angle
-    cuc         : np.double     # Cos-harmonic correction coefficient to the argument of latitude
-    cus         : np.double     # Sin-harmonic correction coefficient to the argument of latitude
-    cic         : np.double     # Cos-harmonic correction coefficient to the angle of inclination
-    cis         : np.double     # Sin-harmonic correction coefficient to the angle of inclination
-    crc         : np.double     # Cos-harmonic correction coefficient to the orbit radius
-    crs         : np.double     # Sin-harmonic correction coefficient to the orbit radius
-    ura         : np.double     # Estimated accuracy
-    health      : np.double     # Satellite health
+    # __slots__ = 'iode', 'iodc', 'toe', 'toc', 'tgd', 'af2', 'af1', \
+    #             'af0', 'e', 'sqrtA', 'deltan', 'm0', 'omega0', 'omega', 'omegaDot', 'i0', 'iDot', \
+    #             'cuc', 'cus', 'cic', 'cis', 'crc', 'crs', 'ura', 'health'
+    # iode        : np.double     # Issue of data Ephemeris
+    # iodc        : np.double     # Issue of data Clock
+    # toe         : np.double     # Time of Ephemeris
+    # toc         : np.double     # Time of clock
+    # tgd         : np.double     # Time, group delay
+    # af2         : np.double     # 2nd order clock correction coefficient
+    # af1         : np.double     # 1st order clock correction coefficient
+    # af0         : np.double     # 0th order clock correction coefficient
+    # e           : np.double     # Eccentricity
+    # sqrtA       : np.double     # Square root of semi-major axis
+    # deltan      : np.double     # Mean motion difference
+    # m0          : np.double     # Mean anomaly
+    # omega0      : np.double     # Longitude of ascending node
+    # omega       : np.double     # Argument of perigee
+    # omegaDot    : np.double     # Rate of right ascension
+    # i0          : np.double     # Inclination angle
+    # iDot        : np.double     # Rate of inclination angle
+    # cuc         : np.double     # Cos-harmonic correction coefficient to the argument of latitude
+    # cus         : np.double     # Sin-harmonic correction coefficient to the argument of latitude
+    # cic         : np.double     # Cos-harmonic correction coefficient to the angle of inclination
+    # cis         : np.double     # Sin-harmonic correction coefficient to the angle of inclination
+    # crc         : np.double     # Cos-harmonic correction coefficient to the orbit radius
+    # crs         : np.double     # Sin-harmonic correction coefficient to the orbit radius
+    # ura         : np.double     # Estimated accuracy
+    # health      : np.double     # Satellite health
+    
+    __slots__ = 'ephemerides'
+    ephemerides : Ephemerides
 
     def __init__(self):
-        pass
+        self.ephemerides = Ephemerides()
+        return
+    
+    def SetID(self, id: str):
+        self.ephemerides.id = id
+        return
 
     def UpdateParameters(self, **kwargs):
         """
@@ -138,127 +177,28 @@ class KeplerianEphemeris:
         acc : np.ndarray
             Satellite acceleratio [m]
         """
-        # # constants
-        # A = self.sqrtA**2                                       # semi-major axis
-        # n0 = np.sqrt(GM / A**3)                                 # computed mean motion
-        # n = n0 + self.deltan                                    # corrected mean motion
-        # E2 = self.e**2                                          # eccentricity squared
-        # SQ1ME2 = np.sqrt(1.0 - E2)                              # common eccentricity factor
-        
-        # # satellite clock correction (sv time)
-        # dt = CheckTime(transmit_time - self.toc)                            # time from clock epoch
-        # dt_sv = self.af0 + (self.af1 * dt) + (self.af2 * dt**2) - self.tgd
-        # tk = CheckTime(transmit_time - dt_sv - self.toe)
-        
-        # # mean anomaly
-        # Mk = np.remainder(self.m0 + n * tk + TWO_PI, TWO_PI)
-        
-        # # calculate eccentric anomaly
-        # Ek = Mk
-        # for _ in range(10):
-        #     dE = (Mk - Ek + self.e * np.sin(Ek)) / (1.0 - self.e * np.cos(Ek))
-        #     Ek += dE
-        #     if dE < 1e-15:
-        #         break
-        # Ek = np.remainder(Ek + TWO_PI, TWO_PI)
-        # COSE = np.cos(Ek)                                       # cosine of eccentric anomaly
-        # SINE = np.sin(Ek)                                       # sine of eccentric anomaly
-        # DEN = 1.0 - self.e * COSE                               # common denominator
-        
-        # # relativistic clock calculations (user time)
-        # FESQA = RELATIVISTC_F * self.e * self.sqrtA             # relativistic time factor
-        # ck = dt_sv + (FESQA * SINE)
-        # cDotk = self.af1 + (2.0 * self.af2 * dt) + (n * FESQA * COSE / DEN)
-        # if calc_accel:
-        #     cDotDotk = 2.0 * self.af2 - (n**2 * FESQA * SINE / DEN**2)
-        # else:
-        #     cDotDotk = 0.0
-        # clk = np.asarray([ck, cDotk, cDotDotk], dtype=np.double)
-        
-        # # true anomaly
-        # # vk = 2.0 * np.atan2(np.sqrt((1.0 + self.e) / (1.0 - self.e)) * np.tan(0.5 * Ek), 1.0)
-        # vk = 2.0 * np.atan2(SQ1ME2 * SINE, COSE - self.e)
-        
-        # # argument of latitude
-        # Phik = np.remainder(vk + self.omega, TWO_PI)
-        # COS2PHI = np.cos(2.0 * Phik)
-        # SIN2PHI = np.sin(2.0 * Phik)
-        
-        # # corrections
-        # uk = Phik + (self.cus * SIN2PHI + self.cuc * COS2PHI)                       # argument of latitude
-        # rk = A * DEN + (self.crs * SIN2PHI + self.crc * COS2PHI)                    # radius
-        # ik = self.i0  + self.iDot * tk + (self.cis * SIN2PHI + self.cic * COS2PHI)  # inclination
-        # wk = np.remainder(self.omega0 + tk * (self.omegaDot - OMEGA_DOT)            # longitude of ascending node
-        #                     - (OMEGA_DOT * self.toe) + TWO_PI, TWO_PI)              #  - (omega == w)
-        # COSU = np.cos(uk)
-        # SINU = np.sin(uk)
-        # COSI = np.cos(ik)
-        # SINI = np.sin(ik)
-        # COSW = np.cos(wk)
-        # SINW = np.sin(wk)
-        
-        # # derivatives
-        # EDotk = n / DEN                                                             # eccentric anomaly rate
-        # vDotk = EDotk * SQ1ME2 / DEN                                                # true anomaly rate
-        # iDotk = self.iDot + 2.0 * vDotk * (self.cis * COS2PHI - self.cic * SIN2PHI) # inclination angle rate
-        # uDotk = vDotk * (1.0 + 2.0 * (self.cus * COS2PHI - self.cuc * SIN2PHI))     # argument of latitude rate
-        # rDotk = (self.e * A * EDotk * SINE) + 2.0 * vDotk * (self.crs * COS2PHI     # radius rate
-        #             - self.crc * SIN2PHI)
-        # wDotk = self.omegaDot - OMEGA_DOT                                           # longitude of ascending node rate
-        
-        # # position calculations
-        # xk_orb = rk * COSU                              # x-position in orbital frame
-        # yk_orb = rk * SINU                              # y-position in orbital frame
-        # x = xk_orb * COSW - yk_orb * COSI * SINW
-        # y = xk_orb * SINW + yk_orb * COSI * COSW
-        # z = yk_orb * SINI
-        # pos = np.asarray([x, y, z], dtype=np.double)
-        
-        # # velocity calculations
-        # xDotk_orb = rDotk * COSU - rk * uDotk * SINU    # x-velocity in orbital frame
-        # yDotk_orb = rDotk * SINU + rk * uDotk * COSU    # y-velocity in orbital frame
-        # vx = -(xk_orb * wDotk * SINW) + (xDotk_orb * COSW) - (yDotk_orb * SINW * COSI) \
-        #      - (yk_orb * (wDotk * COSW * COSI - iDotk * SINW * SINI))
-        # vy =  (xk_orb * wDotk * COSW) + (xDotk_orb * SINW) + (yDotk_orb * COSW * COSI) \
-        #      - (yk_orb * (wDotk * SINW * COSI + iDotk * COSW * SINI))
-        # vz = (yDotk_orb * SINI) + (yk_orb * iDotk * COSI)
-        # vel = np.asarray([vx, vy, vz], dtype=np.double)
-        
-        # # acceleration calculations
-        # if calc_accel:
-        #     F = -1.5 * J2 * (GM / rk**2) * (WGS84_R0 / rk)**2
-        #     TMP1 = -GM / rk**3
-        #     TMP2 = 5.0 * (z / rk)**2
-        #     TMP3 = OMEGA_DOT**2
-        #     ax = TMP1 * x + F * (1.0 - TMP2) * (x / rk) + 2.0 * vy * OMEGA_DOT + x * TMP3
-        #     ay = TMP1 * y + F * (1.0 - TMP2) * (y / rk) - 2.0 * vx * OMEGA_DOT + y * TMP3
-        #     az = TMP1 * z + F * (3.0 - TMP2) * (z / rk)
-        #     acc = np.asarray([ax, ay, az], dtype=np.double)
-        # else:
-        #     acc = np.zeros(3, dtype=np.double)
-            
         clk, pos, vel, acc = \
-            GetNavStates(self.toe     , # Time of Ephemeris
-                         self.toc     , # Time of clock
-                         self.tgd     , # Time, group delay
-                         self.af2     , # 2nd order clock correction coefficient
-                         self.af1     , # 1st order clock correction coefficient
-                         self.af0     , # 0th order clock correction coefficient
-                         self.e       , # Eccentricity
-                         self.sqrtA   , # Square root of semi-major axis
-                         self.deltan  , # Mean motion difference
-                         self.m0      , # Mean anomaly
-                         self.omega0  , # Longitude of ascending node
-                         self.omega   , # Argument of perigee
-                         self.omegaDot, # Rate of right ascension
-                         self.i0      , # Inclination angle
-                         self.iDot    , # Rate of inclination angle
-                         self.cuc     , # Cos-harmonic correction coefficient to the argument of latitude
-                         self.cus     , # Sin-harmonic correction coefficient to the argument of latitude
-                         self.cic     , # Cos-harmonic correction coefficient to the angle of inclination
-                         self.cis     , # Sin-harmonic correction coefficient to the angle of inclination
-                         self.crc     , # Cos-harmonic correction coefficient to the orbit radius
-                         self.crs     , # Sin-harmonic correction coefficient to the orbit radius)
+            GetNavStates(self.ephemerides.toe     , # Time of Ephemeris
+                         self.ephemerides.toc     , # Time of clock
+                         self.ephemerides.tgd     , # Time, group delay
+                         self.ephemerides.af2     , # 2nd order clock correction coefficient
+                         self.ephemerides.af1     , # 1st order clock correction coefficient
+                         self.ephemerides.af0     , # 0th order clock correction coefficient
+                         self.ephemerides.e       , # Eccentricity
+                         self.ephemerides.sqrtA   , # Square root of semi-major axis
+                         self.ephemerides.deltan  , # Mean motion difference
+                         self.ephemerides.m0      , # Mean anomaly
+                         self.ephemerides.omega0  , # Longitude of ascending node
+                         self.ephemerides.omega   , # Argument of perigee
+                         self.ephemerides.omegaDot, # Rate of right ascension
+                         self.ephemerides.i0      , # Inclination angle
+                         self.ephemerides.iDot    , # Rate of inclination angle
+                         self.ephemerides.cuc     , # Cos-harmonic correction coefficient to the argument of latitude
+                         self.ephemerides.cus     , # Sin-harmonic correction coefficient to the argument of latitude
+                         self.ephemerides.cic     , # Cos-harmonic correction coefficient to the angle of inclination
+                         self.ephemerides.cis     , # Sin-harmonic correction coefficient to the angle of inclination
+                         self.ephemerides.crc     , # Cos-harmonic correction coefficient to the orbit radius
+                         self.ephemerides.crs     , # Sin-harmonic correction coefficient to the orbit radius)
                          transmit_time,
                          calc_accel
             )

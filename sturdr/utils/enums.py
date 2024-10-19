@@ -45,7 +45,8 @@ class GnssSignalTypes(IntEnum):
     GALILEO_E5b = 9
     
     def __str__(self):
-        return str(self.name).replace("_", " ")
+        return str(self.name)
+        # return str(self.name).replace("_", " ")
     
 @unique
 class MeasurementType(IntEnum):

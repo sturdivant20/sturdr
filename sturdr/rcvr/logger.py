@@ -10,13 +10,19 @@ date    October 2024
 import os
 import io
 import logging
-import logging.handlers
 import csv
 from multiprocessing import Process, Queue
 from dataclasses import asdict
-from sturdr.channel.channel import ChannelPacket
+from pathlib import Path
 
-# TODO: add support for logging channel data to csv files
+from sturdr.channel.channel import ChannelPacket
+from sturdr.nav.ephemeris import Ephemerides
+
+# from pprint import pprint
+# import yaml, time
+
+# TODO: add support for logging channel data to csv files       - DONE
+# TODO: add support for logging ephemeris to csv files          - DONE
 # TODO: add support for logging navigation data to csv file
 
 # ansi escape colors
@@ -74,28 +80,32 @@ class Logger(logging.Logger, Process):
     """
     A thread safe logging module.
     """
-    __slots__ = 'queue', 'log_filename', 'log_file', 'writer'
-    queue : Queue
-    log_filename : str
-    log_file : io.BufferedWriter
-    writer : csv.DictWriter
+    __slots__ = 'queue', 'status_filename', 'ephemeris_filename', 'status_file', 'ephemeris_file', \
+                'status_writer', 'ephemeris_writer'
+    queue              : Queue
+    status_filename    : Path
+    ephemeris_filename : Path
+    status_file        : io.BufferedWriter
+    ephemeris_file     : io.BufferedWriter
+    status_writer      : csv.DictWriter
+    ephemeris_writer   : csv.DictWriter
     
-    def __init__(self, config: dict, queue: Queue, name: str='SturDR_Logger', level: logging._levelToName=logging.DEBUG):
+    def __init__(self, 
+                 config: dict, 
+                 queue: Queue, 
+                 name: str='SturDR_Logger', 
+                 level: logging._levelToName=logging.DEBUG):
         logging.Logger.__init__(self, name, level)
         Process.__init__(self, name=name)
-        
-        # create a log file
         EnsurePathExists(config['GENERAL']['out_folder'])
-        self.log_filename = f"{config['GENERAL']['out_folder']}/{config['GENERAL']['scenario']}.csv"
-        self.log_file = open(self.log_filename, 'w', newline='')
-        fields = ['ChannelNum', 'Constellation', 'Signal', 'ID', 'State', 'CodeLock', \
-                  'CarrierLock', 'DataLock', 'Ephemeris', 'Week', 'ToW', 'CNo', 'Doppler', \
-                  'SampleCount', 'IP', 'QP', 'IE', 'QE', 'IL', 'QL', 'IN', 'QN']
-        self.writer = csv.DictWriter(self.log_file, fieldnames=fields)
-        self.writer.writeheader()
         
         # attach to the logging queue
         self.queue = queue
+        
+        # create log file names
+        path = Path(config['GENERAL']['out_folder'])
+        self.status_filename = path / f"{config['GENERAL']['scenario']}_ChannelStatus.csv"
+        self.ephemeris_filename = path / f"{config['GENERAL']['scenario']}_Ephemeris.csv"
         
         # create the iostream handler for terminal printing
         console = logging.StreamHandler()
@@ -103,45 +113,64 @@ class Logger(logging.Logger, Process):
         self.addHandler(console)
         return
     
-    def __del__(self):
-        self.log_file.close()
-        return
-    
     def run(self):
-        while True:
-            msg = self.queue.get()
-            if isinstance(msg, ChannelPacket):
-                # this packet should be saved to the CSV file
-                self.writer.writerow(asdict(msg))
-                
-            elif msg is None:
-                # this is the message to terminate the logger
-                break
+        # open the CSV log files
+        with open(self.status_filename, 'w', newline='') as status_file, \
+             open(self.ephemeris_filename, 'w', newline='') as ephemeris_file:
             
-            else:
-                # else it is a standard log message to be print to the terminal
-                self.handle(msg)
+            # initialize the writers 
+            status_writer = csv.DictWriter(status_file, fieldnames=asdict(ChannelPacket()).keys())
+            ephemeris_writer = csv.DictWriter(ephemeris_file, fieldnames=asdict(Ephemerides()).keys())
+            status_writer.writeheader()
+            ephemeris_writer.writeheader()
+            
+            while True:
+                msg = self.queue.get()
+
+                if isinstance(msg, ChannelPacket):
+                    # this packet should be saved to the channel status CSV file
+                    status_writer.writerow(asdict(msg))
+                
+                elif isinstance(msg, Ephemerides):
+                    # this packet should be saved to the ephemeris CSV file
+                    ephemeris_writer.writerow(asdict(msg))
+                    
+                elif msg is None:
+                    # this is the message to terminate the logger
+                    break
+                
+                else:
+                    # else it is a standard log message to be print to the terminal
+                    self.handle(msg)
         return
     
 # if __name__ == '__main__':
+#     # Load Configuration
+#     config_file = './config/gps_l1ca_rcvr.yaml'
+#     with open(config_file, 'r') as file:
+#         config = yaml.safe_load(file)
+        
 #     # logger queue
 #     queue = Queue()
+    
+#     # handle the logging in another thread
+#     p = Logger(config, queue)
+#     p.start()
     
 #     # open this process's copy of the logger
 #     logger = logging.getLogger('SturDR_Logger')
 #     logger.addHandler(logging.handlers.QueueHandler(queue))
 #     logger.setLevel(logging.DEBUG)
     
-#     # handle the logging in another thread
-#     p = Logger(queue)
-#     p.start()
-    
 #     # send logging messages
+#     time.sleep(1)
 #     logger.debug("debug message")
 #     logger.info("info message")
 #     logger.warning("warning message")
 #     logger.error("error message")
 #     logger.critical("critical message")
+#     queue.put(Ephemerides())
+#     queue.put(ChannelPacket())
     
 #     # send the final message
 #     queue.put(None)

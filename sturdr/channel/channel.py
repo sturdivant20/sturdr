@@ -15,7 +15,8 @@ import logging.handlers
 import numpy as np
 import logging
 import multiprocessing
-from multiprocessing import Process, Queue, Barrier
+from multiprocessing.synchronize import Barrier
+from multiprocessing import Process, Queue #, Barrier
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from sturdr.utils.rf_data_buffer import RfDataBuffer
@@ -24,8 +25,8 @@ from sturdr.utils.enums import GnssSystem, GnssSignalTypes, ChannelState
 @dataclass(order=True, slots=True)
 class ChannelPacket:
     ChannelNum    : np.uint8        = -1
-    Constellation : GnssSystem      = 0
-    Signal        : GnssSignalTypes = 0
+    Constellation : GnssSystem      = GnssSystem.UNKNOWN
+    Signal        : GnssSignalTypes = GnssSignalTypes.UNKNOWN
     ID            : str             = ''
     State         : ChannelState    = ChannelState.OFF
     CodeLock      : bool            = False
@@ -45,16 +46,10 @@ class ChannelPacket:
     QL            : np.double       = np.nan
     IN            : np.double       = np.nan
     QN            : np.double       = np.nan
-    
-# @dataclass(order=True, slots=True)
-# class NavPacket:
-#     header        : Header                = field(default_factory=lambda: Header())
-#     SampleCount   : np.uint64             = np.nan
-#     Doppler       : np.double             = np.nan
-#     CN0           : np.double             = np.nan
-#     SatPos        : np.ndarray[np.double] = field(default_factory=lambda: np.asarray([np.nan, np.nan, np.nan]))
-#     SatVel        : np.ndarray[np.double] = field(default_factory=lambda: np.asarray([np.nan, np.nan, np.nan]))
-#     ClkCorr       : np.double             = np.nan
+    IP_1          : np.double       = np.nan
+    QP_1          : np.double       = np.nan
+    IP_2          : np.double       = np.nan
+    QP_2          : np.double       = np.nan
 
 class Channel(ABC, Process):
     """
@@ -68,8 +63,8 @@ class Channel(ABC, Process):
     rfbuffer          : RfDataBuffer                        # file parser and memory manager
     buffer_ptr        : int                                 # pointer to current index in rfbuffer data
     log_queue         : Queue                               # queue/pipe for channels finishing current timestep
-    start_barrier     : multiprocessing.synchronize.Barrier # barrier for synchronzing when new data is available
-    done_barrier      : multiprocessing.synchronize.Barrier # barrier for synchronzing when new data has been processed
+    start_barrier     : Barrier # barrier for synchronzing when new data is available
+    done_barrier      : Barrier # barrier for synchronzing when new data has been processed
     logger            : logging.Logger                      # thread safe logger
     
     def __init__(self, 
@@ -77,8 +72,8 @@ class Channel(ABC, Process):
                  cid: str, 
                  rfbuffer: RfDataBuffer, 
                  log_queue: Queue,
-                 start_barrier: multiprocessing.synchronize.Barrier, 
-                 done_barrier: multiprocessing.synchronize.Barrier, 
+                 start_barrier: Barrier, 
+                 done_barrier: Barrier, 
                  num: int):
         Process.__init__(self, name=cid, daemon=True)
         

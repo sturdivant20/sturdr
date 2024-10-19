@@ -119,8 +119,12 @@ class ChannelController(Process):
             
             # increment total time processed
             ms_processed += self.config['GENERAL']['ms_read_size']
+            if not (ms_processed % 1000):
+                m, s = divmod(int(ms_processed/1000), 60)
+                h, m = divmod(m, 60)
+                self.logger.info(f"Time Processed: {h:02d}:{m:02d}:{s:02d}")
         
         end_t = time.time()
-        self.logger.info(f"Total Time = {1000 * (end_t - start_t)} ms")
+        self.logger.info(f"Total Time = {(end_t - start_t):.3f} s")
         self.log_queue.put(None)
         return

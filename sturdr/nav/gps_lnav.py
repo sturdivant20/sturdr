@@ -260,26 +260,26 @@ class GpsLnavParser(KeplerianEphemeris):
         self.LoadPreamble()
         
         # word 3
-        self.week = np.uint16((self.subframe[2] & 0x3FF00000) >> 20)    # bits 1-10
-        # l2_flag = np.uint8((self.subframe[2] & 0x000C0000) >> 18)       # bits 11-12
-        self.ura = np.uint8((self.subframe[2] & 0x0003C000) >> 14)      # bits 13-16
-        self.health = np.uint8((self.subframe[2] & 0x00003F00) >> 8)    # bits 17-22
+        self.week = np.uint16((self.subframe[2] & 0x3FF00000) >> 20)                # bits 1-10
+        # l2_flag = np.uint8((self.subframe[2] & 0x000C0000) >> 18)                 # bits 11-12
+        self.ephemerides.ura = np.uint8((self.subframe[2] & 0x0003C000) >> 14)      # bits 13-16
+        self.ephemerides.health = np.uint8((self.subframe[2] & 0x00003F00) >> 8)    # bits 17-22
         
         # word 7
-        self.tgd = TwosComp((self.subframe[6] & 0x00003FC0) >> 6, 8) * (2**-31)   # bits 17-24
+        self.ephemerides.tgd = TwosComp((self.subframe[6] & 0x00003FC0) >> 6, 8) * (2**-31) # bits 17-24
         
         # word 8
-        tmp1 = (self.subframe[2] & 0x000000C0) >> 6                         # bits 23-24 (word 3)
-        tmp2 = (self.subframe[7] & 0x3FC00000) >> 22                        # bits 1-8
-        self.iodc = np.double((tmp1 << 8) | tmp2)                           #
-        self.toc = np.double((self.subframe[7] & 0x003FFFC0) >> 6) * (2**4) # bits 9-24
+        tmp1 = (self.subframe[2] & 0x000000C0) >> 6                                     # bits 23-24 (word 3)
+        tmp2 = (self.subframe[7] & 0x3FC00000) >> 22                                    # bits 1-8
+        self.ephemerides.iodc = np.double((tmp1 << 8) | tmp2)                           #
+        self.ephemerides.toc = np.double((self.subframe[7] & 0x003FFFC0) >> 6) * (2**4) # bits 9-24
         
         # word 9
-        self.af2 = TwosComp((self.subframe[8] & 0x000000C0) >> 22, 8) * (2**-55) # bits 1-8
-        self.af1 = TwosComp((self.subframe[8] & 0x003FFFC0) >> 6, 16) * (2**-43) # bits 9-24
+        self.ephemerides.af2 = TwosComp((self.subframe[8] & 0x000000C0) >> 22, 8) * (2**-55) # bits 1-8
+        self.ephemerides.af1 = TwosComp((self.subframe[8] & 0x003FFFC0) >> 6, 16) * (2**-43) # bits 9-24
         
         # word 10
-        self.af0 = TwosComp((self.subframe[9] & 0x3FFFFF00) >> 8, 22) * (2**-31) # bits 1-22
+        self.ephemerides.af0 = TwosComp((self.subframe[9] & 0x3FFFFF00) >> 8, 22) * (2**-31) # bits 1-22
         
         # print(f"week = {self.week}")
         # print(f"af0 = {self.af0}")
@@ -302,29 +302,29 @@ class GpsLnavParser(KeplerianEphemeris):
         self.LoadPreamble()
         
         # word 3
-        self.iode = np.double((self.subframe[2] & 0x3FC00000) >> 22)            # bits 1-8
-        self.crs = TwosComp((self.subframe[2] & 0x003FFFC0) >> 6, 16) * (2**-5) # bits 9-24
+        self.ephemerides.iode = np.double((self.subframe[2] & 0x3FC00000) >> 22)            # bits 1-8
+        self.ephemerides.crs = TwosComp((self.subframe[2] & 0x003FFFC0) >> 6, 16) * (2**-5) # bits 9-24
         
         # word 4 and 5
-        self.deltan = TwosComp((self.subframe[3] & 0x3FFFC000) >> 14, 16) * (PI * 2**-43)   # bits 1-16
-        tmp1 = (self.subframe[3] & 0x00003FC0) >> 6                                         # bits 17-24
-        tmp2 = (self.subframe[4] & 0x3FFFFFC0) >> 6                                         # bits 1-24
-        self.m0 = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
+        self.ephemerides.deltan = TwosComp((self.subframe[3] & 0x3FFFC000) >> 14, 16) * (PI * 2**-43)   # bits 1-16
+        tmp1 = (self.subframe[3] & 0x00003FC0) >> 6                                                     # bits 17-24
+        tmp2 = (self.subframe[4] & 0x3FFFFFC0) >> 6                                                     # bits 1-24
+        self.ephemerides.m0 = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
         
         # word 6 and 7
-        self.cuc = TwosComp((self.subframe[5] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
-        tmp1 = (self.subframe[5] & 0x00003FC0) >> 6                                 # bits 17-24
-        tmp2 = (self.subframe[6] & 0x3FFFFFC0) >> 6                                 # bits 1-24
-        self.e = np.double((tmp1 << 24) | tmp2) * (2**-33)
+        self.ephemerides.cuc = TwosComp((self.subframe[5] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
+        tmp1 = (self.subframe[5] & 0x00003FC0) >> 6                                             # bits 17-24
+        tmp2 = (self.subframe[6] & 0x3FFFFFC0) >> 6                                             # bits 1-24
+        self.ephemerides.e = np.double((tmp1 << 24) | tmp2) * (2**-33)
         
         # word 8 and 9
-        self.cus = TwosComp((self.subframe[7] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
-        tmp1 = (self.subframe[7] & 0x00003FC0) >> 6                                 # bits 17-24
-        tmp2 = (self.subframe[8] & 0x3FFFFFC0) >> 6                                 # bits 1-24
-        self.sqrtA = np.double((tmp1 << 24) | tmp2) * (2**-19)
+        self.ephemerides.cus = TwosComp((self.subframe[7] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
+        tmp1 = (self.subframe[7] & 0x00003FC0) >> 6                                             # bits 17-24
+        tmp2 = (self.subframe[8] & 0x3FFFFFC0) >> 6                                             # bits 1-24
+        self.ephemerides.sqrtA = np.double((tmp1 << 24) | tmp2) * (2**-19)
         
         # word 10
-        self.toe = np.double((self.subframe[9] & 0x3FFFC000) >> 14) * (2**4)    # bits 1-16
+        self.ephemerides.toe = np.double((self.subframe[9] & 0x3FFFC000) >> 14) * (2**4)    # bits 1-16
         # fit_interval_alert_flag = bool((self.subframe[9] & 0x00002000) >> 13)   # bit 17
         
         # print(f"cus = {self.cus}")
@@ -348,29 +348,29 @@ class GpsLnavParser(KeplerianEphemeris):
         self.LoadPreamble()
         
         # word 3 and 4
-        self.cic = TwosComp((self.subframe[2] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
-        tmp1 = (self.subframe[2] & 0x00003FC0) >> 6                                 # bits 17-24
-        tmp2 = (self.subframe[3] & 0x3FFFFFC0) >> 6                                 # bits 1-24
-        self.omega0 = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
+        self.ephemerides.cic = TwosComp((self.subframe[2] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
+        tmp1 = (self.subframe[2] & 0x00003FC0) >> 6                                             # bits 17-24
+        tmp2 = (self.subframe[3] & 0x3FFFFFC0) >> 6                                             # bits 1-24
+        self.ephemerides.omega0 = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
         
         # word 5 and 6
-        self.cis = TwosComp((self.subframe[4] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
-        tmp1 = (self.subframe[4] & 0x00003FC0) >> 6                                 # bits 17-24
-        tmp2 = (self.subframe[5] & 0x3FFFFFC0) >> 6                                 # bits 1-24
-        self.i0 = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
+        self.ephemerides.cis = TwosComp((self.subframe[4] & 0x3FFFC000) >> 14, 16) * (2**-29)   # bits 1-16
+        tmp1 = (self.subframe[4] & 0x00003FC0) >> 6                                             # bits 17-24
+        tmp2 = (self.subframe[5] & 0x3FFFFFC0) >> 6                                             # bits 1-24
+        self.ephemerides.i0 = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
         
         # word 7 and 8
-        self.crc = TwosComp((self.subframe[6] & 0x3FFFC000) >> 14, 16) * (2**-5)    # bits 1-16
-        tmp1 = (self.subframe[6] & 0x00003FC0) >> 6                                 # bits 17-24
-        tmp2 = (self.subframe[7] & 0x3FFFFFC0) >> 6                                 # bits 1-24
-        self.omega = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
+        self.ephemerides.crc = TwosComp((self.subframe[6] & 0x3FFFC000) >> 14, 16) * (2**-5)    # bits 1-16
+        tmp1 = (self.subframe[6] & 0x00003FC0) >> 6                                             # bits 17-24
+        tmp2 = (self.subframe[7] & 0x3FFFFFC0) >> 6                                             # bits 1-24
+        self.ephemerides.omega = TwosComp((tmp1 << 24) | tmp2, 32) * (PI * 2**-31)
         
         # word 9
-        self.omegaDot = TwosComp((self.subframe[8] & 0x3FFFFFC0) >> 6, 24) * (PI * 2**-43)  # bits 1-24
+        self.ephemerides.omegaDot = TwosComp((self.subframe[8] & 0x3FFFFFC0) >> 6, 24) * (PI * 2**-43)  # bits 1-24
         
         # word 10
-        self.iode = np.double((self.subframe[9] & 0x3FC00000) >> 22)                    # bits 1-8
-        self.iDot = TwosComp((self.subframe[9] & 0x003FFF00) >> 8, 14) * (PI * 2**-43)  # bits 9-22
+        self.ephemerides.iode = np.double((self.subframe[9] & 0x3FC00000) >> 22)                    # bits 1-8
+        self.ephemerides.iDot = TwosComp((self.subframe[9] & 0x003FFF00) >> 8, 14) * (PI * 2**-43)  # bits 9-22
         
         # print(f"cic = {self.cic}")
         # print(f"cis = {self.cis}")
