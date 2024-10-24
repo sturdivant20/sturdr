@@ -14,13 +14,13 @@ refs    1. "Principles of GNSS, Inertial, and Multisensor Integrated Navigation 
 import numpy as np
 from numba import njit
 
-# @njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True)
 def LeastSquares(sv_pos: np.ndarray[np.double],
                  sv_vel: np.ndarray[np.double],
-                 psr: np.ndarray[np.double],
+                 psr   : np.ndarray[np.double],
                  psrdot: np.ndarray[np.double],
-                 R: np.ndarray[np.double] = None, 
-                 x: np.ndarray[np.double] = np.zeros(8, dtype=np.double)):
+                 R     : np.ndarray[np.double], 
+                 x     : np.ndarray[np.double]):
     """
     Least Squares solver for GNSS position, velocity, and timing terms
 
@@ -48,11 +48,9 @@ def LeastSquares(sv_pos: np.ndarray[np.double],
     N               = psr.size + psrdot.size                # number of measurements
     one             = np.ones(N1, dtype=np.double)          # column of ones
     H               = np.zeros((N, 8), dtype=np.double)     # measurement matrix (Jacobian)
-    H[:N1, 6] = one
-    H[N1:, 7] = one
+    H[:N1, 6]       = one
+    H[N1:, 7]       = one
     dz              = np.zeros(N, dtype=np.double)          # Measurement innovation
-    if R is None:
-        R = np.eye(N)                                       # weighting matrix
 
     for _ in range(10):
         for i in range(N1):
@@ -76,17 +74,15 @@ def LeastSquares(sv_pos: np.ndarray[np.double],
     return x, P
 
 
-# @njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True)
 def LeastSquaresPos(sv_pos: np.ndarray[np.double],
-                    psr: np.ndarray[np.double],
-                    R: np.ndarray[np.double] = None, 
-                    x: np.ndarray[np.double] = np.zeros(4, dtype=np.double)):
+                    psr   : np.ndarray[np.double],
+                    R     : np.ndarray[np.double], 
+                    x     : np.ndarray[np.double]):
     H       = np.zeros((psr.size, 4), dtype=np.double)
     H[:, 3] = np.ones(psr.size, dtype=np.double)
     dz      = np.zeros(psr.size, dtype=np.double)
-    if R is None:
-        R = np.eye(psr.size)
-
+    
     for _ in range(10):
         for i in range(psr.size):
             dr       = x[:3] - sv_pos[i, :]
@@ -106,9 +102,9 @@ def LeastSquaresPos(sv_pos: np.ndarray[np.double],
 @njit(cache=True, fastmath=True)
 def LeastSquaresVel(sv_vel: np.ndarray[np.double], 
                     psrdot: np.ndarray[np.double],
-                    H: np.ndarray[np.double],
-                    R: np.ndarray[np.double]=None,
-                    drift: np.double=0.0):
+                    H     : np.ndarray[np.double],
+                    R     : np.ndarray[np.double],
+                    drift : np.double=0.0):
     if R is None:
         R = np.eye(psrdot.size)
         

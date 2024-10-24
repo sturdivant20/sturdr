@@ -11,7 +11,7 @@ refs    1. "Principles of GNSS, Inertial, and Multisensor Integrated Navigation 
 
 import numpy as np
 from numba import njit
-from sturdr.utils.constants import WGS84_R0, WGS84_E2
+from sturdr.utils.constants import WGS84_R0, WGS84_E2, OMEGA_DOT
 
 @njit(cache=True, fastmath=True)
 def ecef2lla(xyz: np.ndarray[np.double], degrees: bool=True):
@@ -122,3 +122,32 @@ def ecef2aer(xyzR: np.ndarray[np.double], xyzT: np.ndarray[np.double], degrees: 
         return np.asarray([np.rad2deg(a), np.rad2deg(e), r], dtype=np.double)
     else:
         return np.asarray([a, e, r], dtype=np.double)
+    
+@njit(cache=True, fastmath=True)
+def eci2ecef(transit_time: np.double, sv_pos: np.ndarray[np.double]):
+    """Accounts for the transit time of the signal from the satellite to the receiver
+
+    Parameters
+    ----------
+    transit_time : np.double
+        Transit time from satellite to receiver [s]
+    sv_pos : np.ndarray[np.double]
+        Ephemeris ECEF estimate of the satellite position [m]
+
+    Returns
+    -------
+    sv_pos : np.ndarray[np.double]
+        Corrected ECEF satellite position
+    """
+    OMEGAT = OMEGA_DOT * transit_time
+    SOMEGAT = np.sin(OMEGAT)
+    COMEGAT = np.cos(OMEGAT)
+    R = np.asarray(
+        [
+            [ COMEGAT, SOMEGAT, 0.0],
+            [-SOMEGAT, COMEGAT, 0.0],
+            [     0.0,     0.0, 1.0]
+        ]
+    )
+    sv_pos = R @ sv_pos
+    return sv_pos

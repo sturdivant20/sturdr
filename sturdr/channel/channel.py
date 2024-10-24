@@ -37,7 +37,8 @@ class ChannelPacket:
     ToW           : np.double       = np.nan
     CNo           : np.double       = np.nan
     Doppler       : np.double       = np.nan
-    SampleCount   : np.uint64       = np.nan
+    CodePhase     : np.double       = np.nan
+    CarrierPhase  : np.double       = np.nan
     IP            : np.double       = np.nan
     QP            : np.double       = np.nan
     IE            : np.double       = np.nan

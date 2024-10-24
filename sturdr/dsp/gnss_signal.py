@@ -198,13 +198,13 @@ def AccumulateEPL(rfdata: np.ndarray,
     
     d_carrier = (carrier_freq + 0.5 * carrier_jitter / sampling_freq) / sampling_freq
     d_code    = code_freq / sampling_freq
-    half_code = code_len/2
+    noise_tap = 150 # 150 chips from prompt estimate
     
     for i in range(n_samples):
         signal = np.exp(-1j * rem_carrier_phase) * rfdata[i]
         E += (code[np.int32((rem_code_phase + tap_spacing) % code_len)] * signal)
         L += (code[np.int32((rem_code_phase - tap_spacing) % code_len)] * signal)
-        N += (code[np.int32((rem_code_phase + half_code) % code_len)] * signal)
+        N += (code[np.int32((rem_code_phase + noise_tap) % code_len)] * signal)
         if samples_accumulated < half_samples:
             P_1 += (code[np.int32(rem_code_phase % code_len)] * signal)
         else:

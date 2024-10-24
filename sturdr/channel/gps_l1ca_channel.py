@@ -23,7 +23,7 @@ from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
 from sturdr.dsp.tracking import NaturalFrequency, TrackingKF
 from sturdr.dsp.gnss_signal import AccumulateEPL
 from sturdr.dsp.discriminator import PllCostas, DllNneml, DllNcdp, FllAtan2
-from sturdr.dsp.lock_detector import CodeLockDetector, PhaseLockDetector
+from sturdr.dsp.lock_detector import CodeLockDetector, PhaseLockDetector, CodeAndCarrierLockDetectors
 from sturdr.nav.gps_lnav import GpsLnavParser
 from sturdr.utils.constants import GPS_L1CA_CARRIER_FREQ, GPS_L1CA_CODE_FREQ, GPS_L1CA_CODE_SIZE
 from sturdr.utils.enums import ChannelState, GnssSystem, GnssSignalTypes
@@ -35,10 +35,9 @@ class GpsL1caChannel(Channel):
     __slots__ = 'code', 'rem_code_phase', 'code_doppler', 'rem_carrier_phase', 'carrier_doppler', \
                 'carrier_jitter', 'T', 'PDI', 'total_samples', 'half_samples', 'samples_processed', \
                 'samples_remaining', 'kf', 'tap_spacing', 'IP', 'QP', 'IE', 'QE', 'IL', 'QL', \
-                'IP_1', 'QP_1', 'IP_2', 'QP_2', 'IN', 'QN', 'cn0_mag', 'amp_memory', 'noise_memory', \
-                'IP_memory', 'QP_memory', 'min_converg_time', 'bit_sync_hist', \
-                'samples_since_tow', 'last_parsed_tow', 'lnav_parser', 'counter', 'samples_per_ms', \
-                'samples_per_chip'
+                'IP_1', 'QP_1', 'IP_2', 'QP_2', 'IN', 'QN', 'cn0_mag', 'N0P_memory', 'NBD_memory', \
+                'NBP_memory', 'min_converg_time', 'bit_sync_hist', 'lnav_parser', 'counter', \
+                'samples_per_ms', 'samples_per_chip'
     
     # Replicas
     code              : np.ndarray[np.int8]     # PRN replica code
@@ -75,16 +74,13 @@ class GpsL1caChannel(Channel):
     
     # Lock Detectors
     cn0_mag           : np.double           # estimated carrier-to-noise density ratio
-    amp_memory        : np.double           # smoothed signal carrier amplitude^2
-    noise_memory      : np.double           # smoothed signal noise amplitude^2
-    IP_memory         : np.double           # smoothed IP correlator value
-    QP_memory         : np.double           # smoothed QP correlator value
+    NBD_memory        : np.double           # smoothed narrow band difference estimate
+    NBP_memory        : np.double           # smoothed narrow band power esitmate
+    N0P_memory        : np.double           # smoothed noise power estimate
 
     # Telemetry
     min_converg_time  : np.uint16           # minimum time (ms) alloted before checking telemetry status
     bit_sync_hist     : np.ndarray[np.uint8]# histogram for determing bit sync
-    samples_since_tow : np.uint64           # number of samples since last TOW (preamble) was parsed
-    last_parsed_tow   : np.double           # time of last parsed TOW
     lnav_parser       : GpsLnavParser       # gps ephermeris/almanac parser and sv position estimator
     counter           : np.uint64           # integration period counter
     
@@ -147,16 +143,13 @@ class GpsL1caChannel(Channel):
         
         # lock detectors
         self.cn0_mag      = 0.0
-        self.amp_memory   = 0.0
-        self.noise_memory = 0.0
-        self.IP_memory    = 0.0
-        self.QP_memory    = 0.0
+        self.NBD_memory   = 0.0
+        self.NBP_memory   = 0.0
+        self.N0P_memory   = 0.0
         
         # telemetry
         self.min_converg_time  = self.config['TRACKING']['min_converg_time_ms']
         self.bit_sync_hist     = np.zeros(20)
-        self.samples_since_tow = np.nan
-        self.last_parsed_tow   = np.nan
         self.lnav_parser       = GpsLnavParser()
         self.counter           = 0
         
@@ -326,23 +319,22 @@ class GpsL1caChannel(Channel):
                 self.buffer_ptr += samples_to_read
                 self.buffer_ptr %= self.rfbuffer.size
                 
-                # count samples since TOW
-                self.samples_since_tow += samples_to_read
-                
             # ----- DUMP -----
             else:
                 # print(f"samples_processed = {self.samples_processed}")
                 samples_to_read = 0
                 
                 # check that data can be parsed and syncronize to the bits
-                if not self.channel_status.DataLock:
-                    # check for bit flip
-                    if self.NavDataSync():
-                        continue
-                            
-                # if data bits are syncronized, try demodulation
-                else:
-                    self.Demodulate()
+                if not self.channel_status.Ephemeris:
+                    if not self.channel_status.DataLock:
+                        # check for bit flip
+                        if self.NavDataSync():
+                            continue
+                                
+                    # if data bits are syncronized, try demodulation
+                    else:
+                        self.Demodulate()
+                        self.channel_status.ToW -= 0.02
                 
                 # discriminators
                 phase_err = PllCostas(self.IP, self.QP)                                   # [rad]
@@ -367,11 +359,21 @@ class GpsL1caChannel(Channel):
                 self.kf.x[3] = self.rem_code_phase
                 
                 # lock detectors
-                self.channel_status.CodeLock, self.cn0_mag, self.amp_memory, self.noise_memory = \
-                    CodeLockDetector(self.amp_memory, self.noise_memory, self.IP, self.QP, self.IN, \
-                                    self.QN, t)
-                self.channel_status.CarrierLock, self.IP_memory, self.QP_memory = PhaseLockDetector( \
-                    self.IP_memory, self.QP_memory, self.IP, self.QP)
+                # self.channel_status.CodeLock, self.cn0_mag, self.amp_memory, self.noise_memory = \
+                #     CodeLockDetector(self.amp_memory, self.noise_memory, self.IP, self.QP, self.IN, \
+                #                     self.QN, t)
+                # self.channel_status.CarrierLock, self.IP_memory, self.QP_memory = PhaseLockDetector( \
+                #     self.IP_memory, self.QP_memory, self.IP, self.QP)
+                self.channel_status.CodeLock, self.channel_status.CarrierLock, self.cn0_mag, \
+                    self.NBD_memory, self.NBP_memory, self.N0P_memory = \
+                        CodeAndCarrierLockDetectors(self.NBD_memory, 
+                                                    self.NBP_memory, 
+                                                    self.N0P_memory, 
+                                                    self.IP, 
+                                                    self.QP, 
+                                                    self.IN, 
+                                                    self.QN, 
+                                                    t)
                 self.kf.UpdateCn0(self.cn0_mag)
                 
                 # update channel tracking status
@@ -389,6 +391,7 @@ class GpsL1caChannel(Channel):
                 self.channel_status.QP_1 = self.QP_1
                 self.channel_status.IP_2 = self.IP_2
                 self.channel_status.QP_2 = self.QP_2
+                self.channel_status.ToW += 0.02
                 
                 # begin next NCO period
                 self.counter += self.PDI
@@ -410,9 +413,8 @@ class GpsL1caChannel(Channel):
                 self.QP_2 = 0.0
             # print(f"samples_to_read = {samples_to_read}")
 
-        self.channel_status.ToW = self.last_parsed_tow + \
-            self.samples_since_tow / self.config['RFSIGNAL']['sampling_freq']
-        self.channel_status.SampleCount = self.samples_since_tow
+        self.channel_status.CodePhase = self.rem_code_phase 
+        self.channel_status.CarrierPhase = self.rem_carrier_phase 
             
         # # update nav packet
         # # TODO: make navigation queue/event
@@ -478,52 +480,50 @@ class GpsL1caChannel(Channel):
         """
         Demodulate the navigation data and parse ephemerides.
         """
-        if not self.channel_status.Ephemeris:
             
-            # keep replaceing bits while phase locked
-            if self.lnav_parser.NextBit(self.IP > 0):
-                # reset sample counter after a subframe has been parsed
-                self.samples_since_tow   = 0
-                self.channel_status.Week = self.lnav_parser.week
-                self.last_parsed_tow     = self.lnav_parser.TOW
-                self.channel_status.ToW  = self.lnav_parser.TOW
-        
-            if self.lnav_parser.subframe1 and self.lnav_parser.subframe2 and self.lnav_parser.subframe3:
-                self.channel_status.Ephemeris = True
-                self.lnav_parser.SetID(self.channel_status.ID)
-                
-                # save ephemerids to csv file and log to terminal
-                self.logger.debug(f"Channel {self.channel_status.ChannelNum} - {self.channel_status.ID} Ephemeris:\n"
-                                  f"\t\t\t\t  -----------------------------------\n"
-                                  f"\t\t\t\t  week     = {self.lnav_parser.week}\n"
-                                  f"\t\t\t\t  ura      = {self.lnav_parser.ephemerides.ura}\n"
-                                  f"\t\t\t\t  health   = {self.lnav_parser.ephemerides.health}\n"
-                                  f"\t\t\t\t  T_GD     = {self.lnav_parser.ephemerides.tgd}\n"
-                                  f"\t\t\t\t  IODC     = {self.lnav_parser.ephemerides.iodc}\n"
-                                  f"\t\t\t\t  t_oc     = {self.lnav_parser.ephemerides.toc}\n"
-                                  f"\t\t\t\t  af2      = {self.lnav_parser.ephemerides.af2}\n"
-                                  f"\t\t\t\t  af1      = {self.lnav_parser.ephemerides.af1}\n"
-                                  f"\t\t\t\t  af0      = {self.lnav_parser.ephemerides.af0}\n"
-                                  f"\t\t\t\t  IODE_SF2 = {self.lnav_parser.ephemerides.iode}\n"
-                                  f"\t\t\t\t  C_rs     = {self.lnav_parser.ephemerides.crs}\n"
-                                  f"\t\t\t\t  deltan   = {self.lnav_parser.ephemerides.deltan}\n"
-                                  f"\t\t\t\t  M_0      = {self.lnav_parser.ephemerides.m0}\n"
-                                  f"\t\t\t\t  C_uc     = {self.lnav_parser.ephemerides.cuc}\n"
-                                  f"\t\t\t\t  e        = {self.lnav_parser.ephemerides.e}\n"
-                                  f"\t\t\t\t  C_us     = {self.lnav_parser.ephemerides.cus}\n"
-                                  f"\t\t\t\t  sqrtA    = {self.lnav_parser.ephemerides.sqrtA}\n"
-                                  f"\t\t\t\t  t_oe     = {self.lnav_parser.ephemerides.toe}\n"
-                                  f"\t\t\t\t  C_ic     = {self.lnav_parser.ephemerides.cic}\n"
-                                  f"\t\t\t\t  omega0   = {self.lnav_parser.ephemerides.omega0}\n"
-                                  f"\t\t\t\t  C_is     = {self.lnav_parser.ephemerides.cis}\n"
-                                  f"\t\t\t\t  i_0      = {self.lnav_parser.ephemerides.i0}\n"
-                                  f"\t\t\t\t  C_rc     = {self.lnav_parser.ephemerides.crc}\n"
-                                  f"\t\t\t\t  omega    = {self.lnav_parser.ephemerides.omega}\n"
-                                  f"\t\t\t\t  omegaDot = {self.lnav_parser.ephemerides.omegaDot}\n"
-                                  f"\t\t\t\t  IODE_SF3 = {self.lnav_parser.ephemerides.iode}\n"
-                                  f"\t\t\t\t  iDot     = {self.lnav_parser.ephemerides.iDot}"
-                )
-                self.log_queue.put(self.lnav_parser.ephemerides)
+        # keep replaceing bits while phase locked
+        if self.lnav_parser.NextBit(self.IP > 0):
+            # reset sample counter after a subframe has been parsed
+            self.samples_since_tow   = 0
+            self.channel_status.Week = self.lnav_parser.week
+            self.channel_status.ToW  = self.lnav_parser.TOW
+    
+        if self.lnav_parser.subframe1 and self.lnav_parser.subframe2 and self.lnav_parser.subframe3:
+            self.channel_status.Ephemeris = True
+            self.lnav_parser.SetID(self.channel_status.ID)
+            
+            # save ephemerids to csv file and log to terminal
+            self.logger.debug(f"Channel {self.channel_status.ChannelNum} - {self.channel_status.ID} Ephemeris:\n"
+                                f"\t\t\t\t  -----------------------------------\n"
+                                f"\t\t\t\t  week     = {self.lnav_parser.week}\n"
+                                f"\t\t\t\t  ura      = {self.lnav_parser.ephemerides.ura}\n"
+                                f"\t\t\t\t  health   = {self.lnav_parser.ephemerides.health}\n"
+                                f"\t\t\t\t  T_GD     = {self.lnav_parser.ephemerides.tgd}\n"
+                                f"\t\t\t\t  IODC     = {self.lnav_parser.ephemerides.iodc}\n"
+                                f"\t\t\t\t  t_oc     = {self.lnav_parser.ephemerides.toc}\n"
+                                f"\t\t\t\t  af2      = {self.lnav_parser.ephemerides.af2}\n"
+                                f"\t\t\t\t  af1      = {self.lnav_parser.ephemerides.af1}\n"
+                                f"\t\t\t\t  af0      = {self.lnav_parser.ephemerides.af0}\n"
+                                f"\t\t\t\t  IODE_SF2 = {self.lnav_parser.ephemerides.iode}\n"
+                                f"\t\t\t\t  C_rs     = {self.lnav_parser.ephemerides.crs}\n"
+                                f"\t\t\t\t  deltan   = {self.lnav_parser.ephemerides.deltan}\n"
+                                f"\t\t\t\t  M_0      = {self.lnav_parser.ephemerides.m0}\n"
+                                f"\t\t\t\t  C_uc     = {self.lnav_parser.ephemerides.cuc}\n"
+                                f"\t\t\t\t  e        = {self.lnav_parser.ephemerides.e}\n"
+                                f"\t\t\t\t  C_us     = {self.lnav_parser.ephemerides.cus}\n"
+                                f"\t\t\t\t  sqrtA    = {self.lnav_parser.ephemerides.sqrtA}\n"
+                                f"\t\t\t\t  t_oe     = {self.lnav_parser.ephemerides.toe}\n"
+                                f"\t\t\t\t  C_ic     = {self.lnav_parser.ephemerides.cic}\n"
+                                f"\t\t\t\t  omega0   = {self.lnav_parser.ephemerides.omega0}\n"
+                                f"\t\t\t\t  C_is     = {self.lnav_parser.ephemerides.cis}\n"
+                                f"\t\t\t\t  i_0      = {self.lnav_parser.ephemerides.i0}\n"
+                                f"\t\t\t\t  C_rc     = {self.lnav_parser.ephemerides.crc}\n"
+                                f"\t\t\t\t  omega    = {self.lnav_parser.ephemerides.omega}\n"
+                                f"\t\t\t\t  omegaDot = {self.lnav_parser.ephemerides.omegaDot}\n"
+                                f"\t\t\t\t  IODE_SF3 = {self.lnav_parser.ephemerides.iode}\n"
+                                f"\t\t\t\t  iDot     = {self.lnav_parser.ephemerides.iDot}"
+            )
+            self.log_queue.put(self.lnav_parser.ephemerides)
                 
 # ------------------------------------------------------------------------------------------------ #
 

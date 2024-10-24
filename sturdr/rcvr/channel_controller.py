@@ -20,13 +20,14 @@ from sturdr.channel import channel, gps_l1ca_channel
 
 # TODO: add more channel types in "SpawnChannels"
 
-class ChannelController(Process):
+class ChannelController:
     """
     Maintains the status of each channel and ensures they are synchronized to the 
     :obj:`multiprocessing.shared_memory.SharedMemory` circular buffer of RF signal data.
     """
     
-    __slots__ = 'config', 'rfbuffer', 'memory', 'log_queue', 'logger', 'channels', 'nchannels'
+    __slots__ = 'config', 'rfbuffer', 'memory', 'log_queue', 'logger', 'start_barrier', \
+                'done_barrier', 'channels', 'nchannels'
     config        : dict                                # Receiver config
     rfbuffer      : RfDataBuffer                        # file parser and memory manager
     log_queue     : Queue                               # queue/pipe for logging
@@ -36,8 +37,8 @@ class ChannelController(Process):
     channels      : list[channel.Channel]               # contains status/id information about channels
     nchannels     : int                                 # number of active channels
     
-    def __init__(self, config: dict, log_queue: Queue):
-        Process.__init__(self, name='SturDR_ChannelManager')
+    def __init__(self, config: dict, rfbuffer: RfDataBuffer, log_queue: Queue):
+        # Process.__init__(self, name='SturDR_ChannelManager')
         self.config = config
         
         # initialize dict of channels
@@ -58,7 +59,8 @@ class ChannelController(Process):
         self.log_queue = log_queue
         
         # initialize RfDataBuffer, shared memory, and memory queue
-        self.rfbuffer = RfDataBuffer(config)
+        # self.rfbuffer = RfDataBuffer(config)
+        self.rfbuffer = rfbuffer
         self.start_barrier = Barrier(self.nchannels + 1)
         self.done_barrier = Barrier(self.nchannels + 1)
     
@@ -89,42 +91,9 @@ class ChannelController(Process):
         return
     
     def run(self):
-        start_t = time.time()
+        # read new data and inform channel
+        self.start_barrier.wait()
         
-        # spawn the channels
-        self.SpawnChannels(self.config['CHANNELS']['signals'], self.config['CHANNELS']['max_channels'])
-        self.channels[0].SetSatellite(1)
-        self.channels[0].start()
-        self.channels[1].SetSatellite(7)
-        self.channels[1].start()
-        self.channels[2].SetSatellite(14)
-        self.channels[2].start()
-        self.channels[3].SetSatellite(17)
-        self.channels[3].start()
-        self.channels[4].SetSatellite(19)
-        self.channels[4].start()
-        self.channels[5].SetSatellite(21)
-        self.channels[5].start()
-        self.channels[6].SetSatellite(30)
-        self.channels[6].start()
-        
-        ms_processed = 0
-        while ms_processed < self.config['GENERAL']['ms_to_process']:
-            # read new data and inform channel
-            self.rfbuffer.NextChunk()
-            self.start_barrier.wait()
-            
-            # wait for the channels and process new data
-            self.done_barrier.wait()
-            
-            # increment total time processed
-            ms_processed += self.config['GENERAL']['ms_read_size']
-            if not (ms_processed % 1000):
-                m, s = divmod(int(ms_processed/1000), 60)
-                h, m = divmod(m, 60)
-                self.logger.info(f"Time Processed: {h:02d}:{m:02d}:{s:02d}")
-        
-        end_t = time.time()
-        self.logger.info(f"Total Time = {(end_t - start_t):.3f} s")
-        self.log_queue.put(None)
+        # wait for the channels and process new data
+        self.done_barrier.wait()
         return

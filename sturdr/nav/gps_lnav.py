@@ -20,7 +20,7 @@ refs    1. "IS-GPS-200N", 2022
 #       -> repeat until preamble is detected twice, 300 bits apart
 
 import numpy as np
-from sturdr.nav.ephemeris import KeplerianEphemeris
+from sturdr.nav.ephemeris import Ephemerides
 from sturdr.utils.enums import GnssSystem, GnssSignalTypes
 from sturdr.utils.binary_ops import *
 from sturdr.utils.constants import PI, LNAV_PREAMBLE_BITS, LNAV_INV_PREAMBLE_BITS
@@ -35,10 +35,10 @@ GPS_D29 = np.asarray([2,4,6,7,8,10,11,15,16,17,18,19,22,23,25], dtype = np.uint8
 GPS_D30 = np.asarray([4,6,7,9,10,11,12,14,16,20,23,24,25], dtype = np.uint8)      # [3,5,6,8,9,10,11,13,15,19,22,23,24]
 
 
-class GpsLnavParser(KeplerianEphemeris):
+class GpsLnavParser:
     __slots__ = 'subframe', 'bit_count', 'word_count', 'TOW', 'week', 'signalID', 'subframe1', \
                 'subframe2', 'subframe3', 'preamble_found', 'bits_since_preamble', 'prev_32_bits', \
-                'preamble_detections'
+                'preamble_detections', 'ephemerides'
     subframe            : np.ndarray[np.uint32]
     bit_count           : np.uint16
     word_count          : np.uint8
@@ -51,9 +51,9 @@ class GpsLnavParser(KeplerianEphemeris):
     bits_since_preamble : np.int16
     prev_32_bits        : np.uint32
     preamble_detections : list[np.int16]
+    ephemerides         : Ephemerides
     
     def __init__(self):
-        KeplerianEphemeris.__init__(self)
         self.subframe            = np.zeros(10, dtype=np.uint32)
         self.bit_count           = 0
         self.word_count          = 0
@@ -64,8 +64,13 @@ class GpsLnavParser(KeplerianEphemeris):
         self.bits_since_preamble = -1
         self.prev_32_bits        = 0
         self.preamble_detections = []
-        self.TOW = np.nan
-        self.week = np.nan
+        self.TOW                 = np.nan
+        self.week                = np.nan
+        self.ephemerides         = Ephemerides()
+        return
+    
+    def SetID(self, id: str):
+        self.ephemerides.id = id
         return
     
     def NextBit(self, bit: bool):
