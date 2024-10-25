@@ -13,6 +13,8 @@ refs    1. "Principles of GNSS, Inertial, and Multisensor Integrated Navigation 
 
 import numpy as np
 from numba import njit
+from sturdr.utils.coordinates import eci2ecef
+from sturdr.utils.constants import LIGHT_SPEED
 
 @njit(cache=True, fastmath=True)
 def LeastSquares(sv_pos: np.ndarray[np.double],
@@ -82,6 +84,7 @@ def LeastSquaresPos(sv_pos: np.ndarray[np.double],
     H       = np.zeros((psr.size, 4), dtype=np.double)
     H[:, 3] = np.ones(psr.size, dtype=np.double)
     dz      = np.zeros(psr.size, dtype=np.double)
+    r       = 0.0
     
     for _ in range(10):
         for i in range(psr.size):

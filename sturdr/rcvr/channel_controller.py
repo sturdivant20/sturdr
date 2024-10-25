@@ -1,7 +1,7 @@
 """**channel_controller.py**
 
 ======  ============================================================================================
-file    sturdr/rcvr/rf_data_buffer.py 
+file    sturdr/rcvr/channel_controller.py 
 brief   Handles channel processing and dissemination of data to channels
 date    October 2024
 ======  ============================================================================================
@@ -11,10 +11,9 @@ import logging.handlers
 import multiprocessing.synchronize
 import numpy as np
 import logging
-import time
 import multiprocessing
 from multiprocessing import Process, Queue, Barrier
-from sturdr.utils.rf_data_buffer import RfDataBuffer
+from sturdr.rcvr.rf_data_buffer import RfDataBuffer
 from sturdr.utils.enums import GnssSignalTypes
 from sturdr.channel import channel, gps_l1ca_channel
 
@@ -26,18 +25,19 @@ class ChannelController:
     :obj:`multiprocessing.shared_memory.SharedMemory` circular buffer of RF signal data.
     """
     
-    __slots__ = 'config', 'rfbuffer', 'memory', 'log_queue', 'logger', 'start_barrier', \
+    __slots__ = 'config', 'rfbuffer', 'log_queue', 'nav_queue', 'logger', 'start_barrier', \
                 'done_barrier', 'channels', 'nchannels'
     config        : dict                                # Receiver config
     rfbuffer      : RfDataBuffer                        # file parser and memory manager
     log_queue     : Queue                               # queue/pipe for logging
+    nav_queue     : Queue                               # queue/pipe for navigation updates
     logger        : logging.Logger                      # thread safe logger
     start_barrier : multiprocessing.synchronize.Barrier # Syncronizes the start of data proccessing from shared memory
     done_barrier  : multiprocessing.synchronize.Barrier # Indicated end of data proccessing and reads next chunk of data
     channels      : list[channel.Channel]               # contains status/id information about channels
     nchannels     : int                                 # number of active channels
     
-    def __init__(self, config: dict, rfbuffer: RfDataBuffer, log_queue: Queue):
+    def __init__(self, config: dict, rfbuffer: RfDataBuffer, log_queue: Queue, nav_queue: Queue):
         # Process.__init__(self, name='SturDR_ChannelManager')
         self.config = config
         
@@ -57,6 +57,9 @@ class ChannelController:
         # find and initialize logger
         self.logger = logging.getLogger('SturDR_Logger')
         self.log_queue = log_queue
+        
+        # save nav queue
+        self.nav_queue = nav_queue
         
         # initialize RfDataBuffer, shared memory, and memory queue
         # self.rfbuffer = RfDataBuffer(config)
@@ -79,6 +82,7 @@ class ChannelController:
                             cid=channel_id,
                             rfbuffer=self.rfbuffer,
                             log_queue=self.log_queue,
+                            nav_queue=self.nav_queue,
                             start_barrier=self.start_barrier,
                             done_barrier=self.done_barrier,
                             num=i
@@ -91,6 +95,9 @@ class ChannelController:
         return
     
     def run(self):
+        """
+        Synchronized channel processing
+        """
         # read new data and inform channel
         self.start_barrier.wait()
         

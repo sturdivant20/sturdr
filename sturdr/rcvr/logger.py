@@ -17,6 +17,7 @@ from pathlib import Path
 
 from sturdr.channel.channel import ChannelPacket
 from sturdr.nav.ephemeris import Ephemerides
+from sturdr.rcvr.navigator import NavResult
 
 # from pprint import pprint
 # import yaml, time
@@ -80,15 +81,11 @@ class Logger(logging.Logger, Process):
     """
     A thread safe logging module.
     """
-    __slots__ = 'queue', 'status_filename', 'ephemeris_filename', 'status_file', 'ephemeris_file', \
-                'status_writer', 'ephemeris_writer'
+    __slots__ = 'queue', 'status_filename', 'ephemeris_filename', 'nav_filename'
     queue              : Queue
     status_filename    : Path
     ephemeris_filename : Path
-    status_file        : io.BufferedWriter
-    ephemeris_file     : io.BufferedWriter
-    status_writer      : csv.DictWriter
-    ephemeris_writer   : csv.DictWriter
+    nav_filename       : Path
     
     def __init__(self, 
                  config: dict, 
@@ -96,7 +93,7 @@ class Logger(logging.Logger, Process):
                  name: str='SturDR_Logger', 
                  level: logging._levelToName=logging.DEBUG):
         logging.Logger.__init__(self, name, level)
-        Process.__init__(self, name=name)
+        Process.__init__(self, name=name, daemon=True)
         EnsurePathExists(config['GENERAL']['out_folder'])
         
         # attach to the logging queue
@@ -106,6 +103,7 @@ class Logger(logging.Logger, Process):
         path = Path(config['GENERAL']['out_folder'])
         self.status_filename = path / f"{config['GENERAL']['scenario']}_ChannelStatus.csv"
         self.ephemeris_filename = path / f"{config['GENERAL']['scenario']}_Ephemeris.csv"
+        self.nav_filename = path / f"{config['GENERAL']['scenario']}_Navigation.csv"
         
         # create the iostream handler for terminal printing
         console = logging.StreamHandler()
@@ -115,14 +113,17 @@ class Logger(logging.Logger, Process):
     
     def run(self):
         # open the CSV log files
-        with open(self.status_filename, 'w', newline='') as status_file, \
-             open(self.ephemeris_filename, 'w', newline='') as ephemeris_file:
+        with (open(self.status_filename, 'w', newline='') as status_file, \
+              open(self.ephemeris_filename, 'w', newline='') as ephemeris_file, \
+              open(self.nav_filename, 'w', newline='') as nav_file):
             
             # initialize the writers 
             status_writer = csv.DictWriter(status_file, fieldnames=asdict(ChannelPacket()).keys())
             ephemeris_writer = csv.DictWriter(ephemeris_file, fieldnames=asdict(Ephemerides()).keys())
+            nav_writer = csv.DictWriter(nav_file, fieldnames=asdict(NavResult()).keys())
             status_writer.writeheader()
             ephemeris_writer.writeheader()
+            nav_writer.writeheader()
             
             while True:
                 msg = self.queue.get()
@@ -130,10 +131,17 @@ class Logger(logging.Logger, Process):
                 if isinstance(msg, ChannelPacket):
                     # this packet should be saved to the channel status CSV file
                     status_writer.writerow(asdict(msg))
+                    status_file.flush()
                 
                 elif isinstance(msg, Ephemerides):
                     # this packet should be saved to the ephemeris CSV file
                     ephemeris_writer.writerow(asdict(msg))
+                    ephemeris_file.flush()
+                    
+                elif isinstance(msg, NavResult):
+                    # this packet should be saved to the navigation CSV file
+                    nav_writer.writerow(asdict(msg))
+                    nav_file.flush()
                     
                 elif msg is None:
                     # this is the message to terminate the logger

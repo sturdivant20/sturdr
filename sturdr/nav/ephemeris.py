@@ -46,6 +46,11 @@ class Ephemerides:
     crs         : np.double = np.nan     # Sin-harmonic correction coefficient to the orbit radius
     ura         : np.double = np.nan     # Estimated accuracy
     health      : np.double = np.nan     # Satellite health
+    
+    @staticmethod
+    def dict_factory(x):
+        exclude_fields = ("id", "iode", "iodc", "ura", "health")
+        return {k: v for (k, v) in x if ((v is not None) and (k not in exclude_fields))}
 
 # ================================================================================================ #
    

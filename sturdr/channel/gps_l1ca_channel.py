@@ -23,21 +23,21 @@ from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
 from sturdr.dsp.tracking import NaturalFrequency, TrackingKF
 from sturdr.dsp.gnss_signal import AccumulateEPL
 from sturdr.dsp.discriminator import PllCostas, DllNneml, DllNcdp, FllAtan2
-from sturdr.dsp.lock_detector import CodeLockDetector, PhaseLockDetector, CodeAndCarrierLockDetectors
+from sturdr.dsp.lock_detector import CodeAndCarrierLockDetectors
 from sturdr.nav.gps_lnav import GpsLnavParser
 from sturdr.utils.constants import GPS_L1CA_CARRIER_FREQ, GPS_L1CA_CODE_FREQ, GPS_L1CA_CODE_SIZE
 from sturdr.utils.enums import ChannelState, GnssSystem, GnssSignalTypes
-from sturdr.utils.rf_data_buffer import RfDataBuffer
+from sturdr.rcvr.rf_data_buffer import RfDataBuffer
 
 NP_TWO_PI = 2 * np.pi
 
 class GpsL1caChannel(Channel):
     __slots__ = 'code', 'rem_code_phase', 'code_doppler', 'rem_carrier_phase', 'carrier_doppler', \
                 'carrier_jitter', 'T', 'PDI', 'total_samples', 'half_samples', 'samples_processed', \
-                'samples_remaining', 'kf', 'tap_spacing', 'IP', 'QP', 'IE', 'QE', 'IL', 'QL', \
-                'IP_1', 'QP_1', 'IP_2', 'QP_2', 'IN', 'QN', 'cn0_mag', 'N0P_memory', 'NBD_memory', \
-                'NBP_memory', 'min_converg_time', 'bit_sync_hist', 'lnav_parser', 'counter', \
-                'samples_per_ms', 'samples_per_chip'
+                'samples_remaining', 'w0p', 'w0d', 'w0f', 'kf', 'tap_spacing', 'IP', 'QP', 'IE', \
+                'QE', 'IL', 'QL', 'IP_1', 'QP_1', 'IP_2', 'QP_2', 'IN', 'QN', 'cn0_mag', \
+                'N0P_memory', 'NBD_memory', 'NBP_memory', 'min_converg_time', 'bit_sync_hist', \
+                'lnav_parser', 'counter', 'samples_per_ms', 'samples_per_chip'
     
     # Replicas
     code              : np.ndarray[np.int8]     # PRN replica code
@@ -95,13 +95,15 @@ class GpsL1caChannel(Channel):
                  cid: str, 
                  rfbuffer: RfDataBuffer, 
                  log_queue: Queue, 
+                 nav_queue: Queue, 
                  start_barrier: multiprocessing.synchronize.Barrier, 
                  done_barrier: multiprocessing.synchronize.Barrier, 
                  num: int):
-        Channel.__init__(self, config, cid, rfbuffer, log_queue, start_barrier, done_barrier, num)
+        Channel.__init__(self, config, cid, rfbuffer, log_queue, nav_queue, start_barrier, done_barrier, num)
         self.channel_status.Constellation = GnssSystem.GPS
         self.channel_status.Signal = GnssSignalTypes.GPS_L1CA
         self.channel_status.State = ChannelState.IDLE
+        self.nav_status.Signal = GnssSignalTypes.GPS_L1CA
         
         # sample constants
         self.samples_per_ms = int(self.config['RFSIGNAL']['sampling_freq'] / 1000)
@@ -176,6 +178,7 @@ class GpsL1caChannel(Channel):
             
             # send processed results to logging/data queue          
             self.log_queue.put(self.channel_status)
+            self.nav_queue.put(self.nav_status)
             
             # send the signal that the channel is finished      
             self.done_barrier.wait()
@@ -193,6 +196,7 @@ class GpsL1caChannel(Channel):
         self.code = gps_l1ca_code(satelliteID)
         self.channel_status.State = ChannelState.ACQUIRING
         self.channel_status.ID = f"GPS{satelliteID}"
+        self.nav_status.ID = self.channel_status.ID
         
         # initialize total samples needed for acquisition
         self.total_samples  = np.uint32(self.config['ACQUISITION']['coherent_integration'] * \
@@ -392,6 +396,12 @@ class GpsL1caChannel(Channel):
                 self.channel_status.IP_2 = self.IP_2
                 self.channel_status.QP_2 = self.QP_2
                 self.channel_status.ToW += 0.02
+                self.channel_status.ToW = np.round(self.channel_status.ToW, 3)
+                
+                # update nav packet
+                self.nav_status.ToW     = self.channel_status.ToW
+                self.nav_status.CNo     = self.cn0_mag
+                self.nav_status.Doppler = self.channel_status.Doppler
                 
                 # begin next NCO period
                 self.counter += self.PDI
@@ -413,25 +423,10 @@ class GpsL1caChannel(Channel):
                 self.QP_2 = 0.0
             # print(f"samples_to_read = {samples_to_read}")
 
+        # save remainder phases
         self.channel_status.CodePhase = self.rem_code_phase 
         self.channel_status.CarrierPhase = self.rem_carrier_phase 
-            
-        # # update nav packet
-        # # TODO: make navigation queue/event
-        # if self.channel_status.Ephemeris:
-        #     self.nav_packet.header.ChannelNum = self.channel_status.header.ChannelNum
-        #     self.nav_packet.header.Constellation = self.channel_status.header.Constellation
-        #     self.nav_packet.header.Signal = self.channel_status.header.Signal
-        #     self.nav_packet.header.ID = self.channel_status.header.ID
-        #     self.nav_packet.header.Week = self.channel_status.header.Week
-        #     self.nav_packet.header.ToW = self.channel_status.header.ToW
-        #     self.nav_packet.SampleCount = self.samples_since_tow
-        #     self.nav_packet.Doppler = self.channel_status.Doppler
-        #     self.nav_packet.CNo = self.channel_status.CNo
-        #     clk,pos,vel,acc = self.lnav_parser.GetNavStates(self.nav_packet.header.ToW, False)
-        #     self.nav_packet.SatPos = pos
-        #     self.nav_packet.SatVel = vel
-        #     self.nav_packet.ClkCorr = clk[0]
+        self.nav_status.CodePhase = self.rem_code_phase
         return
     
 # ------------------------------------------------------------------------------------------------ #
@@ -484,9 +479,9 @@ class GpsL1caChannel(Channel):
         # keep replaceing bits while phase locked
         if self.lnav_parser.NextBit(self.IP > 0):
             # reset sample counter after a subframe has been parsed
-            self.samples_since_tow   = 0
             self.channel_status.Week = self.lnav_parser.week
             self.channel_status.ToW  = self.lnav_parser.TOW
+            self.nav_status.Week = self.lnav_parser.week
     
         if self.lnav_parser.subframe1 and self.lnav_parser.subframe2 and self.lnav_parser.subframe3:
             self.channel_status.Ephemeris = True
@@ -524,6 +519,7 @@ class GpsL1caChannel(Channel):
                                 f"\t\t\t\t  iDot     = {self.lnav_parser.ephemerides.iDot}"
             )
             self.log_queue.put(self.lnav_parser.ephemerides)
+            self.nav_queue.put(self.lnav_parser.ephemerides)
                 
 # ------------------------------------------------------------------------------------------------ #
 

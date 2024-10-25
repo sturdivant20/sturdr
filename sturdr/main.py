@@ -22,9 +22,12 @@ import time
 import yaml
 import logging
 from multiprocessing import Queue
+from pathlib import Path
+
+from sturdr.rcvr.navigator import Navigator
 from sturdr.rcvr.channel_controller import ChannelController
 from sturdr.rcvr.logger import Logger
-from sturdr.utils.rf_data_buffer import RfDataBuffer
+from sturdr.rcvr.rf_data_buffer import RfDataBuffer
 
 # TODO: connect a navigator to the channel controller - this needs to be a two-way pipe
 
@@ -34,7 +37,8 @@ def main():
     """
     
     # Load Configuration
-    config_file = './config/gps_l1ca_rcvr.yaml'
+    config_file = Path('')
+    config_file = config_file / 'config' / 'gps_l1ca_rcvr.yaml'
     with open(config_file, 'r') as file:
         config = yaml.safe_load(file)
     
@@ -48,12 +52,17 @@ def main():
     logger.addHandler(logging.handlers.QueueHandler(log_queue))
     logger.setLevel(logging.INFO)
     
+    # initialize the sturdr navigator
+    nav_queue = Queue()
+    navigator = Navigator(config, log_queue, nav_queue)
+    navigator.start()
+    
     # open rf data buffer
     rfbuffer = RfDataBuffer(config)
 
     # initialize channel controller
     prn = [1,7,14,17,19,21,30]
-    channel_controller = ChannelController(config, rfbuffer, log_queue)
+    channel_controller = ChannelController(config, rfbuffer, log_queue, nav_queue)
     channel_controller.SpawnChannels(config['CHANNELS']['signals'], config['CHANNELS']['max_channels'])
     for i in range(7):
         channel_controller.channels[i].SetSatellite(prn[i])
@@ -69,15 +78,25 @@ def main():
         
         # increment time processed
         ms_processed += config['GENERAL']['ms_read_size']
+        
+        # log every second to the screen
         if not (ms_processed % 1000):
-            m, s = divmod(int(ms_processed/1000), 60)
-            h, m = divmod(m, 60)
-            logger.info(f"Time Processed: {h:02d}:{m:02d}:{s:02d}")
+            nav_queue.put(True)
+            tmp_t = time.time()
+            sec0, ms0 = divmod(int(1000 * (tmp_t - start_t)), 1000)
+            min0, sec0 = divmod(sec0, 60)
+            hr0, min0 = divmod(min0, 60)
+            sec1, ms1 = divmod(int(ms_processed), 1000)
+            min1, sec1 = divmod(sec1, 60)
+            hr1, min1 = divmod(min1, 60)
+            logger.info(f"Time Elapsed: {hr0:02d}:{min0:02d}:{sec0:02d}.{ms0:03d} <-> " \
+                        f"Time Processed: {hr1:02d}:{min1:02d}:{sec1:02d}.{ms1:03d}")
             
     # send final message to logger
     end_t = time.time()
     logger.info(f"Total Time = {(end_t - start_t):.3f} s")
     log_queue.put(None)
+    nav_queue.put(None)
     return
     
 if __name__ == '__main__':
