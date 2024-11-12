@@ -14,7 +14,7 @@ import numpy as np
 from numba import njit
 from dataclasses import dataclass, field
 from sturdr.utils.constants import (TWO_PI, WGS84_R0, OMEGA_DOT, GM, J2, OMEGA_DOT, RELATIVISTC_F, 
-                                    WEEK, HALF_WEEK)
+                                    WEEK, HALF_WEEK, LIGHT_SPEED)
 
 # ================================================================================================ #
 
@@ -62,7 +62,7 @@ def CheckTime(t):
         t = t + WEEK
     return t
         
-@njit(cache=True, fastmath=True)
+@njit(cache=True)
 def GetNavStates(toe          : np.double,     # Time of Ephemeris
                  toc          : np.double,     # Time of clock
                  tgd          : np.double,     # Time, group delay
@@ -136,17 +136,6 @@ def GetNavStates(toe          : np.double,     # Time of Ephemeris
     Ek = np.remainder(Ek + TWO_PI, TWO_PI)
     DEN = 1.0 - e * COSE                    # common denominator
     
-    # relativistic clock calculations (user time)
-    FESQA = RELATIVISTC_F * e * sqrtA             # relativistic time factor
-    # ck = af0 + tk * (af1 + tk * af2) + (FESQA * SINE)
-    ck = dt_sv + (FESQA * SINE)
-    cDotk = af1 + (2.0 * af2 * tk) + (n * FESQA * COSE / DEN)
-    if calc_accel:
-        cDotDotk = 2.0 * af2 - (n**2 * FESQA * SINE / DEN**2)
-    else:
-        cDotDotk = 0.0
-    clk = np.asarray([ck, cDotk, cDotDotk], dtype=np.double)
-    
     # true anomaly
     # vk = 2.0 * np.atan2(np.sqrt((1.0 + e) / (1.0 - e)) * np.tan(0.5 * Ek), 1.0)
     vk = np.atan2(SQ1ME2 * SINE, COSE - e)
@@ -208,5 +197,20 @@ def GetNavStates(toe          : np.double,     # Time of Ephemeris
         acc = np.asarray([ax, ay, az], dtype=np.double)
     else:
         acc = np.zeros(3, dtype=np.double)
+        
+    # relativistic clock calculations (user time)
+    FESQA = RELATIVISTC_F * e * sqrtA             # relativistic time factor
+    
+    # dtr1 = FESQA * SINE
+    # dtr2 = -2.0 * (pos @ vel) / LIGHT_SPEED**2
+    # print("dtr1 = ", dtr1, ", dtr2 = ", dtr2, flush=True)
+    
+    ck = dt_sv - 2.0 * (pos @ vel) / LIGHT_SPEED**2# + (FESQA * SINE)
+    cDotk = af1 + (2.0 * af2 * dt) + (n * FESQA * COSE / DEN)
+    if calc_accel:
+        cDotDotk = 2.0 * af2 - (n**2 * FESQA * SINE / DEN**2)
+    else:
+        cDotDotk = 0.0
+    clk = np.asarray([ck, cDotk, cDotDotk], dtype=np.double)
         
     return clk, pos, vel, acc

@@ -13,6 +13,8 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 ======  ============================================================================================
 """
 
+# TODO: chip offets of [50, 110, 150, 225, 310, 400, 495, 600, 720, 805, 900, 980]
+
 import numpy as np
 from numba import njit
 import multiprocessing
@@ -22,7 +24,7 @@ from sturdr.channel.channel import Channel, ChannelPacket
 from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
 from sturdr.dsp.tracking import NaturalFrequency, TrackingKF
 from sturdr.dsp.gnss_signal import AccumulateEPL
-from sturdr.dsp.discriminator import PllCostas, DllNneml, DllNcdp, FllAtan2
+from sturdr.dsp.discriminator import PllCostas, DllNneml2, FllAtan2
 from sturdr.dsp.lock_detector import CodeAndCarrierLockDetectors
 from sturdr.nav.gps_lnav import GpsLnavParser
 from sturdr.utils.constants import GPS_L1CA_CARRIER_FREQ, GPS_L1CA_CODE_FREQ, GPS_L1CA_CODE_SIZE
@@ -32,12 +34,12 @@ from sturdr.rcvr.rf_data_buffer import RfDataBuffer
 NP_TWO_PI = 2 * np.pi
 
 class GpsL1caChannel(Channel):
-    __slots__ = 'code', 'rem_code_phase', 'code_doppler', 'rem_carrier_phase', 'carrier_doppler', \
-                'carrier_jitter', 'T', 'PDI', 'total_samples', 'half_samples', 'samples_processed', \
-                'samples_remaining', 'w0p', 'w0d', 'w0f', 'kf', 'tap_spacing', 'IP', 'QP', 'IE', \
-                'QE', 'IL', 'QL', 'IP_1', 'QP_1', 'IP_2', 'QP_2', 'IN', 'QN', 'cn0_mag', \
-                'N0P_memory', 'NBD_memory', 'NBP_memory', 'min_converg_time', 'bit_sync_hist', \
-                'lnav_parser', 'counter', 'samples_per_ms', 'samples_per_chip'
+    __slots__ = ('code', 'rem_code_phase', 'code_doppler', 'rem_carrier_phase', 'carrier_doppler', 
+                 'carrier_jitter', 'T', 'PDI', 'total_samples', 'half_samples', 'samples_processed', 
+                 'samples_remaining', 'w0p', 'w0d', 'w0f', 'kf', 'tap_spacing', 'IP', 'QP', 'IE', 
+                 'QE', 'IL', 'QL', 'IP_1', 'QP_1', 'IP_2', 'QP_2', 'cn0_mag', 'NBD_memory', 
+                 'NBP_memory', 'PC_memory', 'PN_memory', 'min_converg_time', 'bit_sync_hist', 
+                 'lnav_parser', 'counter', 'samples_per_ms', 'samples_per_chip')
     
     # Replicas
     code              : np.ndarray[np.int8]     # PRN replica code
@@ -69,14 +71,13 @@ class GpsL1caChannel(Channel):
     QP_1              : np.double           # first half of quadrature prompt
     IP_2              : np.double           # second half of inphase prompt
     QP_2              : np.double           # second half of quadrature prompt
-    IN                : np.double           # inphase noise
-    QN                : np.double           # quadrature noise
     
     # Lock Detectors
     cn0_mag           : np.double           # estimated carrier-to-noise density ratio
     NBD_memory        : np.double           # smoothed narrow band difference estimate
     NBP_memory        : np.double           # smoothed narrow band power esitmate
-    N0P_memory        : np.double           # smoothed noise power estimate
+    PC_memory         : np.double           # smoothed carrier power estimate
+    PN_memory         : np.double           # smoothed noise power estimate
 
     # Telemetry
     min_converg_time  : np.uint16           # minimum time (ms) alloted before checking telemetry status
@@ -131,8 +132,6 @@ class GpsL1caChannel(Channel):
         self.QP_1 = 0.0
         self.IP_2 = 0.0
         self.QP_2 = 0.0
-        self.IN = 0.0
-        self.QN = 0.0
         self.w0p = NaturalFrequency(self.config["TRACKING"]["pll_bandwidth_wide"], 3)
         self.w0f = NaturalFrequency(self.config["TRACKING"]["fll_bandwidth_wide"], 2)
         self.w0d = NaturalFrequency(self.config["TRACKING"]["dll_bandwidth_wide"], 2)
@@ -147,7 +146,10 @@ class GpsL1caChannel(Channel):
         self.cn0_mag      = 0.0
         self.NBD_memory   = 0.0
         self.NBP_memory   = 0.0
-        self.N0P_memory   = 0.0
+        self.PC_memory    = 0.0
+        self.PN_memory    = 0.0
+        self.channel_status.IP = 0.0
+        self.channel_status.QP = 0.0
         
         # telemetry
         self.min_converg_time  = self.config['TRACKING']['min_converg_time_ms']
@@ -199,9 +201,11 @@ class GpsL1caChannel(Channel):
         self.nav_status.ID = self.channel_status.ID
         
         # initialize total samples needed for acquisition
-        self.total_samples  = np.uint32(self.config['ACQUISITION']['coherent_integration'] * \
+        self.total_samples  = np.uint32(
+                                  self.config['ACQUISITION']['coherent_integration'] * \
                                   self.config['ACQUISITION']['non_coherent_integration'] * \
-                                  self.samples_per_ms)
+                                  self.samples_per_ms
+                                )
         self.half_samples = int(self.total_samples / 2)
         # print(f"Total Samples = {self.total_samples}")
         return
@@ -239,7 +243,7 @@ class GpsL1caChannel(Channel):
             # update states
             self.carrier_doppler = NP_TWO_PI * float(-self.config['ACQUISITION']['doppler_range'] + \
                                     first_peak_idx[0]*self.config['ACQUISITION']['doppler_step'])
-            self.code_doppler = self.carrier_doppler * self.kappa
+            self.code_doppler = self.kappa * self.carrier_doppler
             self.kf.UpdateDoppler(self.carrier_doppler)
             
             # initialize tracking buffer index
@@ -247,8 +251,8 @@ class GpsL1caChannel(Channel):
             self.buffer_ptr %= self.rfbuffer.size
             
             # run initial tracking NCO
-            self.total_samples = np.round(self.config['RFSIGNAL']['sampling_freq'] \
-                    / ((GPS_L1CA_CODE_FREQ + self.code_doppler) / GPS_L1CA_CODE_SIZE))
+            code_phase_step = (GPS_L1CA_CODE_FREQ + self.code_doppler) / self.config['RFSIGNAL']['sampling_freq']
+            self.total_samples = np.ceil((self.PDI * GPS_L1CA_CODE_SIZE - self.rem_code_phase) / code_phase_step).astype(np.uint32)
             self.half_samples = int(self.total_samples / 2)
             self.samples_processed = 0
             
@@ -261,8 +265,8 @@ class GpsL1caChannel(Channel):
                              f'{self.channel_status.ID} acquired! ' \
                              f'Doppler (Hz): {np.round(self.channel_status.Doppler).astype(np.int32)}, ' \
                              f'Code Phase (samples): {np.round(first_peak_idx[1]).astype(np.int32)}')
-        else:
-            self.channel_status.State = ChannelState.IDLE
+        # else:
+            # self.channel_status.State = ChannelState.IDLE
             # print("Acquisition Failed", flush=True)
             
         return
@@ -290,7 +294,7 @@ class GpsL1caChannel(Channel):
                 ).astype(np.uint32)
                 
                 # accumulate samples of current code period
-                E, P, L, P_1, P_2, N, self.samples_processed, self.rem_carrier_phase, \
+                E, P, L, P_1, P_2, self.samples_processed, self.rem_carrier_phase, \
                         self.rem_code_phase = AccumulateEPL( \
                     self.rfbuffer.Pull(self.buffer_ptr, samples_to_read),
                     self.code,
@@ -309,13 +313,11 @@ class GpsL1caChannel(Channel):
                 self.IE   += E.real
                 self.IP   += P.real
                 self.IL   += L.real
-                self.IN   += N.real
                 self.IP_1 += P_1.real
                 self.IP_2 += P_2.real
                 self.QE   += E.imag
                 self.QP   += P.imag
                 self.QL   += L.imag
-                self.QN   += N.imag
                 self.QP_1 += P_1.imag
                 self.QP_2 += P_2.imag
                 
@@ -341,42 +343,34 @@ class GpsL1caChannel(Channel):
                         self.channel_status.ToW -= 0.02
                 
                 # discriminators
-                phase_err = PllCostas(self.IP, self.QP)                                   # [rad]
-                freq_err = FllAtan2(self.IP_1, self.IP_2, self.QP_1, self.QP_2, self.T/2) # [rad/s]
-                if self.channel_status.CarrierLock:
-                    chip_err = DllNcdp(self.IE, self.IP, self.IL)                         # [chip]
-                else:
-                    chip_err = DllNneml(self.IE, self.QE, self.IL, self.QL)               # [chip]
-                
-                # loop filter
                 t = self.total_samples / self.config['RFSIGNAL']['sampling_freq']
+                phase_err = PllCostas(self.IP, self.QP)                              # [rad]
+                freq_err = FllAtan2(self.IP_1, self.IP_2, self.QP_1, self.QP_2, t/2) # [rad/s]
+                chip_err = DllNneml2(self.IE, self.QE, self.IL, self.QL)             # [chip]
+                
+                # kalman filter
                 self.kf.UpdateIntegrationTime(t)
-                x = self.kf.Run(phase_err, freq_err, chip_err)  
+                x = self.kf.Run(phase_err, freq_err, chip_err)
+                
                 self.rem_carrier_phase = np.remainder(x[0], NP_TWO_PI)
                 self.carrier_doppler = x[1]
                 self.carrier_jitter = x[2]
-                self.rem_code_phase = np.mod(x[3], GPS_L1CA_CODE_SIZE)
-                if self.rem_code_phase > GPS_L1CA_CODE_SIZE/2:
-                    self.rem_code_phase -= GPS_L1CA_CODE_SIZE
+                self.rem_code_phase = x[3] - self.PDI * GPS_L1CA_CODE_SIZE
                 self.code_doppler = x[4] + self.kappa * (x[1] + self.T * x[2])
                 self.kf.x[0] = self.rem_carrier_phase
                 self.kf.x[3] = self.rem_code_phase
                 
                 # lock detectors
-                # self.channel_status.CodeLock, self.cn0_mag, self.amp_memory, self.noise_memory = \
-                #     CodeLockDetector(self.amp_memory, self.noise_memory, self.IP, self.QP, self.IN, \
-                #                     self.QN, t)
-                # self.channel_status.CarrierLock, self.IP_memory, self.QP_memory = PhaseLockDetector( \
-                #     self.IP_memory, self.QP_memory, self.IP, self.QP)
                 self.channel_status.CodeLock, self.channel_status.CarrierLock, self.cn0_mag, \
-                    self.NBD_memory, self.NBP_memory, self.N0P_memory = \
+                    self.NBD_memory, self.NBP_memory, self.PC_memory, self.PN_memory = \
                         CodeAndCarrierLockDetectors(self.NBD_memory, 
                                                     self.NBP_memory, 
-                                                    self.N0P_memory, 
+                                                    self.PC_memory, 
+                                                    self.PN_memory,
                                                     self.IP, 
                                                     self.QP, 
-                                                    self.IN, 
-                                                    self.QN, 
+                                                    self.channel_status.IP, 
+                                                    self.channel_status.QP, 
                                                     t)
                 self.kf.UpdateCn0(self.cn0_mag)
                 
@@ -389,41 +383,41 @@ class GpsL1caChannel(Channel):
                 self.channel_status.QE = self.QE
                 self.channel_status.IL = self.IL
                 self.channel_status.QL = self.QL
-                self.channel_status.IN = self.IN
-                self.channel_status.QN = self.QN
                 self.channel_status.IP_1 = self.IP_1
                 self.channel_status.QP_1 = self.QP_1
                 self.channel_status.IP_2 = self.IP_2
                 self.channel_status.QP_2 = self.QP_2
-                self.channel_status.ToW += 0.02
+                self.channel_status.ToW += self.T
                 self.channel_status.ToW = np.round(self.channel_status.ToW, 3)
                 
                 # update nav packet
-                self.nav_status.ToW     = self.channel_status.ToW
-                self.nav_status.CNo     = self.cn0_mag
-                self.nav_status.Doppler = self.channel_status.Doppler
+                self.nav_status.ToW         = self.channel_status.ToW
+                self.nav_status.CNo         = self.cn0_mag
+                self.nav_status.Doppler     = self.channel_status.Doppler
+                self.nav_status.CodePhase   = self.rem_code_phase
                 
                 # begin next NCO period
                 self.counter += self.PDI
-                self.total_samples = np.round(self.PDI * self.config['RFSIGNAL']['sampling_freq'] \
-                                    / ((GPS_L1CA_CODE_FREQ + self.code_doppler) / GPS_L1CA_CODE_SIZE)).astype(np.uint32)
+                code_phase_step = (GPS_L1CA_CODE_FREQ + self.code_doppler) / self.config['RFSIGNAL']['sampling_freq']
+                # self.logger.warn(f"rem_code_phase = {self.rem_code_phase}, Doppler = {self.carrier_doppler / NP_TWO_PI}, CodeDoppler = {self.code_doppler}")
+                self.total_samples = np.ceil((self.PDI * GPS_L1CA_CODE_SIZE - self.rem_code_phase) / code_phase_step).astype(np.uint32)
                 self.half_samples = np.round(self.total_samples / 2).astype(np.uint32)
+                
+                # reset
                 self.samples_processed = 0
                 self.IE   = 0.0
                 self.IP   = 0.0
                 self.IL   = 0.0
-                self.IN   = 0.0
                 self.IP_1 = 0.0
                 self.IP_2 = 0.0
                 self.QE   = 0.0
                 self.QP   = 0.0
                 self.QL   = 0.0
-                self.QN   = 0.0
                 self.QP_1 = 0.0
                 self.QP_2 = 0.0
             # print(f"samples_to_read = {samples_to_read}")
 
-        # save remainder phases
+        # --- save remainder phases ---
         self.channel_status.CodePhase = self.rem_code_phase 
         self.channel_status.CarrierPhase = self.rem_carrier_phase 
         self.nav_status.CodePhase = self.rem_code_phase
@@ -435,6 +429,7 @@ class GpsL1caChannel(Channel):
         """
         Synchronize to the data bit and extend the integration periods
         """
+        
         # check for bit flip
         if np.sign(self.IP) != np.sign(self.channel_status.IP):
             self.bit_sync_hist[self.counter % 20] += 1
@@ -445,27 +440,31 @@ class GpsL1caChannel(Channel):
                 ratio = self.bit_sync_hist[tmp[-1]] / self.bit_sync_hist[tmp[-2]]
                 if ratio > 4.0:
                     self.channel_status.DataLock = True
-                    # print(f"{self.channel_status.ID}: Hist = {self.bit_sync_hist}")
-                    # print(f"{self.channel_status.ID}: Bit sync! i = {tmp[-1]}, ratio = {ratio}, ms_processed = {self.counter}")
                     
                     # immediately continue current integration period and set T to 20 ms
                     self.T = 0.02
                     self.PDI = 20
-                    self.total_samples = np.round(self.PDI * self.config['RFSIGNAL']['sampling_freq'] \
-                            / ((GPS_L1CA_CODE_FREQ + self.code_doppler) / GPS_L1CA_CODE_SIZE)).astype(np.uint32)
+                    code_phase_step = (GPS_L1CA_CODE_FREQ + self.code_doppler) / self.config['RFSIGNAL']['sampling_freq']
+                    tmp_rem_code_phase = self.rem_code_phase - GPS_L1CA_CODE_SIZE
+                    self.total_samples = np.ceil((self.PDI * GPS_L1CA_CODE_SIZE - tmp_rem_code_phase) / code_phase_step).astype(np.uint32)
                     self.half_samples = np.round(self.total_samples / 2).astype(np.uint32)
+                    self.IP_1 += self.IP_2
+                    self.QP_1 += self.QP_2
+                    self.IP_2 = 0.0
+                    self.QP_2 = 0.0
                     
                     # reset filters
                     self.tap_spacing = self.config["TRACKING"]["correlator_epl_narrow"]
-                    self.w0p = NaturalFrequency(self.config["TRACKING"]["pll_bandwidth"], 3)
-                    self.w0f = NaturalFrequency(self.config["TRACKING"]["fll_bandwidth"], 2)
-                    self.w0d = NaturalFrequency(self.config["TRACKING"]["dll_bandwidth"], 2)
+                    self.w0p = NaturalFrequency(self.config["TRACKING"]["pll_bandwidth_narrow"], 3)
+                    self.w0f = NaturalFrequency(self.config["TRACKING"]["fll_bandwidth_narrow"], 2)
+                    self.w0d = NaturalFrequency(self.config["TRACKING"]["dll_bandwidth_narrow"], 2)
                     self.kf.UpdateNaturalFreqs(self.w0p, self.w0f, self.w0d)
-                    # self.kf.UpdateIntegrationTime(self.T)
-                    # self.amp_memory   = 0.0
-                    # self.noise_memory = 0.0
-                    # self.IP_memory    = 0.0
-                    # self.QP_memory    = 0.0
+                    # self.NBD_memory = 0.0
+                    # self.NBP_memory = 0.0
+                    # self.PC_memory  = 0.0
+                    # self.PN_memory  = 0.0
+                    # self.channel_status.IP = 0.0
+                    # self.channel_status.QP = 0.0
                     return True
         return False
     
@@ -520,14 +519,6 @@ class GpsL1caChannel(Channel):
             )
             self.log_queue.put(self.lnav_parser.ephemerides)
             self.nav_queue.put(self.lnav_parser.ephemerides)
-                
-# ------------------------------------------------------------------------------------------------ #
-
-    @property
-    def GetNavStates(self, transit_time: np.double, calc_accel: bool=False):
-        clk, pos, vel, acc = \
-            self.lnav_parser.GetNavStates(self.channel_status.ToW - transit_time, calc_accel)
-        return clk, pos, vel, acc
     
 # ===== GPS L1 C/A Code Generator ================================================================ #
 

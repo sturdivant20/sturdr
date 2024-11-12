@@ -23,6 +23,7 @@ import yaml
 import logging
 from multiprocessing import Queue
 from pathlib import Path
+import numpy as np
 
 from sturdr.rcvr.navigator import Navigator
 from sturdr.rcvr.channel_controller import ChannelController
@@ -56,15 +57,16 @@ def main():
     nav_queue = Queue()
     navigator = Navigator(config, log_queue, nav_queue)
     navigator.start()
+    nav_update_ms = 1000 / config['MEASUREMENTS']['frequency']
     
     # open rf data buffer
     rfbuffer = RfDataBuffer(config)
 
     # initialize channel controller
-    prn = [1,7,14,17,19,21,30]
+    prn = [1,7,14,17,19,21,30] #[1,3,7,8,13,14,17,19,21,30]
     channel_controller = ChannelController(config, rfbuffer, log_queue, nav_queue)
     channel_controller.SpawnChannels(config['CHANNELS']['signals'], config['CHANNELS']['max_channels'])
-    for i in range(7):
+    for i in range(len(prn)):
         channel_controller.channels[i].SetSatellite(prn[i])
         channel_controller.channels[i].start()
 
@@ -79,9 +81,12 @@ def main():
         # increment time processed
         ms_processed += config['GENERAL']['ms_read_size']
         
-        # log every second to the screen
-        if not (ms_processed % 1000):
+        # navigation updates
+        if not (ms_processed % nav_update_ms):
             nav_queue.put(True)
+        
+        # log every second to the screen
+        if not (ms_processed % 5000):
             tmp_t = time.time()
             sec0, ms0 = divmod(int(1000 * (tmp_t - start_t)), 1000)
             min0, sec0 = divmod(sec0, 60)
@@ -100,4 +105,5 @@ def main():
     return
     
 if __name__ == '__main__':
+    np.set_printoptions(suppress=True)
     main()

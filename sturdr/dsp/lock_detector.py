@@ -151,11 +151,12 @@ def CodeLockDetector(Amp_memory: np.double,
 @njit(cache=True, fastmath=True)
 def CodeAndCarrierLockDetectors(NBD_memory: np.double, 
                                 NBP_memory: np.double, 
-                                N0P_memory: np.double, 
+                                PC_memory: np.double, 
+                                PN_memory: np.double,
                                 IP: np.double, 
                                 QP: np.double, 
-                                IN: np.double, 
-                                QN: np.double, 
+                                IP_prev: np.double, 
+                                QP_prev: np.double, 
                                 dt: np.double, 
                                 alpha: np.double=5e-3):
     """Code and carrier GNSS lock detectors
@@ -166,34 +167,43 @@ def CodeAndCarrierLockDetectors(NBD_memory: np.double,
         Narrow band difference memory
     NBP_memory : np.double
         Narrow band power memory
-    N0P_memory : np.double
+    PC_memory : np.double
+        Carrier power memory
+    PN_memory : np.double
         Noise power memory
     IP : np.double
         Inphase prompt correlator value
     QP : np.double
         Quadrature prompt correlator value
-    IN : np.double
-        Inphase noise correlator value
-    QN : np.double
-        Quadrature noise correlator value
+    IP_prev : np.double
+        Previous inphase prompt correlator value
+    QP_prev : np.double
+        Previous quadrature prompt correlator value
     dt : np.double
         Integration time [s]
     alpha : np.double, optional
         Smoothing (filtering) coefficient, by default 5e-3
     """
-    NBD = LowPassFilter(IP**2 - QP**2, NBD_memory, alpha)
-    NBP = LowPassFilter(IP**2 + QP**2, NBP_memory, alpha)
-    N0P = LowPassFilter(IN**2 + QN**2, N0P_memory, alpha)
+    P_new = IP**2 + QP**2
+    P_old = IP_prev**2 + QP_prev**2
     
-    # cn0 should be greater than 30 dB (~1000)
-    cn0_mag = (NBP - 2.0 * N0P) / (2.0 * N0P * dt)
-    code_lock = cn0_mag > 1000.0
+    # --- carrier lock detection ---
+    NBD = LowPassFilter(IP**2 - QP**2, NBD_memory, alpha)
+    NBP = LowPassFilter(P_new, NBP_memory, alpha)
     
     # cos(2\phi) = NBD/NBP should have a phase error of \phi<15 degrees to be considered locked
     #   -> cos(2 * 15) = 0.866
     carrier_lock = (NBD / NBP) > 0.866
     
-    return code_lock, carrier_lock, cn0_mag, NBD, NBP, N0P
+    # code lock detection (based on Beaulieu's Method)
+    PC  = LowPassFilter(0.5 * (P_new + P_old), PC_memory, alpha)
+    PN = LowPassFilter((np.sqrt(P_new) - np.sqrt(P_old))**2, PN_memory, alpha)
+    
+    # cn0 should be greater than 30 dB (~1000)
+    cn0_mag = PC / (PN * dt) # (1 / (PN / PC)) / dt
+    code_lock = cn0_mag > 1000.0
+    
+    return code_lock, carrier_lock, cn0_mag, NBD, NBP, PC, PN
 
 @njit(cache=True, fastmath=True)
 def LowPassFilter(new: np.double, old: np.double, alpha: np.double=5e-3):

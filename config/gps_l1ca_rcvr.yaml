@@ -1,6 +1,6 @@
 GENERAL:
   scenario        : GPS_L1CA_TEST
-  ms_to_process   : 34000
+  ms_to_process   : 40000
   ms_chunk_size   : 100
   ms_read_size    : 20
   in_file         : ./rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin
@@ -42,6 +42,8 @@ TRACKING:
 
 MEASUREMENTS:
   frequency            : 1
+  process_std          : 0.5
+  clock_model          : high_quality_tcxo
   nominal_transit_time : 0.068802
   pseudorange          : true
   doppler              : true

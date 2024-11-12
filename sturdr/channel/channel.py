@@ -48,8 +48,6 @@ class ChannelPacket:
     QE            : np.double       = np.nan
     IL            : np.double       = np.nan
     QL            : np.double       = np.nan
-    IN            : np.double       = np.nan
-    QN            : np.double       = np.nan
     IP_1          : np.double       = np.nan
     QP_1          : np.double       = np.nan
     IP_2          : np.double       = np.nan
@@ -67,6 +65,7 @@ class NavPacket:
     ToW           : np.double       = np.nan
     CNo           : np.double       = np.nan
     Doppler       : np.double       = np.nan
+    CodeDoppler   : np.double       = np.nan
     CodePhase     : np.double       = np.nan
     CarrierPhase  : np.double       = np.nan
     

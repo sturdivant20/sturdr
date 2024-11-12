@@ -46,6 +46,31 @@ def DllNneml(IE: np.double, QE: np.double, IL: np.double, QL: np.double):
     return 0.5 * (E - L) / (E + L)
 
 @njit(cache=True, fastmath=True)
+def DllNneml2(IE: np.double, QE: np.double, IL: np.double, QL: np.double):
+    """
+    Delay Lock Loop - Normalized non-coherent early minus late discriminator
+
+    Parameters
+    ----------
+    IE : np.double
+        in-phase early discriminator
+    QE : np.double
+        quadra-phase early discriminator
+    IL : np.double
+        in-phase late discriminator
+    QL : np.double
+        quadra-phase late discriminator
+
+    Returns
+    -------
+    tau : np.double
+        chip error/misalignment [chip]
+    """
+    E = IE**2 + QE**2
+    L = IL**2 + QL**2
+    return 0.5 * (E - L) / (E + L)
+
+@njit(cache=True, fastmath=True)
 def DllNcdp(IE: np.double, IP: np.double, IL: np.double):
     """
     Delay Lock Loop - Normalized coherent dot product discriminator

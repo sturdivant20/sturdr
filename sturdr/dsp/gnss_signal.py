@@ -113,10 +113,16 @@ def CodeNCO(code: np.ndarray,
         Initial fractional phase of the code during the next period
     """
     
-    samples_per_code = np.round(sampling_freq / (code_freq / code_len)) + 1
-    phase_points = np.mod(remainder_phase + np.arange(samples_per_code) * code_freq / sampling_freq, code_len)
-    upsampled_code = code[phase_points[:-1].astype(np.int32)]
-    remainder_phase = np.mod(phase_points[-1], code_len)
+    code_phase_step = code_freq / sampling_freq
+    samples_per_code = np.ceil((code_len - remainder_phase) / code_phase_step)
+    phase_points = remainder_phase + code_phase_step * np.arange(samples_per_code)
+    upsampled_code = code[phase_points.astype(np.int32)]
+    remainder_phase = np.remainder(phase_points[-1] + code_phase_step, code_len)
+    
+    # samples_per_code = np.round(sampling_freq / (code_freq / code_len)) + 1
+    # phase_points = np.mod(remainder_phase + np.arange(samples_per_code) * code_freq / sampling_freq, code_len)
+    # upsampled_code = code[phase_points[:-1].astype(np.int32)]
+    # remainder_phase = np.mod(phase_points[-1], code_len)
     
     return upsampled_code, remainder_phase
 
@@ -192,19 +198,16 @@ def AccumulateEPL(rfdata: np.ndarray,
         ):
     E   = 0.0
     L   = 0.0
-    N   = 0.0
     P_1 = 0.0
     P_2 = 0.0
     
     d_carrier = (carrier_freq + 0.5 * carrier_jitter / sampling_freq) / sampling_freq
     d_code    = code_freq / sampling_freq
-    noise_tap = 150 # 150 chips from prompt estimate
     
     for i in range(n_samples):
         signal = np.exp(-1j * rem_carrier_phase) * rfdata[i]
         E += (code[np.int32((rem_code_phase + tap_spacing) % code_len)] * signal)
         L += (code[np.int32((rem_code_phase - tap_spacing) % code_len)] * signal)
-        N += (code[np.int32((rem_code_phase + noise_tap) % code_len)] * signal)
         if samples_accumulated < half_samples:
             P_1 += (code[np.int32(rem_code_phase % code_len)] * signal)
         else:
@@ -215,4 +218,4 @@ def AccumulateEPL(rfdata: np.ndarray,
         rem_carrier_phase += d_carrier
         samples_accumulated += 1
     P = P_1 + P_2
-    return E, P, L, P_1, P_2, N, samples_accumulated, rem_carrier_phase, rem_code_phase
+    return E, P, L, P_1, P_2, samples_accumulated, rem_carrier_phase, rem_code_phase

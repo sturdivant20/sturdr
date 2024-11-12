@@ -45,7 +45,7 @@ def NaturalFrequency(bw: np.double, order: int):
     ValueError
         Invlaid loop filter order
     """
-    a = 0.7071 # 1.414
+    a = 1.4142 # 0.7071
     b = 1.1
     c = 2.4
     
@@ -90,7 +90,7 @@ def FLLassistedPLL_2rdOrder(phase_err: np.double,
     vel_accumulator : np.double
         Updated velocity accumulator memory
     """
-    a = 0.7071 # 1.414
+    a = 1.4142 # 0.7071
     
     # velocity accumulator
     update = vel_accumulator + T * (phase_err * w0p**2 + freq_err * w0f)
@@ -136,7 +136,7 @@ def FLLassistedPLL_3rdOrder(phase_err: np.double,
         Updated velocity accumulator memory
     """
     
-    a = 0.7071 # 1.414
+    a = 1.4142 # 0.7071
     b = 1.1
     c = 2.4
     
@@ -167,7 +167,7 @@ def PLL_2ndOrder(phase_err: np.double, vel_accumulator: np.double, T: np.double,
     _type_
         _description_
     """
-    a = 0.7071 # 1.414
+    a = 1.4142 # 0.7071
     
     update = vel_accumulator + T * w0d**2*phase_err
     output = 0.5*(vel_accumulator + update) + a*w0d*phase_err 
@@ -442,23 +442,23 @@ class TrackingKF:
         return
     
     def __reset_C(self):
-        # T, k = self.T, self.kappa
-        # self.C = np.asarray(
-        #     [
-        #         [1.0,   T/2,   T**2/6, 0.0, 0.0], 
-        #         [0.0,   1.0,      T/2, 0.0, 0.0], 
-        #         [0.0, k*T/2, k*T**2/6, 1.0, T/2]
-        #     ],
-        #     dtype=np.double
-        # )
+        T, k = self.T, self.kappa
         self.C = np.asarray(
             [
-                [1.0, 0.0, 0.0, 0.0, 0.0], 
-                [0.0, 1.0, 0.0, 0.0, 0.0], 
-                [0.0, 0.0, 0.0, 1.0, 0.0]
+                [1.0,   T/2,   T**2/6, 0.0, 0.0], 
+                [0.0,   1.0,      T/2, 0.0, 0.0], 
+                [0.0, k*T/2, k*T**2/6, 1.0, T/2]
             ],
             dtype=np.double
         )
+        # self.C = np.asarray(
+        #     [
+        #         [1.0, 0.0, 0.0, 0.0, 0.0], 
+        #         [0.0, 1.0, 0.0, 0.0, 0.0], 
+        #         [0.0, 0.0, 0.0, 1.0, 0.0]
+        #     ],
+        #     dtype=np.double
+        # )
         return
         
     def __reset_Q(self):
