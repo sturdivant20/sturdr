@@ -187,13 +187,14 @@ class NavKF:
     Kalman Filter for ECEF navigation states
     """
 
-    __slots__ = 'x', 'P', 'A', 'Q', 'R', 'process_std', 'clock_model', 'T'
+    __slots__ = 'x', 'P', 'A', 'Q', 'R', 'process_std', 'clock_model', 'innov_std', 'T'
     x           : np.ndarray[np.double]
     P           : np.ndarray[np.double]
     A           : np.ndarray[np.double]
     Q           : np.ndarray[np.double]
     process_std : np.double
     clock_model : str
+    innov_std   : np.double
     T           : np.double
     
     def __init__(self, 
@@ -206,6 +207,7 @@ class NavKF:
         self.P = P
         self.process_std = process_std
         self.clock_model = clock_model
+        self.innov_std = 2.9
         self.T = T
         self.__reset_A()
         self.__reset_Q()
@@ -216,10 +218,11 @@ class NavKF:
             sv_vel: np.ndarray[np.double], 
             psr: np.ndarray[np.double], 
             psrdot: np.ndarray[np.double], 
-            cn0: np.ndarray[np.double]):
+            CNo: np.ndarray[np.double]):
         # Predicition
         self.x = self.A @ self.x
-        self.P = self.A @ self.P @ self.A.T + self.Q
+        Q_2 = 0.5 * self.Q
+        self.P = self.A @ (self.P + Q_2) @ self.A.T + Q_2
         
         # Correction
         N1              = psr.size                              # half number of measurements
@@ -229,27 +232,53 @@ class NavKF:
         H[:N1, 6]       = one
         H[N1:, 7]       = one
         dz              = np.zeros(N, dtype=np.double)          # Measurement innovation
+        R               = np.diag(np.concatenate((
+                                BETA**2 * DllVariance(CNo, 0.02),
+                                (LAMBDA/2/np.pi)**2 * FllVariance(CNo, 0.02)
+                         )))
 
         for i in range(N1):
-            dr           = self.x[:3]  - sv_pos[i, :]
-            dv           = self.x[3:6] - sv_vel[i, :]
-            r            = np.sqrt(dr[0]**2 + dr[1]**2 + dr[2]**2)
+            # predict approximate range and account for earth's rotation (Groves 8.34)
+            dr           = self.x[0:3] - sv_pos[i,:]
+            r            = np.sqrt(dr @ dr)
+            omegatau     = OMEGA_DOT * r / LIGHT_SPEED
+            somegatau    = np.sin(omegatau)
+            comegatau    = np.cos(omegatau)
+            C_i_e        = np.array(
+                                [
+                                    [ comegatau, somegatau, 0.0],
+                                    [-somegatau, comegatau, 0.0],
+                                    [       0.0,       0.0, 1.0]
+                                ], 
+                                dtype=np.double
+                           )
+            
+            # predict pseudorange (Groves 8.35, 9.165)
+            dr           = self.x[0:3] - C_i_e @ sv_pos[i,:]
+            r            = np.sqrt(dr @ dr) # np.sqrt(dr[0]**2 + dr[1]**2 + dr[2]**2)
             u            = dr / r
+            pred_psr     = r + self.x[6]
+            
+            # predict pseudorange-rate (Groves 8.44, 9.165)
+            dv           = (self.x[3:6] + OMEGA_IE_E @ self.x[0:3]) - C_i_e @ (sv_vel[i,:] + OMEGA_IE_E @ sv_pos[i,:])
             udot         = (dv * r**2 - dr * (dv @ dr)) / r**3
-            H[i, :3]     = u
-            H[N1+i, :3]  = udot
+            pred_psrdot  = u @ dv + self.x[7]
+            
+            # setup the measurement matrix and innovation
+            H[i, 0:3]    = u
+            H[N1+i, 0:3] = udot
             H[N1+i, 3:6] = u
-            dz[i]        = psr[i] - (r + self.x[6])
-            dz[N1+i]     = psrdot[i] - (u @ dv + self.x[7])
-
-        R = np.diag(
-            np.concatenate(
-                (
-                    BETA**2 * DllVariance(cn0, 0.02),
-                    (LAMBDA/2/np.pi)**2 * FllVariance(cn0, 0.02)
-                )
-            )
-        )
+            dz[i]        = psr[i] - pred_psr
+            dz[N1+i]     = psrdot[i] - pred_psrdot
+            
+        # innovation filter
+        S = H @ self.P @ H.T + R
+        norm_dz = np.abs(dz / np.sqrt(S.diagonal()))
+        mask = norm_dz < self.innov_std
+        dz = dz[mask]
+        H = H[mask,:]
+        R = np.diag(R.diagonal()[mask])
+            
         PHt = self.P @ H.T
         K = PHt @ np.linalg.inv(H @ PHt + R)
         L = np.eye(8) - K @ H

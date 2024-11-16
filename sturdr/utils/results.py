@@ -44,7 +44,7 @@ def ParseChannelResults(filename: str):
             - Constellation : str
             - Signal        : str
             - ID            : str 
-            - State         : str 
+            - State         : list[str] 
             - CodeLock      : list[bool]
             - CarrierLock   : list[bool] 
             - DataLock      : list[bool]

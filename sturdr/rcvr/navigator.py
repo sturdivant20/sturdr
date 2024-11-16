@@ -18,10 +18,9 @@ import logging
 from multiprocessing import Process, Queue
 from dataclasses import dataclass, asdict
 
-from sturdr.dsp.discriminator import DllVariance, FllVariance, PllVariance
 from sturdr.channel.channel import NavPacket
 from sturdr.nav.ephemeris import Ephemerides, GetNavStates
-from sturdr.nav.estimation import LeastSquares, LeastSquaresPos, NavKF
+from sturdr.nav.estimation import LeastSquares, NavKF
 from sturdr.utils.coordinates import ecef2lla, eci2ecef, ecef2enuDcm
 from sturdr.utils.constants import GPS_L1CA_CARRIER_FREQ, GPS_L1CA_CODE_FREQ, LIGHT_SPEED
 
@@ -48,8 +47,8 @@ class Navigator(Process):
     """
     
     __slots__ = 'config', 'logger', 'log_queue', 'nav_queue', \
-                'ephemerides', 'channel_id', 'Week', 'ToW', 'CNo', 'CodePhase', 'Doppler', 'CodeDoppler', \
-                'psr', 'psrdot', 'prev_transmit_times', 'prev_sv_clk_corr', 'nav_initialized', 'x', 'kf'
+                'ephemerides', 'channel_id', 'Week', 'ToW', 'CNo', 'CodePhase', 'Doppler', 'psr', \
+                'psrdot', 'prev_transmit_times', 'prev_sv_clk_corr', 'nav_initialized', 'x', 'kf'
     config               : dict
     logger               : logging.Logger
     log_queue            : Queue
@@ -63,7 +62,6 @@ class Navigator(Process):
     CodePhase            : np.ndarray
     CarrierPhase         : np.ndarray
     Doppler              : np.ndarray
-    CodeDoppler          : np.ndarray
     
     T                    : np.double
     psr                  : np.ndarray 
@@ -74,7 +72,10 @@ class Navigator(Process):
     x                    : np.ndarray
     kf                   : NavKF
        
-    def __init__(self, config: dict, log_queue: Queue, nav_queue: Queue):
+    def __init__(self, 
+                 config: dict, 
+                 log_queue: Queue, 
+                 nav_queue: Queue):
         Process.__init__(self, name='SturDR_Navigator', daemon=True)
         self.config = config
         
@@ -83,7 +84,8 @@ class Navigator(Process):
         self.log_queue = log_queue
         
         # setup nav queue
-        self.nav_queue   = nav_queue
+        self.nav_queue     = nav_queue
+        
         self.ephemerides = [{}] * config['CHANNELS']['max_channels'][0]
         self.channel_id  = np.empty(config['CHANNELS']['max_channels'][0], dtype=object)
         self.Week        = np.empty(config['CHANNELS']['max_channels'][0], dtype=np.double)
@@ -104,6 +106,7 @@ class Navigator(Process):
         return
     
     def run(self):
+        # TODO: figure out why all tracking observables are not always updated prior to the navigation update
         while True:
             msg = self.nav_queue.get()
             if isinstance(msg, NavPacket):
@@ -115,12 +118,9 @@ class Navigator(Process):
                 self.CodePhase[msg.ChannelNum]    = msg.CodePhase
                 self.CarrierPhase[msg.ChannelNum] = msg.CarrierPhase
                 self.Doppler[msg.ChannelNum]      = msg.Doppler
-                self.CodeDoppler[msg.ChannelNum]  = msg.CodeDoppler
             elif isinstance(msg, Ephemerides):
                 # this packet should update our current navigation ephemeris
                 channel_num = np.where(self.channel_id == msg.id)[0][0]
-                # print(self.channel_id, msg.id, channel_num)
-                # pprint(asdict(msg, dict_factory=Ephemerides.dict_factory))
                 self.ephemerides[channel_num] = asdict(msg, dict_factory=Ephemerides.dict_factory)
             elif msg is None:
                 # processing is finished
@@ -161,7 +161,7 @@ class Navigator(Process):
             # calculate initial pseudorange-rate
             self.psrdot = -LAMBDA * self.Doppler + sv_clk[:,1] * LIGHT_SPEED
             
-            # least squares solution
+            # initial least squares solution
             self.x, P = LeastSquares(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask], self.x)
             
             # remove initial clock bias
@@ -178,6 +178,7 @@ class Navigator(Process):
             self.nav_initialized = True
         else:
             # propagate pseudorange
+            # TODO: there must be a more numerically precise version of this
             self.psr += LIGHT_SPEED * (self.T                                        # predicted time difference
                                        - (transmit_times - self.prev_transmit_times) # actual receive time difference
                                        - (sv_clk[:,0] - self.prev_sv_clk_corr)       # satellite bias difference
@@ -196,9 +197,9 @@ class Navigator(Process):
         
         # log results
         lla = ecef2lla(self.x[:3])
-        enuv = ecef2enuDcm(lla) @ self.x[3:6]
-        self.logger.info(f"LLA  => {lla[0]:.8f}{chr(176)}, {lla[1]:.8f}{chr(176)}, {lla[2]:.3f} m")
-        self.logger.info(f"ENUV => {enuv[0]:.6f}, {enuv[1]:.6f}, {enuv[2]:.6f} m/s")
+        # enuv = ecef2enuDcm(lla) @ self.x[3:6]
+        self.logger.debug(f"LLA  => {lla[0]:.8f}{chr(176)}, {lla[1]:.8f}{chr(176)}, {lla[2]:.3f} m")
+        # self.logger.debug(f"ENUV => {enuv[0]:.6f}, {enuv[1]:.6f}, {enuv[2]:.6f} m/s")
         tmp = NavResult(
             GpsWeek = self.Week[mask].max(),
             GpsToW  = self.ToW[mask].max(),

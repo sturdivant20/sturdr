@@ -41,9 +41,9 @@ TRACKING:
   dll_bandwidth_narrow  : 0.01
 
 MEASUREMENTS:
-  frequency            : 1
-  process_std          : 0.5
-  clock_model          : high_quality_tcxo
+  frequency            : 50
+  process_std          : 1.0
+  clock_model          : low_quality_tcxo
   nominal_transit_time : 0.068802
   pseudorange          : true
   doppler              : true

@@ -58,14 +58,13 @@ class NavPacket:
     """
     Minimal packet of navigation data to be sent to the Navigator
     """
-    ChannelNum    : np.uint8        = -1
+    ChannelNum    : np.int8         = -1
     Signal        : GnssSignalTypes = GnssSignalTypes.UNKNOWN
     ID            : str             = ''
-    Week          : np.uint16       = np.nan
+    Week          : np.int16        = -1
     ToW           : np.double       = np.nan
     CNo           : np.double       = np.nan
     Doppler       : np.double       = np.nan
-    CodeDoppler   : np.double       = np.nan
     CodePhase     : np.double       = np.nan
     CarrierPhase  : np.double       = np.nan
     

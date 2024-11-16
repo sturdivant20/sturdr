@@ -340,7 +340,6 @@ class GpsL1caChannel(Channel):
                     # if data bits are syncronized, try demodulation
                     else:
                         self.Demodulate()
-                        self.channel_status.ToW -= 0.02
                 
                 # discriminators
                 t = self.total_samples / self.config['RFSIGNAL']['sampling_freq']
@@ -481,42 +480,43 @@ class GpsL1caChannel(Channel):
             self.channel_status.Week = self.lnav_parser.week
             self.channel_status.ToW  = self.lnav_parser.TOW
             self.nav_status.Week = self.lnav_parser.week
+            self.channel_status.ToW -= 0.02
     
         if self.lnav_parser.subframe1 and self.lnav_parser.subframe2 and self.lnav_parser.subframe3:
             self.channel_status.Ephemeris = True
             self.lnav_parser.SetID(self.channel_status.ID)
             
             # save ephemerids to csv file and log to terminal
-            self.logger.debug(f"Channel {self.channel_status.ChannelNum} - {self.channel_status.ID} Ephemeris:\n"
-                                f"\t\t\t\t  -----------------------------------\n"
-                                f"\t\t\t\t  week     = {self.lnav_parser.week}\n"
-                                f"\t\t\t\t  ura      = {self.lnav_parser.ephemerides.ura}\n"
-                                f"\t\t\t\t  health   = {self.lnav_parser.ephemerides.health}\n"
-                                f"\t\t\t\t  T_GD     = {self.lnav_parser.ephemerides.tgd}\n"
-                                f"\t\t\t\t  IODC     = {self.lnav_parser.ephemerides.iodc}\n"
-                                f"\t\t\t\t  t_oc     = {self.lnav_parser.ephemerides.toc}\n"
-                                f"\t\t\t\t  af2      = {self.lnav_parser.ephemerides.af2}\n"
-                                f"\t\t\t\t  af1      = {self.lnav_parser.ephemerides.af1}\n"
-                                f"\t\t\t\t  af0      = {self.lnav_parser.ephemerides.af0}\n"
-                                f"\t\t\t\t  IODE_SF2 = {self.lnav_parser.ephemerides.iode}\n"
-                                f"\t\t\t\t  C_rs     = {self.lnav_parser.ephemerides.crs}\n"
-                                f"\t\t\t\t  deltan   = {self.lnav_parser.ephemerides.deltan}\n"
-                                f"\t\t\t\t  M_0      = {self.lnav_parser.ephemerides.m0}\n"
-                                f"\t\t\t\t  C_uc     = {self.lnav_parser.ephemerides.cuc}\n"
-                                f"\t\t\t\t  e        = {self.lnav_parser.ephemerides.e}\n"
-                                f"\t\t\t\t  C_us     = {self.lnav_parser.ephemerides.cus}\n"
-                                f"\t\t\t\t  sqrtA    = {self.lnav_parser.ephemerides.sqrtA}\n"
-                                f"\t\t\t\t  t_oe     = {self.lnav_parser.ephemerides.toe}\n"
-                                f"\t\t\t\t  C_ic     = {self.lnav_parser.ephemerides.cic}\n"
-                                f"\t\t\t\t  omega0   = {self.lnav_parser.ephemerides.omega0}\n"
-                                f"\t\t\t\t  C_is     = {self.lnav_parser.ephemerides.cis}\n"
-                                f"\t\t\t\t  i_0      = {self.lnav_parser.ephemerides.i0}\n"
-                                f"\t\t\t\t  C_rc     = {self.lnav_parser.ephemerides.crc}\n"
-                                f"\t\t\t\t  omega    = {self.lnav_parser.ephemerides.omega}\n"
-                                f"\t\t\t\t  omegaDot = {self.lnav_parser.ephemerides.omegaDot}\n"
-                                f"\t\t\t\t  IODE_SF3 = {self.lnav_parser.ephemerides.iode}\n"
-                                f"\t\t\t\t  iDot     = {self.lnav_parser.ephemerides.iDot}"
-            )
+            # self.logger.debug(f"Channel {self.channel_status.ChannelNum} - {self.channel_status.ID} Ephemeris:\n"
+            #                     f"\t\t\t\t  -----------------------------------\n"
+            #                     f"\t\t\t\t  week     = {self.lnav_parser.week}\n"
+            #                     f"\t\t\t\t  ura      = {self.lnav_parser.ephemerides.ura}\n"
+            #                     f"\t\t\t\t  health   = {self.lnav_parser.ephemerides.health}\n"
+            #                     f"\t\t\t\t  T_GD     = {self.lnav_parser.ephemerides.tgd}\n"
+            #                     f"\t\t\t\t  IODC     = {self.lnav_parser.ephemerides.iodc}\n"
+            #                     f"\t\t\t\t  t_oc     = {self.lnav_parser.ephemerides.toc}\n"
+            #                     f"\t\t\t\t  af2      = {self.lnav_parser.ephemerides.af2}\n"
+            #                     f"\t\t\t\t  af1      = {self.lnav_parser.ephemerides.af1}\n"
+            #                     f"\t\t\t\t  af0      = {self.lnav_parser.ephemerides.af0}\n"
+            #                     f"\t\t\t\t  IODE_SF2 = {self.lnav_parser.ephemerides.iode}\n"
+            #                     f"\t\t\t\t  C_rs     = {self.lnav_parser.ephemerides.crs}\n"
+            #                     f"\t\t\t\t  deltan   = {self.lnav_parser.ephemerides.deltan}\n"
+            #                     f"\t\t\t\t  M_0      = {self.lnav_parser.ephemerides.m0}\n"
+            #                     f"\t\t\t\t  C_uc     = {self.lnav_parser.ephemerides.cuc}\n"
+            #                     f"\t\t\t\t  e        = {self.lnav_parser.ephemerides.e}\n"
+            #                     f"\t\t\t\t  C_us     = {self.lnav_parser.ephemerides.cus}\n"
+            #                     f"\t\t\t\t  sqrtA    = {self.lnav_parser.ephemerides.sqrtA}\n"
+            #                     f"\t\t\t\t  t_oe     = {self.lnav_parser.ephemerides.toe}\n"
+            #                     f"\t\t\t\t  C_ic     = {self.lnav_parser.ephemerides.cic}\n"
+            #                     f"\t\t\t\t  omega0   = {self.lnav_parser.ephemerides.omega0}\n"
+            #                     f"\t\t\t\t  C_is     = {self.lnav_parser.ephemerides.cis}\n"
+            #                     f"\t\t\t\t  i_0      = {self.lnav_parser.ephemerides.i0}\n"
+            #                     f"\t\t\t\t  C_rc     = {self.lnav_parser.ephemerides.crc}\n"
+            #                     f"\t\t\t\t  omega    = {self.lnav_parser.ephemerides.omega}\n"
+            #                     f"\t\t\t\t  omegaDot = {self.lnav_parser.ephemerides.omegaDot}\n"
+            #                     f"\t\t\t\t  IODE_SF3 = {self.lnav_parser.ephemerides.iode}\n"
+            #                     f"\t\t\t\t  iDot     = {self.lnav_parser.ephemerides.iDot}"
+            # )
             self.log_queue.put(self.lnav_parser.ephemerides)
             self.nav_queue.put(self.lnav_parser.ephemerides)
     

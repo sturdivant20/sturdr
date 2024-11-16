@@ -11,11 +11,12 @@ import logging.handlers
 import multiprocessing.synchronize
 import numpy as np
 import logging
-import multiprocessing
 from multiprocessing import Process, Queue, Barrier
+
 from sturdr.rcvr.rf_data_buffer import RfDataBuffer
 from sturdr.utils.enums import GnssSignalTypes
 from sturdr.channel import channel, gps_l1ca_channel
+from sturdr.rcvr.navigator import Navigator
 
 # TODO: add more channel types in "SpawnChannels"
 
@@ -26,7 +27,7 @@ class ChannelController:
     """
     
     __slots__ = 'config', 'rfbuffer', 'log_queue', 'nav_queue', 'logger', 'start_barrier', \
-                'done_barrier', 'channels', 'nchannels'
+                'done_barrier', 'channels', 'nchannels', 'ms_processed', 'navigator'
     config        : dict                                # Receiver config
     rfbuffer      : RfDataBuffer                        # file parser and memory manager
     log_queue     : Queue                               # queue/pipe for logging
@@ -36,6 +37,8 @@ class ChannelController:
     done_barrier  : multiprocessing.synchronize.Barrier # Indicated end of data proccessing and reads next chunk of data
     channels      : list[channel.Channel]               # contains status/id information about channels
     nchannels     : int                                 # number of active channels
+    ms_processed  : int                                 # number of milliseconds processed
+    navigator     : Navigator
     
     def __init__(self, config: dict, rfbuffer: RfDataBuffer, log_queue: Queue, nav_queue: Queue):
         # Process.__init__(self, name='SturDR_ChannelManager')
@@ -58,14 +61,21 @@ class ChannelController:
         self.logger = logging.getLogger('SturDR_Logger')
         self.log_queue = log_queue
         
-        # save nav queue
-        self.nav_queue = nav_queue
-        
         # initialize RfDataBuffer, shared memory, and memory queue
         # self.rfbuffer = RfDataBuffer(config)
         self.rfbuffer = rfbuffer
-        self.start_barrier = Barrier(self.nchannels + 1)
-        self.done_barrier = Barrier(self.nchannels + 1)
+        self.start_barrier = Barrier(self.nchannels + 2)
+        self.done_barrier = Barrier(self.nchannels + 2)
+        
+        # start nav queue
+        self.nav_queue = nav_queue
+        self.navigator = Navigator(self.config, self.log_queue, self.nav_queue, self.start_barrier, self.done_barrier)
+        self.navigator.start()
+        
+        # initialize processing time
+        self.ms_processed = 0
+        
+        return
     
     def SpawnChannels(self, signal_type: list[str]|np.ndarray[str], nchan: list[int]|np.ndarray[int]):
         """
@@ -99,8 +109,13 @@ class ChannelController:
         Synchronized channel processing
         """
         # read new data and inform channel
+        self.rfbuffer.NextChunk()
         self.start_barrier.wait()
+        
+        # increment time processed
+        self.ms_processed += self.config['GENERAL']['ms_read_size']
         
         # wait for the channels and process new data
         self.done_barrier.wait()
-        return
+        
+        return self.ms_processed
