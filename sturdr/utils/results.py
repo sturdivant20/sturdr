@@ -7,7 +7,6 @@ date    November 2024
 ======  ============================================================================================
 """
 
-import os
 import csv
 import numpy as np
 from pathlib import Path
@@ -16,17 +15,6 @@ from dataclasses import asdict
 from sturdr.channel.channel import ChannelPacket
 from sturdr.nav.ephemeris import Ephemerides
 from sturdr.rcvr.navigator import NavResult
-
-def EnsurePathExists(path: str):
-    """
-    Make sure directory chosen exists
-
-    Parameters
-    ----------
-    path : str
-        path to check
-    """
-    os.makedirs(os.path.realpath(path), exist_ok=True)
     
 def ParseChannelResults(filename: str):
     """Parses the ChannelStatus results CSV

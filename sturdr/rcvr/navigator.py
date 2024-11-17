@@ -15,6 +15,7 @@ refs    1. "Principles of GNSS, Inertial, and Multisensor Integrated Navigation 
 
 import numpy as np
 import logging
+import logging.handlers
 from multiprocessing import Process, Queue
 from dataclasses import dataclass, asdict
 
@@ -79,12 +80,9 @@ class Navigator(Process):
         Process.__init__(self, name='SturDR_Navigator', daemon=True)
         self.config = config
         
-        # find and initialize logger
-        self.logger    = logging.getLogger('SturDR_Logger')
+        # setup queues
         self.log_queue = log_queue
-        
-        # setup nav queue
-        self.nav_queue     = nav_queue
+        self.nav_queue = nav_queue
         
         self.ephemerides = [{}] * config['CHANNELS']['max_channels'][0]
         self.channel_id  = np.empty(config['CHANNELS']['max_channels'][0], dtype=object)
@@ -103,9 +101,16 @@ class Navigator(Process):
         self.psrdot             = np.zeros(config['CHANNELS']['max_channels'][0], dtype=np.double)
         self.nav_initialized    = False
         self.x                  = np.zeros(8, dtype=np.double)
+
+        # self.logger.debug(f"Navigator spawned.")
         return
     
     def run(self):
+        # find and initialize logger
+        self.logger = logging.getLogger('SturDR_Logger')
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.handlers.QueueHandler(self.log_queue))
+    
         # TODO: figure out why all tracking observables are not always updated prior to the navigation update
         while True:
             msg = self.nav_queue.get()
@@ -187,8 +192,8 @@ class Navigator(Process):
             # propagate pseudorange-rate
             self.psrdot = -LAMBDA * self.Doppler + sv_clk[:,1] * LIGHT_SPEED
             
-            self.x, P = LeastSquares(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask], self.x)
-            # self.x, _ = self.kf.run(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask])
+            # self.x, P = LeastSquares(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask], self.x)
+            self.x, _ = self.kf.run(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask])
         
         # print(f"psr    = {np.array2string(self.psr, max_line_width=140, precision=3)}")
         # print(f"psrdot = {np.array2string(self.psrdot, max_line_width=140, precision=3)}")

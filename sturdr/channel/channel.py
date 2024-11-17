@@ -11,15 +11,15 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 ======  ============================================================================================
 """
 
-import logging.handlers
 import numpy as np
 import logging
-import multiprocessing
+import logging.handlers
 from multiprocessing.synchronize import Barrier
 from multiprocessing import Process, Queue, shared_memory
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from sturdr.rcvr.rf_data_buffer import RfDataBuffer
+
+# from sturdr.rcvr.logger import ColorFormatter
 from sturdr.utils.enums import GnssSystem, GnssSignalTypes, ChannelState
 
 @dataclass(order=True, slots=True)
@@ -77,24 +77,27 @@ class Channel(ABC, Process):
     """
     Abstract class for Channel object definitions.
     """
-    __slots__ = 'config', 'channelID', 'channel_status', 'nav_status', 'rfbuffer', 'buffer_ptr', \
-                'log_queue', 'nav_queue', 'start_barrier', 'end_barrier'
+    __slots__ = 'config', 'channelID', 'channel_status', 'nav_status', 'buffer_ptr', 'buffer_len', 'buffer_read_len', \
+                'log_queue', 'nav_queue', 'start_barrier', 'end_barrier', 'logger', 'shm', 'shm_array'
     config            : dict                                # dict of receiver config
     channelID         : str                                 # channel id
     channel_status    : ChannelPacket                       # Status to be shared across threads/processes
     nav_status        : ChannelPacket                       # Status to be shared to navigator
-    rfbuffer          : RfDataBuffer                        # file parser and memory manager
+    buffer_ptr        : int                                 # pointer to current index of rfbuffer writer
     buffer_ptr        : int                                 # pointer to current index in rfbuffer data
+    buffer_len        : int                                 # total rfbuffer size
+    buffer_read_len   : int                                 # length of each buffer read
     log_queue         : Queue                               # queue/pipe for channels finishing current timestep
     nav_queue         : Queue                               # queue/pipe for navigation updates
     start_barrier     : Barrier # barrier for synchronzing when new data is available
     done_barrier      : Barrier # barrier for synchronzing when new data has been processed
     logger            : logging.Logger                      # thread safe logger
+    shm               : shared_memory.SharedMemory
+    shm_array         : np.ndarray
     
     def __init__(self, 
                  config: dict, 
                  cid: str, 
-                 rfbuffer: RfDataBuffer, 
                  log_queue: Queue,
                  nav_queue: Queue,
                  start_barrier: Barrier, 
@@ -104,8 +107,10 @@ class Channel(ABC, Process):
         
         self.config                     = config
         self.channelID                  = cid
-        self.rfbuffer                   = rfbuffer
+        self.writer_ptr                 = 0
         self.buffer_ptr                 = 0
+        self.buffer_len                 = int(config['GENERAL']['ms_chunk_size'] * config['RFSIGNAL']['sampling_freq'] / 1000)
+        self.buffer_read_len            = int(config['GENERAL']['ms_read_size'] * config['RFSIGNAL']['sampling_freq'] / 1000)
         self.log_queue                  = log_queue
         self.nav_queue                  = nav_queue
         self.channel_status             = ChannelPacket()
@@ -114,9 +119,15 @@ class Channel(ABC, Process):
         self.nav_status.ChannelNum      = num
         self.start_barrier              = start_barrier
         self.done_barrier               = done_barrier
-        
-        # find and initialize logger
-        self.logger = logging.getLogger('SturDR_Logger')
+
+        # # intialize shared memory
+        # if config['RFSIGNAL']['is_complex'] == 'true':
+        #     dtype = np.dtype(np.complex128)
+        # else:
+        #     dtype = np.dtype(np.float64)
+        # self.shm = shared_memory.SharedMemory(name='SturDR_RFData', create=False)
+        # self.shm_array = np.ndarray(self.buffer_len, dtype=dtype, buffer=self.shm.buf)
+
         return
     
     @abstractmethod
@@ -157,3 +168,32 @@ class Channel(ABC, Process):
         Demodulate the navigation data and parse ephemerides.
         """
         pass
+
+    def InitMultiProcessing(self):
+        """
+        These items need to be initialized after this process has started
+        """
+        # find and initialize logger
+        self.logger = logging.getLogger('SturDR_Logger')
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.handlers.QueueHandler(self.log_queue))
+
+        # intialize shared memory
+        if self.config['RFSIGNAL']['is_complex'] == 'true':
+            dtype = np.dtype(np.complex128)
+        else:
+            dtype = np.dtype(np.float64)
+        self.shm = shared_memory.SharedMemory(name='SturDR_RFData', create=False)
+        self.shm_array = np.ndarray(self.buffer_len, dtype=dtype, buffer=self.shm.buf)
+        return
+
+    def UpdateWriterPtr(self):
+        self.writer_ptr += self.buffer_read_len
+        self.writer_ptr %= self.buffer_len
+        return
+    
+    def GetNumUnreadSamples(self):
+        if self.buffer_ptr <= self.writer_ptr:
+            return self.writer_ptr - self.buffer_ptr
+        else:
+            return self.buffer_len - self.buffer_ptr + self.writer_ptr

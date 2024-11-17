@@ -18,7 +18,7 @@ import yaml
 import logging
 import logging.handlers
 import multiprocessing.synchronize
-from multiprocessing import Queue, Barrier
+from multiprocessing import Queue, Barrier, Process
 from pathlib import Path
 import numpy as np
 
@@ -30,13 +30,16 @@ from sturdr.utils.enums import GnssSignalTypes
 
 class Reciever:
     
+    __slots__ = 'config', 'rfbuffer', 'start_t', 'log_update_ms', 'nav_update_ms', 'log_process', 'logger', \
+                'log_queue', 'start_barrier', 'done_barrier', 'channels', 'num_channels', 'navigator', \
+                'nav_queue'
     config        : dict
     rfbuffer      : RfDataBuffer
     start_t       : float
     log_update_ms : int
     nav_update_ms : int
-    log           : logging.Logger
-    logger        : Logger
+    logger        : logging.Logger
+    log_process   : Process #Logger
     log_queue     : Queue
     start_barrier : multiprocessing.synchronize.Barrier
     done_barrier  : multiprocessing.synchronize.Barrier
@@ -58,19 +61,21 @@ class Reciever:
         self.num_channels = sum(self.config['CHANNELS']['max_channels'])
         self.start_barrier = Barrier(self.num_channels + 1)
         self.done_barrier = Barrier(self.num_channels + 1)
-            
-        # Create Logging Process and obtain copy
+
+        # Create separate Logging process and copy for this process
         self.log_queue = Queue()
-        self.logger = Logger(self.config, self.log_queue)
-        self.logger.start()
-        self.log = logging.getLogger('SturDR_Logger')
-        self.log.addHandler(logging.handlers.QueueHandler(self.log_queue))
-        self.log.setLevel(logging.DEBUG)
+        self.logger = logging.getLogger('SturDR_Logger')
+        self.logger.addHandler(logging.handlers.QueueHandler(self.log_queue))
+        self.logger.setLevel(logging.DEBUG)
+        self.log_process = Process(target=Logger, args=(self.config, self.log_queue))
+        # self.log_process = Logger(self.config, self.log_queue)
+        self.log_process.start()
         
         # Create Navigation Process
         self.nav_queue = Queue()
         self.navigator = Navigator(self.config, self.log_queue, self.nav_queue)
         self.navigator.start()
+        self.logger.debug(f"Navigation process started.")
         
         #* ====================================================================================== *#
         # Create Individual Channel Processes
@@ -80,8 +85,9 @@ class Reciever:
         for i in range(len(prn)):
             self.channels[i].SetSatellite(prn[i])
             self.channels[i].start()
+            self.logger.debug(f"Channel {i} process started.")
         #* ====================================================================================== *#
-        
+
         # start runtime timer
         self.log_update_ms = 1000
         self.nav_update_ms = 1000 / self.config['MEASUREMENTS']['frequency']
@@ -91,13 +97,14 @@ class Reciever:
     def __del__(self):
         # record total execution time
         s = self.GetTimeString(1000 * (time.time() - self.start_t))
-        self.log.info(f"Total Time = {s} s")
-        
+        self.logger.info(f"Total Execution Time = {s} s")
+
         # kill remaining processes
         self.log_queue.put(None)
         self.nav_queue.put(None)
-        # self.logger.join()
+        self.log_process.join()
         # self.navigator.join()
+
         return
     
     def SpawnChannels(self, signal_type: list[str]|np.ndarray[str], nchan: list[int]|np.ndarray[int]):
@@ -113,7 +120,6 @@ class Reciever:
                     self.channels.append(gps_l1ca_channel.GpsL1caChannel(
                             config=self.config,
                             cid=channel_id,
-                            rfbuffer=self.rfbuffer,
                             log_queue=self.log_queue,
                             nav_queue=self.nav_queue,
                             start_barrier=self.start_barrier,
@@ -123,7 +129,6 @@ class Reciever:
                     )
                 
                 # log channel spawning
-                self.log.debug(f"Channel Controller: {channel_id} spawned.")
                 channel_count += 1
         return
     
@@ -133,6 +138,7 @@ class Reciever:
                                   self.config['GENERAL']['ms_read_size']):
             # read next chunk of data
             self.rfbuffer.NextChunk()
+            # self.logger.warning(f"receiver: {self.rfbuffer.buffer}")
             
             # inform channel barrier, process data
             self.start_barrier.wait()
@@ -145,7 +151,7 @@ class Reciever:
             if not (ms_processed % self.log_update_ms):
                 s0 = self.GetTimeString(1000 * (time.time() - self.start_t))
                 s1 = self.GetTimeString(ms_processed)
-                self.log.info(f"File Time - {s1} ... System Time - {s0}")
+                self.logger.info(f"File Time - {s1} ... System Time - {s0}")
             
             # wait for all channels to execute
             self.done_barrier.wait()

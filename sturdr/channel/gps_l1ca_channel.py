@@ -17,8 +17,9 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 
 import numpy as np
 from numba import njit
-import multiprocessing
-from multiprocessing import Queue, Barrier
+import multiprocessing.synchronize
+from multiprocessing import Queue, shared_memory
+import logging, logging.handlers
 
 from sturdr.channel.channel import Channel, ChannelPacket
 from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
@@ -94,13 +95,12 @@ class GpsL1caChannel(Channel):
     def __init__(self, 
                  config: dict, 
                  cid: str, 
-                 rfbuffer: RfDataBuffer, 
                  log_queue: Queue, 
                  nav_queue: Queue, 
                  start_barrier: multiprocessing.synchronize.Barrier, 
                  done_barrier: multiprocessing.synchronize.Barrier, 
                  num: int):
-        Channel.__init__(self, config, cid, rfbuffer, log_queue, nav_queue, start_barrier, done_barrier, num)
+        Channel.__init__(self, config, cid, log_queue, nav_queue, start_barrier, done_barrier, num)
         self.channel_status.Constellation = GnssSystem.GPS
         self.channel_status.Signal = GnssSignalTypes.GPS_L1CA
         self.channel_status.State = ChannelState.IDLE
@@ -162,7 +162,8 @@ class GpsL1caChannel(Channel):
 # ------------------------------------------------------------------------------------------------ #
 
     def run(self):
-        # print("Run", flush=True)
+        self.InitMultiProcessing()
+
         while True:
             # wait for new data to process
             self.start_barrier.wait()
@@ -170,7 +171,7 @@ class GpsL1caChannel(Channel):
             # update the write pointer location for this process
             #   -> necessary because `rfbuffer` is in `another Process` which cannot be seen in 
             #      `this Process`
-            self.rfbuffer.UpdateWritePtr(self.samples_per_ms * self.config['GENERAL']['ms_read_size'])
+            self.UpdateWriterPtr()
             
             # process data
             if self.channel_status.State == ChannelState.TRACKING:
@@ -221,11 +222,12 @@ class GpsL1caChannel(Channel):
         # print(f"read_ptr = {self.buffer_ptr}")
         
         # make sure enough samples have been parsed
-        if self.rfbuffer.GetNumUnreadSamples(self.buffer_ptr) < self.total_samples:
+        # read_ptr = (self.buffer_ptr + self.buffer_read_len) % self.buffer_len
+        if self.GetNumUnreadSamples() < self.total_samples:
             return
         
         # run acquisition
-        correlation_map = PcpsSearch(self.rfbuffer.Pull(self.buffer_ptr, self.total_samples), 
+        correlation_map = PcpsSearch(self.shm_array[self.buffer_ptr : self.buffer_ptr + self.total_samples],
                                      self.code,
                                      self.config['ACQUISITION']['doppler_range'],
                                      self.config['ACQUISITION']['doppler_step'],
@@ -248,7 +250,7 @@ class GpsL1caChannel(Channel):
             
             # initialize tracking buffer index
             self.buffer_ptr += (self.total_samples + first_peak_idx[1] - self.samples_per_ms)
-            self.buffer_ptr %= self.rfbuffer.size
+            self.buffer_ptr %= self.buffer_len
             
             # run initial tracking NCO
             code_phase_step = (GPS_L1CA_CODE_FREQ + self.code_doppler) / self.config['RFSIGNAL']['sampling_freq']
@@ -265,9 +267,11 @@ class GpsL1caChannel(Channel):
                              f'{self.channel_status.ID} acquired! ' \
                              f'Doppler (Hz): {np.round(self.channel_status.Doppler).astype(np.int32)}, ' \
                              f'Code Phase (samples): {np.round(first_peak_idx[1]).astype(np.int32)}')
-        # else:
-            # self.channel_status.State = ChannelState.IDLE
-            # print("Acquisition Failed", flush=True)
+        else:
+            self.buffer_ptr += self.total_samples
+            self.buffer_ptr %= self.buffer_len
+            self.channel_status.State = ChannelState.IDLE
+            self.logger.warning(f'Channel {self.channel_status.ChannelNum}: Acquisition Failed')
             
         return
     
@@ -278,13 +282,15 @@ class GpsL1caChannel(Channel):
         Runs the tracking correlation and loop filter updates!
         """
         # make sure an initial count has been made
-        self.samples_remaining = self.rfbuffer.GetNumUnreadSamples(self.buffer_ptr)
+        # read_ptr = (self.buffer_ptr + self.buffer_read_len) % self.buffer_len
+        self.samples_remaining = self.GetNumUnreadSamples()
+        # self.samples_remaining = self.rfbuffer.GetNumUnreadSamples(self.buffer_ptr)
         # print(f"samples_remaining = {self.samples_remaining}")
         
         while self.samples_remaining > 0:
             # recount samples remaining inside buffer
             # TODO: edge case of 0 samples remaining to start/end but more processing necessary
-            self.samples_remaining = self.rfbuffer.GetNumUnreadSamples(self.buffer_ptr)
+            self.samples_remaining = self.GetNumUnreadSamples()
             
             # ----- INTEGRATE -----
             if self.samples_processed < self.total_samples:
@@ -296,7 +302,7 @@ class GpsL1caChannel(Channel):
                 # accumulate samples of current code period
                 E, P, L, P_1, P_2, self.samples_processed, self.rem_carrier_phase, \
                         self.rem_code_phase = AccumulateEPL( \
-                    self.rfbuffer.Pull(self.buffer_ptr, samples_to_read),
+                    self.shm_array[self.buffer_ptr : self.buffer_ptr + samples_to_read],
                     self.code,
                     self.tap_spacing,
                     self.config['RFSIGNAL']['sampling_freq'],
@@ -323,7 +329,7 @@ class GpsL1caChannel(Channel):
                 
                 # move forward in buffer
                 self.buffer_ptr += samples_to_read
-                self.buffer_ptr %= self.rfbuffer.size
+                self.buffer_ptr %= self.buffer_len
                 
             # ----- DUMP -----
             else:

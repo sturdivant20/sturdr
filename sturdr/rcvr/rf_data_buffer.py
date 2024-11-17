@@ -98,6 +98,7 @@ class RfDataBuffer:
         # Allocate shared memory
         self.memory = shared_memory.SharedMemory(create=True, size=self.nbytes, name='SturDR_RFData')
         self.buffer = np.ndarray(self.size, dtype=self.dtype, buffer=self.memory.buf)
+        self.buffer[...] = 0
         
         return
     
