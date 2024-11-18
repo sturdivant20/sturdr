@@ -175,7 +175,7 @@ class Channel(ABC, Process):
         """
         # find and initialize logger
         self.logger = logging.getLogger('SturDR_Logger')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(self.config['GENERAL']['log_level'])
         self.logger.addHandler(logging.handlers.QueueHandler(self.log_queue))
 
         # intialize shared memory

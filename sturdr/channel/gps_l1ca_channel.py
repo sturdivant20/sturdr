@@ -21,7 +21,7 @@ import multiprocessing.synchronize
 from multiprocessing import Queue, shared_memory
 import logging, logging.handlers
 
-from sturdr.channel.channel import Channel, ChannelPacket
+from sturdr.channel.channel import Channel
 from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
 from sturdr.dsp.tracking import NaturalFrequency, TrackingKF
 from sturdr.dsp.gnss_signal import AccumulateEPL
@@ -30,7 +30,6 @@ from sturdr.dsp.lock_detector import CodeAndCarrierLockDetectors
 from sturdr.nav.gps_lnav import GpsLnavParser
 from sturdr.utils.constants import GPS_L1CA_CARRIER_FREQ, GPS_L1CA_CODE_FREQ, GPS_L1CA_CODE_SIZE
 from sturdr.utils.enums import ChannelState, GnssSystem, GnssSignalTypes
-from sturdr.rcvr.rf_data_buffer import RfDataBuffer
 
 NP_TWO_PI = 2 * np.pi
 

@@ -18,7 +18,8 @@ import yaml
 import logging
 import logging.handlers
 import multiprocessing.synchronize
-from multiprocessing import Queue, Barrier, Process
+import multiprocessing.connection
+from multiprocessing import Queue, Barrier, Process, Event, Pipe
 from pathlib import Path
 import numpy as np
 
@@ -32,7 +33,7 @@ class Reciever:
     
     __slots__ = 'config', 'rfbuffer', 'start_t', 'log_update_ms', 'nav_update_ms', 'log_process', 'logger', \
                 'log_queue', 'start_barrier', 'done_barrier', 'channels', 'num_channels', 'navigator', \
-                'nav_queue'
+                'nav_queue', 'vt_events', 'vt_pipes'
     config        : dict
     rfbuffer      : RfDataBuffer
     start_t       : float
@@ -47,11 +48,22 @@ class Reciever:
     num_channels  : int
     navigator     : Navigator
     nav_queue     : Queue
+    vt_events     : list[multiprocessing.synchronize.Event]
+    vt_pipes      : list[multiprocessing.connection.Connection]
     
     def __init__(self, config_file: Path | str):
         # Load Configuration
         with open(config_file, 'r') as file:
             self.config = yaml.safe_load(file)
+        tmp = self.config['GENERAL']['log_level'].casefold()
+        if tmp == 'debug':
+            self.config['GENERAL']['log_level'] = logging.DEBUG
+        elif tmp == 'info':
+            self.config['GENERAL']['log_level'] = logging.INFO
+        elif tmp == 'warn' or tmp == 'warning':
+            self.config['GENERAL']['log_level'] = logging.WARNING
+        elif tmp == 'error':
+            self.config['GENERAL']['log_level'] = logging.ERROR
             
         # open rf data buffer
         self.rfbuffer = RfDataBuffer(self.config)
@@ -66,7 +78,7 @@ class Reciever:
         self.log_queue = Queue()
         self.logger = logging.getLogger('SturDR_Logger')
         self.logger.addHandler(logging.handlers.QueueHandler(self.log_queue))
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(self.config['GENERAL']['log_level'])
         self.log_process = Process(target=Logger, args=(self.config, self.log_queue))
         # self.log_process = Logger(self.config, self.log_queue)
         self.log_process.start()

@@ -217,14 +217,14 @@ def PLL_3rdOrder(phase_err: np.double,
 # ===== KALMAN FILTER ============================================================================ #
 
 # spec = [
-#     ('x', float64[:]),
-#     ('u', float64[:]),
-#     ('P', float64[:]),
-#     ('A', float64[:]),
-#     ('B', float64[:]),
-#     ('C', float64[:]),
-#     ('Q', float64[:]),
-#     ('R', float64[:]),
+#     ('x', float64[::1]),
+#     ('u', float64[::1]),
+#     ('P', float64[:,::1]),
+#     ('A', float64[:,::1]),
+#     ('B', float64[:,::1]),
+#     ('C', float64[:,::1]),
+#     ('Q', float64[:,::1]),
+#     ('R', float64[:,::1]),
 #     ('T', float64),
 #     ('cn0', float64),
 #     ('kappa', float64),
@@ -301,7 +301,7 @@ class TrackingKF:
         self.__reset_R()
         self.x = np.asarray([carrier_phase, doppler, 0.0, code_phase, 0.0])
         self.u = np.asarray([intermediate_freq, nominal_code_freq])
-        self.P = np.diag([np.pi**2/3, 2*np.pi*500.0, 100.0, 0.1, 10.0])
+        self.P = np.diag(np.asarray([np.pi**2/3, 2*np.pi*500.0, 100.0, 0.1, 10.0]))
         return
             
     def Run(self, phase_err: np.double, freq_err: np.double, chip_err: np.double):

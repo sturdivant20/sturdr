@@ -14,6 +14,8 @@ refs    1. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Appr
 import numpy as np
 from numba import njit
 
+# TODO: explore numba's cuda functionality for faster correlations
+
 # ================================================================================================ #
 
 @njit(cache=True, fastmath=True)

@@ -108,7 +108,7 @@ class Navigator(Process):
     def run(self):
         # find and initialize logger
         self.logger = logging.getLogger('SturDR_Logger')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(self.config['GENERAL']['log_level'])
         self.logger.addHandler(logging.handlers.QueueHandler(self.log_queue))
     
         # TODO: figure out why all tracking observables are not always updated prior to the navigation update
@@ -158,7 +158,21 @@ class Navigator(Process):
                 sv_clk[i,:], sv_pos[i,:], sv_vel[i,:], _ = GetNavStates(transmit_time=transmit_times[i], **self.ephemerides[i])
                 tgd[i] = self.ephemerides[i]['tgd']
                 
-        if not self.nav_initialized:
+        if self.nav_initialized:
+            #* ===== SCALAR ===== *#
+            # propagate pseudorange
+            # TODO: there must be a more numerically precise version of this
+            self.psr += LIGHT_SPEED * (self.T                                        # predicted time difference
+                                       - (transmit_times - self.prev_transmit_times) # actual receive time difference
+                                       - (sv_clk[:,0] - self.prev_sv_clk_corr)       # satellite bias difference
+                                      )
+            
+            # propagate pseudorange-rate
+            self.psrdot = -LAMBDA * self.Doppler + sv_clk[:,1] * LIGHT_SPEED
+            
+            # self.x, P = LeastSquares(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask], self.x)
+            self.x, _ = self.kf.run(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask])
+        else:
             # calculate initial pseudorange
             receive_time = transmit_times.max() + self.config['MEASUREMENTS']['nominal_transit_time']
             self.psr = (receive_time - transmit_times + sv_clk[:,0] - tgd) * LIGHT_SPEED
@@ -181,19 +195,6 @@ class Navigator(Process):
                             self.T
                         )
             self.nav_initialized = True
-        else:
-            # propagate pseudorange
-            # TODO: there must be a more numerically precise version of this
-            self.psr += LIGHT_SPEED * (self.T                                        # predicted time difference
-                                       - (transmit_times - self.prev_transmit_times) # actual receive time difference
-                                       - (sv_clk[:,0] - self.prev_sv_clk_corr)       # satellite bias difference
-                                      )
-            
-            # propagate pseudorange-rate
-            self.psrdot = -LAMBDA * self.Doppler + sv_clk[:,1] * LIGHT_SPEED
-            
-            # self.x, P = LeastSquares(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask], self.x)
-            self.x, _ = self.kf.run(sv_pos[mask,:], sv_vel[mask,:], self.psr[mask], self.psrdot[mask], self.CNo[mask])
         
         # print(f"psr    = {np.array2string(self.psr, max_line_width=140, precision=3)}")
         # print(f"psrdot = {np.array2string(self.psrdot, max_line_width=140, precision=3)}")

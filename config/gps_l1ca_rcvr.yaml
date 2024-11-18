@@ -8,6 +8,7 @@ GENERAL:
   reference_pos_x : 422596.629
   reference_pos_y : -5362864.287
   reference_pos_z : 3415493.797
+  log_level       : info
 
 RFSIGNAL:
   sampling_freq     : 20000000.0
@@ -49,3 +50,4 @@ MEASUREMENTS:
   doppler              : true
   adr                  : true
   cn0                  : true
+  vector_process       : true

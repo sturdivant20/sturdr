@@ -30,7 +30,7 @@ OMEGA_IE_E = np.array(
     dtype=np.double
 )
 
-# @njit(cache=True)
+@njit(cache=True, fastmath=True)
 def LeastSquares(sv_pos: np.ndarray[np.double],
                  sv_vel: np.ndarray[np.double],
                  psr   : np.ndarray[np.double],
@@ -119,7 +119,7 @@ def LeastSquares(sv_pos: np.ndarray[np.double],
     return x, P
 
 
-# @njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=True)
 def LeastSquaresPos(sv_pos: np.ndarray[np.double],
                     psr   : np.ndarray[np.double],
                     R     : np.ndarray[np.double], 
