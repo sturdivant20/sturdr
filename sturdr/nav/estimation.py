@@ -209,8 +209,8 @@ class NavKF:
         self.clock_model = clock_model
         self.innov_std = 2.9
         self.T = T
-        self.__reset_A()
-        self.__reset_Q()
+        self.make_A(self.T)
+        self.make_Q(self.T)
         return
     
     def run(self, 
@@ -218,12 +218,28 @@ class NavKF:
             sv_vel: np.ndarray[np.double], 
             psr: np.ndarray[np.double], 
             psrdot: np.ndarray[np.double], 
-            CNo: np.ndarray[np.double]):
-        # Predicition
-        self.x = self.A @ self.x
+            CNo: np.ndarray[np.double],
+            T: np.double=None):
+
+        self.x, self.P = self.Propagate(T)
+        self.x, self.P, _,_ = self.Correct(sv_pos, sv_vel, psr, psrdot, CNo)
+        return self.x, self.P
+    
+    def Propagate(self, T: np.double=None):
+        if T is not None:
+            self.make_A(T)
+            self.make_Q(T)
+        x = self.A @ self.x
         Q_2 = 0.5 * self.Q
-        self.P = self.A @ (self.P + Q_2) @ self.A.T + Q_2
-        
+        P = self.A @ (self.P + Q_2) @ self.A.T + Q_2
+        return x, P
+    
+    def Correct(self, 
+                sv_pos: np.ndarray[np.double], 
+                sv_vel: np.ndarray[np.double], 
+                psr: np.ndarray[np.double], 
+                psrdot: np.ndarray[np.double], 
+                CNo: np.ndarray[np.double]):
         # Correction
         N1              = psr.size                              # half number of measurements
         N               = psr.size + psrdot.size                # number of measurements
@@ -232,44 +248,31 @@ class NavKF:
         H[:N1, 6]       = one
         H[N1:, 7]       = one
         dz              = np.zeros(N, dtype=np.double)          # Measurement innovation
-        R               = np.diag(np.concatenate((
-                                BETA**2 * DllVariance(CNo, 0.02),
-                                (LAMBDA/2/np.pi)**2 * FllVariance(CNo, 0.02)
-                         )))
-
-        for i in range(N1):
-            # predict approximate range and account for earth's rotation (Groves 8.34)
-            dr           = self.x[0:3] - sv_pos[i,:]
-            r            = np.sqrt(dr @ dr)
-            omegatau     = OMEGA_DOT * r / LIGHT_SPEED
-            somegatau    = np.sin(omegatau)
-            comegatau    = np.cos(omegatau)
-            C_i_e        = np.array(
-                                [
-                                    [ comegatau, somegatau, 0.0],
-                                    [-somegatau, comegatau, 0.0],
-                                    [       0.0,       0.0, 1.0]
-                                ], 
-                                dtype=np.double
-                           )
+        if N1 > 1:
+            R               = np.diag(np.concatenate((
+                                    BETA**2 * DllVariance(CNo, 0.02),
+                                    (LAMBDA/2/np.pi)**2 * FllVariance(CNo, 0.02)
+                            )))
+            pred_psr        = np.zeros(N1)
+            pred_psrdot     = np.zeros(N1)
             
-            # predict pseudorange (Groves 8.35, 9.165)
-            dr           = self.x[0:3] - C_i_e @ sv_pos[i,:]
-            r            = np.sqrt(dr @ dr) # np.sqrt(dr[0]**2 + dr[1]**2 + dr[2]**2)
-            u            = dr / r
-            pred_psr     = r + self.x[6]
-            
-            # predict pseudorange-rate (Groves 8.44, 9.165)
-            dv           = (self.x[3:6] + OMEGA_IE_E @ self.x[0:3]) - C_i_e @ (sv_vel[i,:] + OMEGA_IE_E @ sv_pos[i,:])
-            udot         = (dv * r**2 - dr * (dv @ dr)) / r**3
-            pred_psrdot  = u @ dv + self.x[7]
-            
-            # setup the measurement matrix and innovation
-            H[i, 0:3]    = u
-            H[N1+i, 0:3] = udot
-            H[N1+i, 3:6] = u
-            dz[i]        = psr[i] - pred_psr
-            dz[N1+i]     = psrdot[i] - pred_psrdot
+            for i in range(N1):
+                pred_psr[i], pred_psrdot[i], u, udot = PredictRangeAndRate(self.x, sv_pos[i,:], sv_vel[i,:])
+                
+                # setup the measurement matrix and innovation
+                H[i, 0:3]    = u
+                H[N1+i, 0:3] = udot
+                H[N1+i, 3:6] = u
+                dz[i]        = psr[i] - pred_psr[i]
+                dz[N1+i]     = psrdot[i] - pred_psrdot[i]
+        else:
+            R = np.diag([BETA**2 * DllVariance(CNo, 0.02), (LAMBDA/2/np.pi)**2 * FllVariance(CNo, 0.02)])
+            pred_psr, pred_psrdot, u, udot = PredictRangeAndRate(self.x, sv_pos, sv_vel)
+            H[0, 0:3] = u
+            H[1, 0:3] = udot
+            H[1, 3:6] = u
+            dz[0]     = psr - pred_psr
+            dz[1]     = psrdot - pred_psrdot
             
         # innovation filter
         S = H @ self.P @ H.T + R
@@ -278,39 +281,44 @@ class NavKF:
         dz = dz[mask]
         H = H[mask,:]
         R = np.diag(R.diagonal()[mask])
-            
-        PHt = self.P @ H.T
-        K = PHt @ np.linalg.inv(H @ PHt + R)
-        L = np.eye(8) - K @ H
-        self.P = L @ self.P @ L.T + K @ R @ K.T
-        self.x += K @ dz
-        return self.x, self.P
+        
+        # kalman update
+        x = self.x
+        P = self.P
+        if dz.size > 0:
+            PHt = P @ H.T
+            K = PHt @ np.linalg.inv(H @ PHt + R)
+            L = np.eye(8) - K @ H
+            P = L @ P @ L.T + K @ R @ K.T
+            x += K @ dz
+        
+        return x, P, pred_psr, pred_psrdot
 
-    def __reset_A(self):
-        self.A = np.array(
+    def make_A(self, T):
+        self.A = np.asarray(
             [
-                [1.0, 0.0, 0.0, self.T, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0, self.T, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0, 0.0, self.T, 0.0, 0.0],
+                [1.0, 0.0, 0.0,   T, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0,   T, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0,   T, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, self.T],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,   T],
                 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
             ],
             dtype=np.double
         )
         return
     
-    def __reset_Q(self):
+    def make_Q(self, T):
         av = GetNavClock(self.clock_model)
-        q_bb = LIGHT_SPEED**2 * (av.h0/2*self.T + 2*av.h1*self.T**2 + (2/3)*np.pi**2*av.h2*self.T**3)
-        q_dd = LIGHT_SPEED**2 * (av.h0/(2*self.T) + 2*av.h1 + (8/3)*np.pi**2*av.h2*self.T)
-        q_bd = LIGHT_SPEED**2 * (2*av.h1*self.T + np.pi**2*av.h2*self.T**2)
-        q_pp = self.process_std**2 * self.T**3 / 3.0
-        q_pv = self.process_std**2 * self.T**2 / 2.0
-        q_vv = self.process_std**2 * self.T
-        self.Q = np.array(
+        q_bb = LIGHT_SPEED**2 * (av.h0/2*T + 2*av.h1*T**2 + (2/3)*np.pi**2*av.h2*T**3)
+        q_dd = LIGHT_SPEED**2 * (av.h0/(2*T) + 2*av.h1 + (8/3)*np.pi**2*av.h2*T)
+        q_bd = LIGHT_SPEED**2 * (2*av.h1*T + np.pi**2*av.h2*T**2)
+        q_pp = self.process_std**2 * T**3 / 3.0
+        q_pv = self.process_std**2 * T**2 / 2.0
+        q_vv = self.process_std**2 * T
+        self.Q = np.asarray(
             [
                 [q_pp, 0.0, 0.0, q_pv, 0.0, 0.0, 0.0, 0.0],
                 [0.0, q_pp, 0.0, 0.0, q_pv, 0.0, 0.0, 0.0],
@@ -323,4 +331,35 @@ class NavKF:
             ]
         )
         return
+    
+    
+@njit(cache=True, fastmath=True)
+def PredictRangeAndRate(x, sv_pos, sv_vel):
+    # predict approximate range and account for earth's rotation (Groves 8.34)
+    dr           = x[0:3] - sv_pos
+    r            = np.sqrt(dr @ dr)
+    omegatau     = OMEGA_DOT * r / LIGHT_SPEED
+    somegatau    = np.sin(omegatau)
+    comegatau    = np.cos(omegatau)
+    C_i_e        = np.asarray(
+                        [
+                            [ comegatau, somegatau, 0.0],
+                            [-somegatau, comegatau, 0.0],
+                            [       0.0,       0.0, 1.0]
+                        ], 
+                        dtype=np.double
+                    )
+    
+    # predict pseudorange (Groves 8.35, 9.165)
+    dr           = x[0:3] - C_i_e @ sv_pos
+    r            = np.sqrt(dr @ dr) # np.sqrt(dr[0]**2 + dr[1]**2 + dr[2]**2)
+    u            = dr / r
+    pred_psr     = r + x[6]
+    
+    # predict pseudorange-rate (Groves 8.44, 9.165)
+    dv           = (x[3:6] + OMEGA_IE_E @ x[0:3]) - C_i_e @ (sv_vel + OMEGA_IE_E @ sv_pos)
+    udot         = (dv * r**2 - dr * (dv @ dr)) / r**3
+    pred_psrdot  = u @ dv + x[7]
+    
+    return pred_psr, pred_psrdot, u, udot
     

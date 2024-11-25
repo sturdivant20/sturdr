@@ -17,9 +17,10 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 
 import numpy as np
 from numba import njit
-import multiprocessing.synchronize
+from multiprocessing.synchronize import Barrier, Event
+from multiprocessing.connection import Connection
 from multiprocessing import Queue, shared_memory
-import logging, logging.handlers
+import logging.handlers
 
 from sturdr.channel.channel import Channel
 from sturdr.dsp.acquisition import PcpsSearch, Peak2NoiseFloorComparison
@@ -96,10 +97,21 @@ class GpsL1caChannel(Channel):
                  cid: str, 
                  log_queue: Queue, 
                  nav_queue: Queue, 
-                 start_barrier: multiprocessing.synchronize.Barrier, 
-                 done_barrier: multiprocessing.synchronize.Barrier, 
+                 vt_queue: Queue,
+                 start_barrier: Barrier, 
+                 done_barrier: Barrier, 
+                 vt_pipe: Connection,
                  num: int):
-        Channel.__init__(self, config, cid, log_queue, nav_queue, start_barrier, done_barrier, num)
+        Channel.__init__(self, 
+                         config, 
+                         cid, 
+                         log_queue, 
+                         nav_queue, 
+                         vt_queue,
+                         start_barrier, 
+                         done_barrier, 
+                         vt_pipe, 
+                         num)
         self.channel_status.Constellation = GnssSystem.GPS
         self.channel_status.Signal = GnssSignalTypes.GPS_L1CA
         self.channel_status.State = ChannelState.IDLE
@@ -175,12 +187,13 @@ class GpsL1caChannel(Channel):
             # process data
             if self.channel_status.State == ChannelState.TRACKING:
                 self.Track()
+                # if not self.is_vt:
+                self.nav_queue.put(self.nav_status)
             elif self.channel_status.State == ChannelState.ACQUIRING:
                 self.Acquire()
             
             # send processed results to logging/data queue          
             self.log_queue.put(self.channel_status)
-            self.nav_queue.put(self.nav_status)
             
             # send the signal that the channel is finished      
             self.done_barrier.wait()
@@ -345,24 +358,14 @@ class GpsL1caChannel(Channel):
                     # if data bits are syncronized, try demodulation
                     else:
                         self.Demodulate()
+                self.channel_status.ToW += self.T
+                self.channel_status.ToW = np.round(self.channel_status.ToW, 3)
                 
                 # discriminators
                 t = self.total_samples / self.config['RFSIGNAL']['sampling_freq']
                 phase_err = PllCostas(self.IP, self.QP)                              # [rad]
                 freq_err = FllAtan2(self.IP_1, self.IP_2, self.QP_1, self.QP_2, t/2) # [rad/s]
                 chip_err = DllNneml2(self.IE, self.QE, self.IL, self.QL)             # [chip]
-                
-                # kalman filter
-                self.kf.UpdateIntegrationTime(t)
-                x = self.kf.Run(phase_err, freq_err, chip_err)
-                
-                self.rem_carrier_phase = np.remainder(x[0], NP_TWO_PI)
-                self.carrier_doppler = x[1]
-                self.carrier_jitter = x[2]
-                self.rem_code_phase = x[3] - self.PDI * GPS_L1CA_CODE_SIZE
-                self.code_doppler = x[4] + self.kappa * (x[1] + self.T * x[2])
-                self.kf.x[0] = self.rem_carrier_phase
-                self.kf.x[3] = self.rem_code_phase
                 
                 # lock detectors
                 self.channel_status.CodeLock, self.channel_status.CarrierLock, self.cn0_mag, \
@@ -376,10 +379,60 @@ class GpsL1caChannel(Channel):
                                                     self.channel_status.IP, 
                                                     self.channel_status.QP, 
                                                     t)
-                self.kf.UpdateCn0(self.cn0_mag)
+                
+                #* ===== vector tracking update ===== *#
+                if self.is_vt:
+                    self.rem_code_phase -= self.PDI * GPS_L1CA_CODE_SIZE
+                    self.rem_carrier_phase = np.remainder(self.rem_carrier_phase, NP_TWO_PI)
+                    
+                    # update nav packet
+                    self.nav_status.ToW       = self.channel_status.ToW
+                    self.nav_status.CNo       = self.cn0_mag
+                    self.nav_status.Doppler   = self.carrier_doppler / NP_TWO_PI
+                    self.nav_status.CodePhase = self.rem_code_phase
+                    self.nav_status.ChipDisc  = chip_err
+                    self.nav_status.FreqDisc  = freq_err / NP_TWO_PI
+                    
+                    # place update in nav queue and wait for response
+                    # print(f"Channel {self.channel_status.ChannelNum} here!")
+                    self.vt_queue.put(self.nav_status)
+                    # print(f"Channel {self.channel_status.ChannelNum} here2!")
+                    # self.vt_pipe.send(self.nav_status)
+                    nco_update = self.vt_pipe.recv()
+                    # print(f"Channel {self.channel_status.ChannelNum} - VT update received!")
+                    if self.channel_status.ChannelNum == 6:
+                        print(f"Channel {self.channel_status.ChannelNum} - Old doppler {self.nav_status.Doppler}, New Doppler {nco_update.CarrierDoppler}!")
+                        print(f"Channel {self.channel_status.ChannelNum} - Old code {self.code_doppler}, New Code {nco_update.CodeDoppler}!")
+                    
+                    # TODO: potential for additional scalar PLL after vector updates to maintain phase locks
+                    
+                    # update nco doppler frequencies
+                    self.code_doppler = nco_update.CodeDoppler
+                    self.carrier_doppler = NP_TWO_PI * nco_update.CarrierDoppler
+                    self.carrier_jitter = 0.0
+                    
+                #* ===== scalar kalman filter ===== *#
+                else:
+                    self.kf.UpdateIntegrationTime(t)
+                    self.kf.UpdateCn0(self.cn0_mag)
+                    x = self.kf.Run(phase_err, freq_err, chip_err)
+                    
+                    self.rem_carrier_phase = np.remainder(x[0], NP_TWO_PI)
+                    self.carrier_doppler = x[1]
+                    self.carrier_jitter = x[2]
+                    self.rem_code_phase = x[3] - self.PDI * GPS_L1CA_CODE_SIZE
+                    self.code_doppler = x[4] + self.kappa * (x[1] + self.T * x[2])
+                    self.kf.x[0] = self.rem_carrier_phase
+                    self.kf.x[3] = self.rem_code_phase
+                    
+                    # update nav packet
+                    self.nav_status.ToW       = self.channel_status.ToW
+                    self.nav_status.CNo       = self.cn0_mag
+                    self.nav_status.Doppler   = self.carrier_doppler / NP_TWO_PI
+                    self.nav_status.CodePhase = self.rem_code_phase
                 
                 # update channel tracking status
-                self.channel_status.Doppler = self.carrier_doppler / NP_TWO_PI
+                self.channel_status.Doppler = self.nav_status.Doppler
                 self.channel_status.CNo = 10.0*np.log10(self.cn0_mag) if self.cn0_mag > 0.0 else 0.0
                 self.channel_status.IP = self.IP
                 self.channel_status.QP = self.QP
@@ -391,14 +444,6 @@ class GpsL1caChannel(Channel):
                 self.channel_status.QP_1 = self.QP_1
                 self.channel_status.IP_2 = self.IP_2
                 self.channel_status.QP_2 = self.QP_2
-                self.channel_status.ToW += self.T
-                self.channel_status.ToW = np.round(self.channel_status.ToW, 3)
-                
-                # update nav packet
-                self.nav_status.ToW         = self.channel_status.ToW
-                self.nav_status.CNo         = self.cn0_mag
-                self.nav_status.Doppler     = self.channel_status.Doppler
-                self.nav_status.CodePhase   = self.rem_code_phase
                 
                 # begin next NCO period
                 self.counter += self.PDI

@@ -485,3 +485,60 @@ class TrackingKF:
             dtype=np.double
         )
         return
+    
+@njit(cache=True, fastmath=True)
+def VDLLUpdate(t_r_pred_next: np.double, 
+               t_r_pred: np.double, 
+               rem_code_phase: np.double,
+               code_freq: np.double, 
+               T: np.double):
+    """
+    From Scott Martin's dissertation (Eq 6.14):
+        f_code = (CODE_FREQ * T - rem_code_phase) / (t_r_pred - t_r_old_pred)
+    From Tanner Watts' thesis (Eq 5.5)
+        f_code = CODE_FREQ - (rho_pred - rho_old_pred) / (beta * T)
+    From Groves (Eq 14.141):
+        f_code= CODE_FREQ * (1 - (rho_pred - rho_old_pred) / (c * T))
+    
+    Parameters
+    ----------
+    t_r_pred : np.double
+        New filter predicted receive time [s]
+    t_r_old_pred : np.double
+        Old filter predicted receive time [s]
+    rem_code_phase : np.double
+        Remainder code phase from tracking loop [chips]
+    code_freq : np.double
+        Nominal code frequency of the signal [chips/s]
+    T : np.double
+        Actual integration time of the signal (known time between data bits) [s]
+    
+    Returns
+    fd_code : np.double
+        The new code doppler for the tracking loop [chips/s]
+    """
+    
+    fd_code = ((code_freq * T - rem_code_phase) / (t_r_pred_next - t_r_pred)) - code_freq
+    return fd_code
+
+@njit(cache=True, fastmath=True)
+def VFLLUpdate(rhodot_pred: np.double, lamb: np.double):
+    """
+    From Tanner Watts Thesis
+
+    Parameters
+    ----------
+    intermediate_freq : np.double
+        Carrier intermediate frequency [Hz]
+    rhodot_pred : np.double
+        Predicted pseudorange rate [m/s]
+    lamb : np.double
+        Carrier wavelength [m/cycle]
+
+    Returns
+    -------
+    fd_carrier : np.double
+        The new carrier doppler for the tracking loop [Hz]
+    """
+    fd_carrier = -rhodot_pred / lamb
+    return fd_carrier

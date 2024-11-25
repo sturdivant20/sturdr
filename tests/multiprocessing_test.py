@@ -2,7 +2,9 @@ import numpy as np
 import time
 import logging
 import logging.handlers
-from multiprocessing import shared_memory, Queue, Process
+from pprint import pprint
+from multiprocessing import shared_memory, Queue, Process, Pipe
+import multiprocessing.connection
 from sturdr.rcvr.logger import ColorFormatter
 
 #* === PARALLEL THREAD OPERATIONS === *#
@@ -53,40 +55,47 @@ def logger_process(log_name, log_queue, log_level):
 #* === MAIN THREAD OPERATIONS === *#
 
 if __name__ == '__main__':
-    # create a multiprocessing shared memory allocation
-    size = 10
-    dtype = np.dtype(np.int8)
-    nbytes = int(size * dtype.itemsize)
-    shm_name = 'test_memory'
-    shm = shared_memory.SharedMemory(create=True, size=nbytes, name=shm_name)
-    shared_array = np.ndarray(size, dtype=dtype, buffer=shm.buf)
-    shared_array[...] = 0
-
-    # create multiprocessing queue for log records
-    log_queue = Queue()
-    log_name = 'test_logger'
-    log_level = logging.DEBUG
-
-    # start the logger process
-    log_process = Process(target=logger_process, 
-                          args=(log_name, log_queue, log_level))
-    log_process.start()
-
-    # create worker processes
-    workers = []
-    for number in range(4):
-        workers.append(Process(target=worker_process, 
-                               args=(number, log_name, log_queue, shm_name, size, dtype)))
-        workers[number].start()
+    my_pipes = []
+    for i in range(10):
+        my_pipes.append(Pipe())
     
-    # wait for process completion
-    for w in workers:
-        w.join()
+    # pprint(my_pipes)
+    my_pipes = np.asarray(my_pipes, dtype=multiprocessing.connection.Connection)
+    pprint(my_pipes)
+    # # create a multiprocessing shared memory allocation
+    # size = 10
+    # dtype = np.dtype(np.int8)
+    # nbytes = int(size * dtype.itemsize)
+    # shm_name = 'test_memory'
+    # shm = shared_memory.SharedMemory(create=True, size=nbytes, name=shm_name)
+    # shared_array = np.ndarray(size, dtype=dtype, buffer=shm.buf)
+    # shared_array[...] = 0
 
-    # end the log queue
-    log_queue.put(None)
-    log_process.join()
+    # # create multiprocessing queue for log records
+    # log_queue = Queue()
+    # log_name = 'test_logger'
+    # log_level = logging.DEBUG
 
-    # delete shared memory
-    shm.close()
-    shm.unlink()
+    # # start the logger process
+    # log_process = Process(target=logger_process, 
+    #                       args=(log_name, log_queue, log_level))
+    # log_process.start()
+
+    # # create worker processes
+    # workers = []
+    # for number in range(4):
+    #     workers.append(Process(target=worker_process, 
+    #                            args=(number, log_name, log_queue, shm_name, size, dtype)))
+    #     workers[number].start()
+    
+    # # wait for process completion
+    # for w in workers:
+    #     w.join()
+
+    # # end the log queue
+    # log_queue.put(None)
+    # log_process.join()
+
+    # # delete shared memory
+    # shm.close()
+    # shm.unlink()

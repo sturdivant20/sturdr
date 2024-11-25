@@ -14,8 +14,10 @@ refs    1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 20
 import numpy as np
 import logging
 import logging.handlers
-from multiprocessing.synchronize import Barrier
+from multiprocessing.synchronize import Barrier, Event
+from multiprocessing.connection import Connection
 from multiprocessing import Process, Queue, shared_memory
+from threading import Thread
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
@@ -66,23 +68,30 @@ class NavPacket:
     CNo           : np.double       = np.nan
     Doppler       : np.double       = np.nan
     CodePhase     : np.double       = np.nan
-    CarrierPhase  : np.double       = np.nan
+    ChipDisc      : np.double       = np.nan
+    FreqDisc      : np.double       = np.nan
     
     @staticmethod
     def dict_factory(x):
         exclude_fields = ("ChannelNum", "Signal", "ID")
         return {k: v for (k, v) in x if ((v is not None) and (k not in exclude_fields))}
+    
+@dataclass(order=True, slots=True)
+class VectorNcoUpdate:
+    CodeDoppler    : np.double
+    CarrierDoppler : np.double
 
 class Channel(ABC, Process):
     """
     Abstract class for Channel object definitions.
     """
-    __slots__ = 'config', 'channelID', 'channel_status', 'nav_status', 'buffer_ptr', 'buffer_len', 'buffer_read_len', \
-                'log_queue', 'nav_queue', 'start_barrier', 'end_barrier', 'logger', 'shm', 'shm_array'
+    __slots__ = 'config', 'channelID', 'channel_status', 'nav_status', 'buffer_ptr', 'buffer_len', \
+                'buffer_read_len', 'log_queue', 'nav_queue', 'start_barrier', 'end_barrier', \
+                'logger', 'shm', 'shm_array', 'vt_pipe', 'vt_thread', 'is_vt', 'vt_queue'
     config            : dict                                # dict of receiver config
     channelID         : str                                 # channel id
     channel_status    : ChannelPacket                       # Status to be shared across threads/processes
-    nav_status        : ChannelPacket                       # Status to be shared to navigator
+    nav_status        : NavPacket                           # Status to be shared to navigator
     buffer_ptr        : int                                 # pointer to current index of rfbuffer writer
     buffer_ptr        : int                                 # pointer to current index in rfbuffer data
     buffer_len        : int                                 # total rfbuffer size
@@ -94,14 +103,20 @@ class Channel(ABC, Process):
     logger            : logging.Logger                      # thread safe logger
     shm               : shared_memory.SharedMemory
     shm_array         : np.ndarray
+    vt_pipe           : Connection
+    vt_thread         : Thread
+    is_vt             : bool
+    vt_queue          : Queue
     
     def __init__(self, 
                  config: dict, 
                  cid: str, 
                  log_queue: Queue,
                  nav_queue: Queue,
+                 vt_queue: Queue,
                  start_barrier: Barrier, 
                  done_barrier: Barrier, 
+                 vt_pipe: Connection,
                  num: int):
         Process.__init__(self, name=cid, daemon=True)
         
@@ -119,15 +134,16 @@ class Channel(ABC, Process):
         self.nav_status.ChannelNum      = num
         self.start_barrier              = start_barrier
         self.done_barrier               = done_barrier
+        self.vt_pipe                    = vt_pipe
+        self.is_vt                      = False
+        self.vt_queue                   = vt_queue
 
-        # # intialize shared memory
-        # if config['RFSIGNAL']['is_complex'] == 'true':
-        #     dtype = np.dtype(np.complex128)
-        # else:
-        #     dtype = np.dtype(np.float64)
-        # self.shm = shared_memory.SharedMemory(name='SturDR_RFData', create=False)
-        # self.shm_array = np.ndarray(self.buffer_len, dtype=dtype, buffer=self.shm.buf)
-
+        return
+    
+    def __del__(self):
+        # kill vt_thread
+        # if self.vt_thread.is_alive():
+        #     self.vt_thread.join()
         return
     
     @abstractmethod
@@ -185,6 +201,22 @@ class Channel(ABC, Process):
             dtype = np.dtype(np.float64)
         self.shm = shared_memory.SharedMemory(name='SturDR_RFData', create=False)
         self.shm_array = np.ndarray(self.buffer_len, dtype=dtype, buffer=self.shm.buf)
+        
+        # Vector processing thread
+        self.vt_thread = Thread(target=self.WaitForVectorMode)
+        self.vt_thread.start()
+        return
+    
+    def WaitForVectorMode(self):
+        """
+        Separate thread that waits for the initialization of vector processing. Vector processing 
+        will begin at the end of the current integration period.
+        """
+        self.is_vt = self.vt_pipe.recv()
+        self.logger.critical(
+            f"Channel {self.channel_status.ChannelNum} ({self.channelID}) "
+            f"{('is not', 'is')[self.is_vt]} starting vector processing"
+        )
         return
 
     def UpdateWriterPtr(self):

@@ -52,11 +52,11 @@ class ColorFormatter(logging.Formatter):
         # formatter = logging.Formatter("[{asctime}][{levelname}] {message}", style="{")
         self.LEVELS = \
         {
-            logging.DEBUG    : f"{C}debug{W}",
-            logging.INFO     : f"{G}info{W}",
-            logging.WARNING  : f"{Y}warning{W}",
-            logging.ERROR    : f"{R}error{W}",
-            logging.CRITICAL : f"{M}critical{W}",
+            logging.DEBUG    : f"{C}debug{RESET}",
+            logging.INFO     : f"{G}info{RESET}",
+            logging.WARNING  : f"{Y}warning{RESET}",
+            logging.ERROR    : f"{R}error{RESET}",
+            logging.CRITICAL : f"{BOLD}{M}critical{RESET}",
         }
         
     def format(self, record):
@@ -66,6 +66,12 @@ class ColorFormatter(logging.Formatter):
 # ================================================================================================ #
 
 def Logger(config: dict, queue: Queue):
+    """
+    A thread safe logging module. Execute as:
+        log_process = Process(target=Logger, args=(config,queue))
+        log_process.start()
+    """
+
     # find/create logger
     root = logging.getLogger(name='SturDR_Logger')
     root.setLevel(logging.DEBUG)
@@ -77,14 +83,15 @@ def Logger(config: dict, queue: Queue):
 
     # create output filenames for file logging
     path = Path(config['GENERAL']['out_folder'])
+    EnsurePathExists(path)
     status_fn = path / f"{config['GENERAL']['scenario']}_ChannelStatus.csv"
     ephem_fn  = path / f"{config['GENERAL']['scenario']}_Ephemeris.csv"
     nav_fn    = path / f"{config['GENERAL']['scenario']}_Navigation.csv"
 
     # open the log files
     with (open(status_fn, 'w', newline='') as status_file, \
-            open(ephem_fn, 'w', newline='') as ephem_file, \
-            open(nav_fn, 'w', newline='') as nav_file):
+          open(ephem_fn, 'w', newline='') as ephem_file, \
+          open(nav_fn, 'w', newline='') as nav_file):
         
         # initialize the writers 
         status_writer = csv.DictWriter(status_file, fieldnames=asdict(ChannelPacket()).keys())

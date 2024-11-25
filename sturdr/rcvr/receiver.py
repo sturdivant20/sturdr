@@ -19,6 +19,7 @@ import logging
 import logging.handlers
 import multiprocessing.synchronize
 import multiprocessing.connection
+from threading import Thread
 from multiprocessing import Queue, Barrier, Process, Event, Pipe
 from pathlib import Path
 import numpy as np
@@ -33,7 +34,7 @@ class Reciever:
     
     __slots__ = 'config', 'rfbuffer', 'start_t', 'log_update_ms', 'nav_update_ms', 'log_process', 'logger', \
                 'log_queue', 'start_barrier', 'done_barrier', 'channels', 'num_channels', 'navigator', \
-                'nav_queue', 'vt_events', 'vt_pipes'
+                'nav_queue', 'vt_pipes', 'vt_queue'
     config        : dict
     rfbuffer      : RfDataBuffer
     start_t       : float
@@ -48,8 +49,8 @@ class Reciever:
     num_channels  : int
     navigator     : Navigator
     nav_queue     : Queue
-    vt_events     : list[multiprocessing.synchronize.Event]
-    vt_pipes      : list[multiprocessing.connection.Connection]
+    vt_pipes      : np.ndarray[multiprocessing.connection.Connection]
+    vt_queue      : Queue
     
     def __init__(self, config_file: Path | str):
         # Load Configuration
@@ -71,8 +72,13 @@ class Reciever:
         # Initialize channel parameters
         self.channels = []
         self.num_channels = sum(self.config['CHANNELS']['max_channels'])
-        self.start_barrier = Barrier(self.num_channels + 1)
-        self.done_barrier = Barrier(self.num_channels + 1)
+        self.start_barrier = Barrier(self.num_channels + 2) # +1 for receiver/navigator process
+        self.done_barrier = Barrier(self.num_channels + 2) # +1 for receiver/navigator process
+        
+        # initialize queues
+        self.log_queue = Queue()
+        self.nav_queue = Queue()
+        self.vt_queue = Queue()
 
         # Create separate Logging process and copy for this process
         self.log_queue = Queue()
@@ -82,12 +88,6 @@ class Reciever:
         self.log_process = Process(target=Logger, args=(self.config, self.log_queue))
         # self.log_process = Logger(self.config, self.log_queue)
         self.log_process.start()
-        
-        # Create Navigation Process
-        self.nav_queue = Queue()
-        self.navigator = Navigator(self.config, self.log_queue, self.nav_queue)
-        self.navigator.start()
-        self.logger.debug(f"Navigation process started.")
         
         #* ====================================================================================== *#
         # Create Individual Channel Processes
@@ -99,6 +99,17 @@ class Reciever:
             self.channels[i].start()
             self.logger.debug(f"Channel {i} process started.")
         #* ====================================================================================== *#
+        
+        # Create Navigation Process
+        self.navigator = Navigator(self.config, 
+                                   self.log_queue, 
+                                   self.nav_queue, 
+                                   self.vt_queue,
+                                   self.start_barrier,
+                                   self.done_barrier,
+                                   self.vt_pipes[:,1])
+        self.navigator.start()
+        self.logger.debug(f"Navigation process started.")
 
         # start runtime timer
         self.log_update_ms = 1000
@@ -114,9 +125,10 @@ class Reciever:
         # kill remaining processes
         self.log_queue.put(None)
         self.nav_queue.put(None)
+        self.vt_queue.put(None)
         self.log_process.join()
         # self.navigator.join()
-
+        
         return
     
     def SpawnChannels(self, signal_type: list[str]|np.ndarray[str], nchan: list[int]|np.ndarray[int]):
@@ -124,8 +136,12 @@ class Reciever:
         Spawns the requested number of channels with the requested type
         """
         channel_count = 0
+        pipes = []
         for s,n in zip(signal_type, nchan):
             for i in range(n):
+                # create pipes/events for vector processing
+                pipes.append(Pipe())
+                
                 # GPS L1CA Channel
                 if s.casefold() == 'gps_l1ca':
                     channel_id = f'SturDR_Ch{channel_count}_{str(GnssSignalTypes.GPS_L1CA)}'
@@ -134,14 +150,19 @@ class Reciever:
                             cid=channel_id,
                             log_queue=self.log_queue,
                             nav_queue=self.nav_queue,
+                            vt_queue=self.vt_queue,
                             start_barrier=self.start_barrier,
                             done_barrier=self.done_barrier,
+                            vt_pipe=pipes[channel_count][0],
                             num=i
                         )
                     )
                 
                 # log channel spawning
                 channel_count += 1
+        
+        # turn the events/pipes into numpy arrays and save to the receiver
+        self.vt_pipes = np.asarray(pipes, dtype=multiprocessing.connection.Connection)
         return
     
     def start(self):
@@ -155,10 +176,6 @@ class Reciever:
             # inform channel barrier, process data
             self.start_barrier.wait()
             
-            # check for navigation update
-            if not (ms_processed % self.nav_update_ms):
-                self.nav_queue.put(True)
-            
             # check for screen updates
             if not (ms_processed % self.log_update_ms):
                 s0 = self.GetTimeString(1000 * (time.time() - self.start_t))
@@ -167,6 +184,10 @@ class Reciever:
             
             # wait for all channels to execute
             self.done_barrier.wait()
+            
+            # check for navigation update (regular/scalar mode)
+            if not (ms_processed % self.nav_update_ms):
+                self.nav_queue.put(True)
         return
     
     def run(self):
