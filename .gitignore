@@ -1,0 +1,16 @@
+.vscode
+build
+results
+rfdata
+navtools
+spdlog
+eigen3
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.vscode
+.venv
+data
