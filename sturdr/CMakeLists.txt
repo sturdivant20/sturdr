@@ -58,6 +58,7 @@ else()
 endif()
 
 set(STURDR_HDRS
+    sturdr/channel/channel.hpp
     sturdr/channel/gps-l1ca-channel.hpp
 
     sturdr/dsp/acquisition.hpp
@@ -72,6 +73,7 @@ set(STURDR_HDRS
     sturdr/nav/estimation.hpp
     sturdr/nav/gps-lnav.cpp
 
+    sturdr/utils/concurrent-barrier.hpp
     sturdr/utils/concurrent-queue.hpp
     sturdr/utils/fftw-wrapper.hpp
     sturdr/utils/gnss-constants.hpp

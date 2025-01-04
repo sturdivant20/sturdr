@@ -26,7 +26,10 @@ namespace sturdr {
 
 // *=== CodeNCO ===*
 Eigen::VectorXcd CodeNCO(
-    std::array<bool, 1023> &code, double &code_freq, double &samp_freq, double &rem_phase) {
+    const std::array<bool, 1023> &code,
+    const double &code_freq,
+    const double &samp_freq,
+    double &rem_phase) {
   try {
     // Initialize
     double N = static_cast<double>(code.size());
@@ -45,7 +48,7 @@ Eigen::VectorXcd CodeNCO(
     return code_up;
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("gnss-signal.cpp CodeNCO failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")->error("gnss-signal.cpp CodeNCO failed! Error -> {}", e.what());
     Eigen::VectorXcd tmp;
     return tmp;
   }
@@ -53,7 +56,11 @@ Eigen::VectorXcd CodeNCO(
 
 // *=== CarrierNCO ===*
 Eigen::VectorXcd CarrierNCO(
-    double &carr_freq, double &carr_jit, double &samp_freq, uint64_t &n_samp, double &rem_phase) {
+    const double &carr_freq,
+    const double &carr_jit,
+    const double &samp_freq,
+    const uint64_t &n_samp,
+    double &rem_phase) {
   try {
     // Initialize
     Eigen::VectorXcd carr_up(n_samp);
@@ -68,7 +75,8 @@ Eigen::VectorXcd CarrierNCO(
     return carr_up;
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("gnss-signal.cpp CarrierNCO failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("gnss-signal.cpp CarrierNCO failed! Error -> {}", e.what());
     Eigen::VectorXcd tmp;
     return tmp;
   }
@@ -81,7 +89,7 @@ std::complex<double> Correlate(
     return (rfdata.array() * carr.array() * code.array()).sum();
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("gnss-signal.cpp Correlate failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")->error("gnss-signal.cpp Correlate failed! Error -> {}", e.what());
     double n = std::nan("1");
     return std::complex<double>(n, n);
   }
@@ -92,15 +100,15 @@ void AccumulateEPL(
     const Eigen::VectorXcd &rfdata,
     std::array<bool, 1023> &code,
     double &rem_code_phase,
-    double &code_freq,
+    const double &code_freq,
     double &rem_carr_phase,
-    double &carr_freq,
-    double &carr_jit,
-    double &samp_freq,
-    uint64_t &n_samp,
+    const double &carr_freq,
+    const double &carr_jit,
+    const double &samp_freq,
+    const uint64_t &n_samp,
     uint64_t &samp_cnt,
-    uint64_t &half_samp,
-    double &tap_spacing,
+    const uint64_t &half_samp,
+    const double &tap_spacing,
     std::complex<double> &E,
     std::complex<double> &P1,
     std::complex<double> &P2,
@@ -137,7 +145,8 @@ void AccumulateEPL(
     }
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("gnss-signal.cpp AccumulateEPL failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("gnss-signal.cpp AccumulateEPL failed! Error -> {}", e.what());
   }
 }
 

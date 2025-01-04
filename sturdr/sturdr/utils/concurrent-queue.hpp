@@ -21,7 +21,7 @@ namespace sturdr {
 template <typename T>
 class ConcurrentQueue {
  private:
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   std::queue<T> queue_;
   std::condition_variable cond_var_;
 
@@ -30,7 +30,7 @@ class ConcurrentQueue {
    * *=== ConcurrentQueue ===*
    * @brief Constructor
    */
-  ConcurrentQueue(){};
+  explicit ConcurrentQueue(){};
 
   /**
    * *=== ~ConcurrentQueue ===*
@@ -76,7 +76,7 @@ class ConcurrentQueue {
    * @brief Gets the size of the queue
    * @returns The queue size
    */
-  size_t size() const {
+  std::size_t size() const {
     std::unique_lock<std::mutex> lock(mutex_);
     return queue_.size();
   };

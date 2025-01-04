@@ -24,14 +24,14 @@ void EnsurePathExists(std::string path) {
 
 // *=== RfDataFile ===*
 RfDataFile::RfDataFile(const std::string fname, const std::string fpath)
-    : log_{spdlog::default_logger()} {
+    : log_{spdlog::get("sturdr-console")} {
   std::stringstream tmp;
   tmp << fpath << "/" << fname;
   fname_ = tmp.str();
   fopen();
 }
 RfDataFile::RfDataFile(const std::string fname)  //
-    : log_{spdlog::default_logger()}, fname_{fname} {
+    : log_{spdlog::get("sturdr-console")}, fname_{fname} {
   fopen();
 }
 
@@ -70,7 +70,7 @@ bool RfDataFile::fclose() {
 
 // *=== YamlParser ===*
 YamlParser::YamlParser(const std::string fname, const std::string fpath)
-    : log_{spdlog::default_logger()} {
+    : log_{spdlog::get("sturdr-console")} {
   std::stringstream tmp;
   tmp << fpath << "/" << fname;
   fname_ = tmp.str();
@@ -78,7 +78,8 @@ YamlParser::YamlParser(const std::string fname, const std::string fpath)
   // parse file
   parse();
 }
-YamlParser::YamlParser(const std::string fname) : fname_{fname}, log_{spdlog::default_logger()} {
+YamlParser::YamlParser(const std::string fname)
+    : fname_{fname}, log_{spdlog::get("sturdr-console")} {
   // parse file
   parse();
 }

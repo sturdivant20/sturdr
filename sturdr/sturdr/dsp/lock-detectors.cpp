@@ -51,8 +51,8 @@ void CodeLockDetector(
     code_lock = (cno > 1000.0);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp CodeLockDetector failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp CodeLockDetector failed! Error -> {}", e.what());
   }
 }
 void CodeLockDetector(
@@ -81,8 +81,8 @@ void CodeLockDetector(
     code_lock = (cno > 1000.0);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp CodeLockDetector failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp CodeLockDetector failed! Error -> {}", e.what());
   }
 }
 
@@ -105,8 +105,8 @@ void CarrierLockDetector(
     carr_lock = ((NBD / NBP) > 0.866);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp CarrierLockDetector failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp CarrierLockDetector failed! Error -> {}", e.what());
   }
 }
 void CarrierLockDetector(
@@ -132,8 +132,8 @@ void CarrierLockDetector(
     carr_lock = ((NBD / NBP) > 0.866);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp CarrierLockDetector failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp CarrierLockDetector failed! Error -> {}", e.what());
   }
 }
 
@@ -176,8 +176,8 @@ void LockDetectors(
     code_lock = (cno > 1000.0);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
   }
 }
 void LockDetectors(
@@ -220,8 +220,8 @@ void LockDetectors(
     code_lock = (cno > 1000.0);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
   }
 }
 
@@ -232,8 +232,8 @@ double LowPassFilter(const double &prev, const double &curr, const double &alpha
     return prev + alpha * (curr - prev);
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "lock-detectors.cpp LowPassFilter failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("lock-detectors.cpp LowPassFilter failed! Error -> {}", e.what());
     return std::nan("1");
   }
 }

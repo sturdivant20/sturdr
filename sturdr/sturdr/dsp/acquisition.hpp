@@ -15,15 +15,12 @@
 
 // TODO: SerialSearch and Peak2PeakTest
 
-#ifndef STURDR_DISCRIMINATOR_HPP
-#define STURDR_DISCRIMINATOR_HPP
+#ifndef STURDR_ACQUISITION_HPP
+#define STURDR_ACQUISITION_HPP
 
 #include <Eigen/Dense>
 #include <array>
-#include <navtools/constants.hpp>
-#include <vector>
 
-#include "sturdr/dsp/gnss-signal.hpp"
 #include "sturdr/utils/fftw-wrapper.hpp"
 
 namespace sturdr {
@@ -45,15 +42,16 @@ namespace sturdr {
  * @return 2D correlation results
  */
 Eigen::MatrixXd PcpsSearch(
+    const SturdrFftPlans &p,
     const Eigen::VectorXcd &rfdata,
-    std::array<bool, 1023> &code,
-    double &d_range,
-    double &d_step,
-    double &samp_freq,
-    double &code_freq,
-    double &intmd_freq,
-    uint8_t &c_per,
-    uint8_t &nc_per);
+    const std::array<bool, 1023> &code,
+    const double &d_range,
+    const double &d_step,
+    const double &samp_freq,
+    const double &code_freq,
+    const double &intmd_freq,
+    const uint8_t &c_per,
+    const uint8_t &nc_per);
 
 //! === Peak2PeakTest ===
 

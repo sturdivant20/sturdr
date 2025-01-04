@@ -348,4 +348,9 @@ double GpsLnavParser::GetTimeOfWeek() {
   return ToW_;
 }
 
+// *=== AreEphemeridesParsed ===*
+bool GpsLnavParser::AreEphemeridesParsed() {
+  return (sub1_parsed_ & sub2_parsed_ & sub3_parsed_);
+}
+
 }  // end namespace sturdr

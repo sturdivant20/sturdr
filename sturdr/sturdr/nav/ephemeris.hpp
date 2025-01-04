@@ -15,12 +15,14 @@
 #ifndef STURDR_EPHEMERIS_HPP
 #define STURDR_EPHEMERIS_HPP
 
+#include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #include <Eigen/Dense>
 #include <cmath>
 #include <exception>
 #include <navtools/constants.hpp>
+#include <sstream>
 
 #include "sturdr/utils/gnss-constants.hpp"
 
@@ -84,8 +86,8 @@ bool GetSvNavStates(
     Eigen::Ref<Eigen::Vector3d> pos,
     Eigen::Ref<Eigen::Vector3d> vel,
     Eigen::Ref<Eigen::Vector3d> acc,
-    const double &transmit_time,
-    const Ephemerides &eph) {
+    const double& transmit_time,
+    const Ephemerides& eph) {
   // bool GetSvNavStates(
   //     Eigen::Vector3d &clk,
   //     Eigen::Vector3d &pos,
@@ -203,12 +205,80 @@ bool GetSvNavStates(
       clk(2) = 2.0 * eph.af2 - (n * n * FESQA * SINE / (DEN * DEN));
     }
     return true;
-  } catch (std::exception &e) {
-    spdlog::default_logger()->error("ephemeris.cpp GetSvNavStates failed! Error -> {}", e.what());
+  } catch (std::exception& e) {
+    spdlog::get("sturdr-console")
+        ->error("ephemeris.cpp GetSvNavStates failed! Error -> {}", e.what());
     return false;
   }
 };
 
 }  // namespace sturdr
+
+//! ------------------------------------------------------------------------------------------------
+
+inline std::ostream& operator<<(std::ostream& os, const sturdr::Ephemerides& c) {
+  os << "Ephemerides: \n";
+  os << "\tiode     = " << c.iode << "\n";
+  os << "\tiodc     = " << c.iodc << "\n";
+  os << "\ttoe      = " << c.toe << "\n";
+  os << "\ttoc      = " << c.toc << "\n";
+  os << "\ttgd      = " << c.tgd << "\n";
+  os << "\taf2      = " << c.af2 << "\n";
+  os << "\taf1      = " << c.af1 << "\n";
+  os << "\taf0      = " << c.af0 << "\n";
+  os << "\te        = " << c.e << "\n";
+  os << "\tsqrtA    = " << c.sqrtA << "\n";
+  os << "\tdeltan   = " << c.deltan << "\n";
+  os << "\tm0       = " << c.m0 << "\n";
+  os << "\tomega0   = " << c.omega0 << "\n";
+  os << "\tomega    = " << c.omega << "\n";
+  os << "\tomegaDot = " << c.omegaDot << "\n";
+  os << "\ti0       = " << c.i0 << "\n";
+  os << "\tiDot     = " << c.iDot << "\n";
+  os << "\tcuc      = " << c.cuc << "\n";
+  os << "\tcus      = " << c.cus << "\n";
+  os << "\tcic      = " << c.cic << "\n";
+  os << "\tcis      = " << c.cis << "\n";
+  os << "\tcrc      = " << c.crc << "\n";
+  os << "\tcrs      = " << c.crs << "\n";
+  os << "\tura      = " << c.ura << "\n";
+  os << "\thealth   = " << c.health << "\n";
+  return os;
+};
+template <>
+struct fmt::formatter<sturdr::Ephemerides> : formatter<string_view> {
+  auto format(sturdr::Ephemerides& c, format_context& ctx) const;
+};
+inline auto fmt::formatter<sturdr::Ephemerides>::format(
+    sturdr::Ephemerides& c, format_context& ctx) const {
+  std::ostringstream oss;
+  oss << "Ephemerides: \n";
+  oss << "\tiode     = " << c.iode << "\n";
+  oss << "\tiodc     = " << c.iodc << "\n";
+  oss << "\ttoe      = " << c.toe << "\n";
+  oss << "\ttoc      = " << c.toc << "\n";
+  oss << "\ttgd      = " << c.tgd << "\n";
+  oss << "\taf2      = " << c.af2 << "\n";
+  oss << "\taf1      = " << c.af1 << "\n";
+  oss << "\taf0      = " << c.af0 << "\n";
+  oss << "\te        = " << c.e << "\n";
+  oss << "\tsqrtA    = " << c.sqrtA << "\n";
+  oss << "\tdeltan   = " << c.deltan << "\n";
+  oss << "\tm0       = " << c.m0 << "\n";
+  oss << "\tomega0   = " << c.omega0 << "\n";
+  oss << "\tomega    = " << c.omega << "\n";
+  oss << "\tomegaDot = " << c.omegaDot << "\n";
+  oss << "\ti0       = " << c.i0 << "\n";
+  oss << "\tiDot     = " << c.iDot << "\n";
+  oss << "\tcuc      = " << c.cuc << "\n";
+  oss << "\tcus      = " << c.cus << "\n";
+  oss << "\tcic      = " << c.cic << "\n";
+  oss << "\tcis      = " << c.cis << "\n";
+  oss << "\tcrc      = " << c.crc << "\n";
+  oss << "\tcrs      = " << c.crs << "\n";
+  oss << "\tura      = " << c.ura << "\n";
+  oss << "\thealth   = " << c.health << "\n";
+  return formatter<string_view>::format(oss.str(), ctx);
+};
 
 #endif

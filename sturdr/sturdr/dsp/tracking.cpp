@@ -48,7 +48,8 @@ double NaturalFrequency(const double &bw, const int order) {
     }
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("tracking.cpp NaturalFrequency failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("tracking.cpp NaturalFrequency failed! Error -> {}", e.what());
     return std::nan("1");
   }
 }
@@ -68,8 +69,8 @@ void FLLassistedPLL_2ndOrder(
     vel_accum = vel_accum_k;
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "tracking.cpp FLLassistedPLL_2ndOrder failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("tracking.cpp FLLassistedPLL_2ndOrder failed! Error -> {}", e.what());
   }
 }
 
@@ -94,8 +95,8 @@ void FLLassistedPLL_3rdOrder(
     acc_accum = acc_accum_k;
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "tracking.cpp FLLassistedPLL_3rdOrder failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("tracking.cpp FLLassistedPLL_3rdOrder failed! Error -> {}", e.what());
   }
 }
 
@@ -112,7 +113,7 @@ void PLL_2ndOrder(
     vel_accum = vel_accum_k;
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("tracking.cpp PLL_2ndOrder failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")->error("tracking.cpp PLL_2ndOrder failed! Error -> {}", e.what());
   }
 }
 
@@ -134,7 +135,7 @@ void PLL_3rdOrder(
     acc_accum = acc_accum_k;
 
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("tracking.cpp PLL_3rdOrder failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")->error("tracking.cpp PLL_3rdOrder failed! Error -> {}", e.what());
   }
 }
 
@@ -204,7 +205,8 @@ Eigen::Vector<double, 5> TrackingKF::Run(double &chip_err, double &phase_err, do
     P_ = (I5 - K * H_) * P_;
     x_ += K * dz;
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("tracking.cpp TrackingKF::Run failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("tracking.cpp TrackingKF::Run failed! Error -> {}", e.what());
     return std::nan("1") * Eigen::Vector<double, 5>::Ones();
   }
 

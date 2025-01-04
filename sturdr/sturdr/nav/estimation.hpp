@@ -131,7 +131,8 @@ bool LeastSquares(
     }
     return true;
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("estimation.cpp LeastSquares failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("estimation.cpp LeastSquares failed! Error -> {}", e.what());
     return false;
   }
 };
@@ -195,7 +196,83 @@ class NavKF {
       const Eigen::Vector<double, N> &cno,
       const double &beta,
       const double &lambda,
-      const double &T);
+      const double &T) {
+    try {
+      // Initialize
+      const int M = 2 * N;
+      const Eigen::Vector<double, N> one = Eigen::Vector<double, N>::Ones();
+      Eigen::Matrix<double, M, 8> H = Eigen::Matrix<double, M, 8>::Zero();
+      H.block(0, 6, N, 1) = one;
+      H.block(N, 7, N, 1) = one;
+      Eigen::Vector<double, M> dz;
+
+      // Measurement covariance weighting
+      double beta2 = beta * beta;
+      double lambda2 = lambda * lambda / navtools::PI_SQU<double>;
+      Eigen::Matrix<double, M, M> R = Eigen::Matrix<double, M, M>::Zero();
+      for (int i = 0; i < N; i++) {
+        R(i, i) = beta2 * DllVariance(cno(i), T);
+        R(N + i, N + i) = lambda2 * FllVariance(cno(i), T);
+      }
+      // std::cout << "R: {\n" << R.diagonal() << "\n}\n";
+
+      // Innovation
+      Eigen::Vector<double, 8> dx;
+      Eigen::Vector3d u, udot;
+      double pred_psr, pred_psrdot;
+      for (int i = 0; i < N; i++) {
+        RangeAndRate(
+            x_.segment(0, 3),
+            x_.segment(3, 3),
+            x_(6),
+            x_(7),
+            sv_pos.col(i),
+            sv_vel.col(i),
+            u,
+            udot,
+            pred_psr,
+            pred_psrdot);
+
+        // update the measurement matrix and innovation
+        H.block(i, 0, 1, 3) = u.transpose();
+        H.block(N + i, 0, 1, 3) = udot.transpose();
+        H.block(N + i, 3, 1, 3) = u.transpose();
+        dz(i) = psr(i) - pred_psr;
+        dz(N + i) = psrdot(i) - pred_psrdot;
+      }
+
+      // Innovation filter
+      Eigen::Matrix<double, M, M> S = H * P_ * H.transpose() + R;
+      Eigen::Vector<double, M> norm_dz = (dz.array() / S.diagonal().array().sqrt()).abs();
+      Eigen::Array<bool, M, 1> mask = norm_dz.array() < inn_std_;
+      const int M2 = mask.count();
+      if (M2 < M) {
+        // an innovation got flagged
+        Eigen::Matrix<double, M2, 8> _H = Eigen::Matrix<double, M2, 8>::Zero();
+        Eigen::Matrix<double, M2, M2> _R = Eigen::Matrix<double, M2, M2>::Zero();
+        Eigen::Vector<double, M2> _dz;
+        int j = 0;
+        for (int i = 0; i < M; i++) {
+          if (mask(i)) {
+            _H.row(j) = H.row(i);
+            _R(j, j) = R(i, i);
+            _dz(j) = dz(i);
+            j++;
+          }
+        }
+        kalman_update(_H, _R, _dz);
+      } else {
+        // proceed as normal
+        kalman_update(H, R, dz);
+      }
+
+      return true;
+    } catch (std::exception &e) {
+      spdlog::get("sturdr-console")
+          ->error("estimation.cpp NavKF::Measurement failed! Error -> {}", e.what());
+      return false;
+    }
+  }
 
  private:
   Eigen::Vector<double, 8> x_;

@@ -96,7 +96,8 @@ bool NavKF::Dynamics() {
     P_ = F_ * (P_ + Q_) * F_.transpose() + Q_;
     return true;
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("estimation.cpp NavKF::Dynamics failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("estimation.cpp NavKF::Dynamics failed! Error -> {}", e.what());
     return false;
   }
 }
@@ -104,84 +105,6 @@ bool NavKF::Dynamics(const double &T) {
   make_F(T);
   make_Q(T);
   return Dynamics();
-}
-
-// *=== Measurement ===*
-template <int N>
-bool NavKF::Measurement(
-    const Eigen::Matrix<double, N, 3> &sv_pos,
-    const Eigen::Matrix<double, N, 3> &sv_vel,
-    const Eigen::Vector<double, N> &psr,
-    const Eigen::Vector<double, N> &psrdot,
-    const Eigen::Vector<double, N> &cno,
-    const double &beta,
-    const double &lambda,
-    const double &T) {
-  try {
-    // Initialize
-    const int M = 2 * N;
-    const Eigen::Vector<double, N> one = Eigen::Vector<double, N>::One();
-    Eigen::Matrix<double, M, 8> H = Eigen::Matrix<double, M, 8>::Zero();
-    H.col(6).segment<N>(0) = one;  // H.block<N, 1>(0, 6) = one;
-    H.col(7).segment<N>(N) = one;  // H.block<N, 1>(N, 7) = one;
-    Eigen::Vector<double, M> dz;
-
-    double beta2 = beta * beta;
-    double lambda2 = lambda * lambda;
-    Eigen::Matrix<double, M, M> R = Eigen::Matrix<double, M, M>::Zero();
-    for (int i = 0; i < M; i++) {
-      R(i, i) = beta2 * DllVariance(cno(i), T);
-      R(N + i, N + i) = lambda2 * FllVariance(cno(i), T);
-    }
-
-    // Innovation
-    Eigen::Vector3d pos = x_.segment(0, 3);
-    Eigen::Vector3d vel = x_.segment(3, 3);
-    Eigen::Vector3d u, udot;
-    double pred_psr, pred_psrdot;
-    for (int i = 0; i < N; i++) {
-      RangeAndRate(
-          pos, vel, x_(6), x_(7), sv_pos.col(i), sv_vel.col(i), u, udot, pred_psr, pred_psrdot);
-
-      // update the measurement matrix and innovation
-      H.row(i).segment<3>(0) = u.transpose();         // H.block<1,3>(i,0)=u.transpose();
-      H.row(N + i).segment<3>(0) = udot.transpose();  // H.block<1,3>(N+i,0)=udot.transpose();
-      H.row(N + i).segment<3>(3) = udot.transpose();  // H.block<1,3>(N+i,3)=u.transpose();
-      dz(i) = psr(i) - pred_psr;
-      dz(N + i) = psrdot(i) - pred_psrdot;
-    }
-
-    // Innovation filter
-    Eigen::Matrix<double, M, M> S = H * P_ * H.transpose() + R;
-    Eigen::Vector<double, M> norm_dz = (dz.array() / S.diagonal().array().sqrt()).abs();
-    Eigen::Array<bool, M, 1> mask = norm_dz.array() < inn_std_;
-    const int M2 = mask.count();
-    if (M2 < M) {
-      // an innovation got flagged
-      Eigen::Matrix<double, M2, 8> _H = Eigen::Matrix<double, M2, 8>::Zero();
-      Eigen::Matrix<double, M2, M2> _R = Eigen::Matrix<double, M2, M2>::Zero();
-      Eigen::Vector<double, M2> _dz;
-      int j = 0;
-      for (int i = 0; i < M; i++) {
-        if (mask(i)) {
-          _H.row(j) = H.row(i);
-          _R(j, j) = R(i, i);
-          _dz(j) = dz(i);
-          j++;
-        }
-      }
-      kalman_update(_H, _R, _dz);
-    } else {
-      // proceed as normal
-      kalman_update(H, R, dz);
-    }
-
-    return true;
-  } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "estimation.cpp NavKF::Measurement failed! Error -> {}", e.what());
-    return false;
-  }
 }
 
 //* === make_F ===*

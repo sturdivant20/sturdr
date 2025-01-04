@@ -1,67 +1,173 @@
+/**
+ * *gps-l1ca-channel.hpp*
+ *
+ * =======  ========================================================================================
+ * @file    sturdr/channel/gps-l1ca-channel.py
+ * @brief   Implementation of channel.py for GPS L1 C/A signals.
+ * @date    December 2024
+ * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
+ *            - Kaplan & Hegarty
+ *          2. "Global Positioning System: Signals, Measurements, and Performance", 2nd Edition,
+ *              2006 - Misra & Enge
+ *          3. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach", 2007
+ *            - Borre, Akos, Bertelsen, Rinder, Jensen
+ * =======  ========================================================================================
+ */
+
+#ifndef STURDR_GPS_L1CA_CHANNEL_HPP
+#define STURDR_GPS_L1CA_CHANNEL_HPP
+
+#include <spdlog/spdlog.h>
+
 #include <array>
-#include <cassert>
-#include <cstdint>
-#include <navtools/binary-ops.hpp>
+#include <complex>
+
+#include "sturdr/channel/channel.hpp"
+#include "sturdr/dsp/tracking.hpp"
+#include "sturdr/nav/gps-lnav.hpp"
 
 namespace sturdr {
-void CodeGenCA(std::array<bool, 1023>& sequence, const uint8_t prn) {
-  assert(!((prn < 1) || (prn > 32)));
 
-  static constexpr uint8_t g2_out_taps[32][2] = {
-      /*01 {2, 6} */ {1, 5},
-      /*02 {3, 7} */ {2, 6},
-      /*03 {4, 8} */ {3, 7},
-      /*04 {5, 9} */ {4, 8},
-      /*05 {1, 9} */ {0, 8},
-      /*06 {2, 10}*/ {1, 9},
-      /*07 {1, 8} */ {0, 7},
-      /*08 {2, 9} */ {1, 8},
-      /*09 {3, 10}*/ {2, 9},
-      /*10 {2, 3} */ {1, 2},
-      /*11 {3, 4} */ {2, 3},
-      /*12 {5, 6} */ {4, 5},
-      /*13 {6, 7} */ {5, 6},
-      /*14 {7, 8} */ {6, 7},
-      /*15 {8, 9} */ {7, 8},
-      /*16 {9, 10}*/ {8, 9},
-      /*17 {1, 4} */ {0, 3},
-      /*18 {2, 5} */ {1, 4},
-      /*19 {3, 6} */ {2, 5},
-      /*20 {4, 7} */ {3, 6},
-      /*21 {5, 8} */ {4, 7},
-      /*22 {6, 9} */ {5, 8},
-      /*23 {1, 3} */ {0, 2},
-      /*24 {4, 6} */ {3, 5},
-      /*25 {5, 7} */ {4, 6},
-      /*26 {6, 8} */ {5, 7},
-      /*27 {7, 9} */ {6, 8},
-      /*28 {8, 10}*/ {7, 9},
-      /*29 {1, 6} */ {0, 5},
-      /*30 {2, 7} */ {1, 6},
-      /*31 {3, 8} */ {2, 7},
-      /*32 {4, 9} */ {3, 8}};
+/**
+ * *=== CodeGenCA ===*
+ * @brief Generate the GPS L1 C/A code for the specified prn
+ * @param sequence  Code sequence
+ * @param prn       PRN id of code to create
+ */
+void CodeGenCA(std::array<bool, 1023> &sequence, const uint8_t prn);
 
-  // Linear-feedback shift registers
-  uint32_t G1 = 0xFFFF;
-  uint32_t G2 = 0xFFFF;
+//! ------------------------------------------------------------------------------------------------
 
-  uint8_t taps1[2] = {2, 9};              // 3,10
-  uint8_t taps2[6] = {1, 2, 5, 7, 8, 9};  // 2,3,6,8,9,10
+class GpsL1caChannel : public Channel {
+ public:
+  /**
+   * *=== GpsL1caChannel ===*
+   * @brief Constructor
+   * @param config        configuration from yaml file
+   * @param shm           shared memory array
+   * @param channel_queue thread safe queue for sharing channel status messages
+   * @param nav_queue     thread safe queue fir sharing navigation status messages
+   * @param start_barrier thread safe barrier for synchronizing the start of channel processing
+   * @param end_barrier   thread safe barrier for synchronizing the conclusion of channel processing
+   * @param channel_num   STURDR channel creation/identification number
+   */
+  GpsL1caChannel(
+      const Config &config,
+      const SturdrFftPlans &fft_plans,
+      std::shared_ptr<Eigen::VectorXcd> shm,
+      std::shared_ptr<ConcurrentQueue<ChannelPacket>> channel_queue,
+      std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
+      std::shared_ptr<ConcurrentBarrier> start_barrier,
+      std::shared_ptr<ConcurrentBarrier> end_barrier,
+      int &channel_num,
+      std::shared_ptr<bool> still_running);
 
-  for (std::size_t i = 0; i < 1023; i++) {
-    // set value in sequence
-    sequence[i] = navtools::CheckBit<true>(G1, 9u) ^
-                  navtools::CheckBit<true>(G2, g2_out_taps[prn - 1][0]) ^
-                  navtools::CheckBit<true>(G2, g2_out_taps[prn - 1][1]);
+  /**
+   * *=== ~GpsL1caChannel ===*
+   * @brief Destructor
+   */
+  ~GpsL1caChannel();
 
-    // shift the registers and set first bits
-    bool feedback1 = navtools::MultiXor<2, true>(G1, taps1);
-    bool feedback2 = navtools::MultiXor<6, true>(G2, taps2);
-    G1 <<= 1;
-    G2 <<= 1;
-    navtools::ModifyBit<true>(G1, 0, feedback1);
-    navtools::ModifyBit<true>(G2, 0, feedback2);
-  }
+  // /**
+  //  * *=== start ===*
+  //  * @brief Places all the channel operations inside a separate thread
+  //  */
+  // void start();
+
+  // /**
+  //  * *=== join ===*
+  //  * @brief Kills the channel thread and joins back with the main process
+  //  */
+  // void join();
+
+  /**
+   * *=== SetSatellite ===*
+   * @brief Set satellite tracked by channel to given prn
+   */
+  void SetSatellite(uint8_t sv_id);
+
+ protected:
+  /**
+   * *=== Run ===*
+   * @brief Run channel processing
+   */
+  void run();
+
+  /**
+   * *=== Acquire ===*
+   * @brief Trys to acquire the set satellite
+   */
+  void Acquire();
+
+  /**
+   * *=== Track ===*
+   * @brief Runs the tracking correlation and loop filter updates!
+   */
+  void Track();
+
+  /**
+   * *=== DataBitSync ===*
+   * @brief Synchronize to the data bit and extend the integration periods
+   */
+  bool DataBitSync();
+
+  /**
+   * *=== Demodulate ===*
+   * @brief Demodulate the navigation data and parse ephemerides
+   */
+  void Demodulate();
+
+ private:
+  // Code replica
+  std::array<bool, 1023> code_;
+  double rem_code_phase_;
+  double code_doppler_;
+
+  // Carrier replica
+  double rem_carr_phase_;
+  double carr_doppler_;
+  double carr_jitter_;
+
+  // NCO
+  double T_;
+  int PDI_;
+  uint64_t total_samp_;
+  uint64_t half_samp_;
+  uint64_t samp_processed_;
+  uint64_t samp_remaining_;
+  uint64_t samp_per_ms_;
+  uint64_t samp_per_chip_;
+
+  // Tracking
+  double kappa_;
+  double w0d_;
+  double w0p_;
+  double w0f_;
+  double tap_space_;
+  std::complex<double> E_;
+  std::complex<double> P_;
+  std::complex<double> L_;
+  std::complex<double> P1_;
+  std::complex<double> P2_;
+  std::complex<double> P_old_;
+  TrackingKF filt_;
+  uint8_t track_mode_;
+
+  // Lock detectors
+  double cno_mag_;
+  double nbd_mem_;
+  double nbp_mem_;
+  double pc_mem_;
+  double pn_mem_;
+  bool code_lock_;
+  bool carr_lock_;
+
+  // Telemetry
+  int cnt_;
+  uint8_t bit_sync_hist_[20];
+  GpsLnavParser gps_lnav_;
 };
 
 }  // end namespace sturdr
+
+#endif

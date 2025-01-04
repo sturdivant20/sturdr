@@ -20,20 +20,24 @@
 #include <cmath>
 #include <exception>
 #include <iostream>
+#include <navtools/constants.hpp>
+
+#include "sturdr/dsp/gnss-signal.hpp"
 
 namespace sturdr {
 
 // *=== PcpsSearch ===*
 Eigen::MatrixXd PcpsSearch(
+    const SturdrFftPlans &p,
     const Eigen::VectorXcd &rfdata,
-    std::array<bool, 1023> &code,
-    double &d_range,
-    double &d_step,
-    double &samp_freq,
-    double &code_freq,
-    double &intmd_freq,
-    uint8_t &c_per,
-    uint8_t &nc_per) {
+    const std::array<bool, 1023> &code,
+    const double &d_range,
+    const double &d_step,
+    const double &samp_freq,
+    const double &code_freq,
+    const double &intmd_freq,
+    const uint8_t &c_per,
+    const uint8_t &nc_per) {
   try {
     // Doppler bins
     uint64_t n_dopp_bins = static_cast<uint64_t>(2.0 * d_range / d_step + 1.0);
@@ -59,13 +63,13 @@ Eigen::MatrixXd PcpsSearch(
     Eigen::MatrixXcd x_carr = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
 
     // initialize FFT plans
-    ThreadSafety();
-    fftw_plan fft_code = Create1dFftPlan(code_up, code_up, samp_per_code, true);
-    fftw_plan fft = Create2dFftPlan(x_carr, x_carr, n_dopp_bins, samp_per_code, true);
-    fftw_plan ifft = Create2dFftPlan(x_carr, x_carr, n_dopp_bins, samp_per_code, false);
+    // ThreadSafety();
+    // fftw_plan fft_code = Create1dFftPlan(code_up, code_up, samp_per_code, true);
+    // fftw_plan fft = Create2dFftPlan(x_carr, x_carr, n_dopp_bins, samp_per_code, true);
+    // fftw_plan ifft = Create2dFftPlan(x_carr, x_carr, n_dopp_bins, samp_per_code, false);
 
     // Perform code FFT ahead of time (conjugate result)
-    ExecuteFftPlan(fft_code);
+    ExecuteFftPlan(p.fft, code_up, code_up);
     code_up = code_up.conjugate();
 
     // Loop through each non-coherent period
@@ -78,11 +82,11 @@ Eigen::MatrixXd PcpsSearch(
         // Wiped carrier FFT
         x_carr =
             carr_up.array().rowwise() * rfdata.segment(i_sig, samp_per_code).array().transpose();
-        ExecuteFftPlan(fft);
+        ExecuteManyFftPlan(p.fft_many, x_carr, x_carr);
 
         // Combined Code-Wiped Carrier IFFT
         x_carr = x_carr.array().rowwise() * code_up.array().transpose();
-        ExecuteFftPlan(ifft);
+        ExecuteManyFftPlan(p.ifft_many, x_carr, x_carr);
 
         // coherent sum
         coh_sum += x_carr;  // x_carr.array() / n ??
@@ -93,12 +97,13 @@ Eigen::MatrixXd PcpsSearch(
       corr_map += coh_sum.cwiseAbs2();
     }
 
-    fftw_destroy_plan(fft_code);
-    fftw_destroy_plan(fft);
-    fftw_destroy_plan(ifft);
+    // fftw_destroy_plan(fft_code);
+    // fftw_destroy_plan(fft);
+    // fftw_destroy_plan(ifft);
     return corr_map;
   } catch (std::exception &e) {
-    spdlog::default_logger()->error("acquisition.cpp PcpsSearch failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("acquisition.cpp PcpsSearch failed! Error -> {}", e.what());
     Eigen::VectorXd tmp;
     return tmp;
   }
@@ -138,8 +143,8 @@ void Peak2NoiseFloorTest(const Eigen::MatrixXd &corr_map, int peak_idx[2], doubl
     // calculate acquisition metric
     metric = (peak - mu) / sigma;
   } catch (std::exception &e) {
-    spdlog::default_logger()->error(
-        "acquisition.cpp Peak2NoiseFloorTest failed! Error -> {}", e.what());
+    spdlog::get("sturdr-console")
+        ->error("acquisition.cpp Peak2NoiseFloorTest failed! Error -> {}", e.what());
   }
 }
 

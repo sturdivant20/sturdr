@@ -1,13 +1,19 @@
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+
 #include <Eigen/Dense>
 #include <cmath>
-#include <iomanip>
-#include <iostream>
 #include <navtools/constants.hpp>
 #include <navtools/frames.hpp>
 
 #include "sturdr/nav/ephemeris.hpp"
 #include "sturdr/nav/estimation.hpp"
 #include "sturdr/utils/gnss-constants.hpp"
+
+template <typename T>
+struct fmt::formatter<T, std::enable_if_t<std::is_base_of_v<Eigen::DenseBase<T>, T>, char>>
+    : ostream_formatter {};
 
 void gen_nav_data(
     Eigen::Vector<sturdr::Ephemerides, 7> &e,
@@ -253,7 +259,10 @@ void gen_nav_data(
 }
 
 int main() {
-  std::cout << std::setprecision(15);
+  // Create spdlog multi-threaded console/terminal logger
+  std::shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("sturdr-console");
+  console->set_pattern("\033[1;34m[%D %T.%e][%^%l%$\033[1;34m]: \033[0m%v");
+
   double BETA = navtools::LIGHT_SPEED<double> / sturdr::GPS_L1CA_CODE_FREQ;
   double LAMBDA = navtools::LIGHT_SPEED<double> / sturdr::GPS_L1CA_CARRIER_FREQ;
   double T = 0.02;
@@ -267,7 +276,7 @@ int main() {
   // Transmit time
   Eigen::Vector<double, 7> transmit_times =
       ToW.array() + (CodePhase.array() / sturdr::GPS_L1CA_CODE_FREQ);
-  std::cout << "transmit_times: {" << transmit_times.transpose() << "}\n\n";
+  console->info("transmit_times: [{}]\n", transmit_times.transpose());
 
   // 1. Calculate satellite positions
   Eigen::Matrix<double, 3, 7> sv_pos = Eigen::Matrix<double, 3, 7>::Zero();
@@ -280,9 +289,9 @@ int main() {
         sv_clk.col(i), sv_pos.col(i), sv_vel.col(i), sv_acc.col(i), transmit_times(i), eph(i));
     tgd(i) = eph(i).tgd;
   }
-  std::cout << "sv_pos: {\n" << sv_pos.transpose() << "\n}\n";
-  std::cout << "sv_vel: {\n" << sv_vel.transpose() << "\n}\n";
-  std::cout << "sv_clk: {\n" << sv_clk.transpose() << "\n}\n\n";
+  console->info("sv_pos: [\n{}\n]", sv_pos);
+  console->info("sv_vel: [\n{}\n]", sv_vel);
+  console->info("sv_clk: [\n{}\n]\n", sv_clk);
 
   // 2. Estimate pseudoranges and pseudorange-rates
   double receive_time = transmit_times.maxCoeff() + 0.068802;
@@ -291,8 +300,9 @@ int main() {
       (receive_time - transmit_times.array() + sv_clk.row(0).transpose().array() - tgd.array());
   Eigen::Vector<double, 7> psrdot =
       -LAMBDA * Doppler.array() + navtools::LIGHT_SPEED<double> * sv_clk.row(1).transpose().array();
-  std::cout << "psr: {" << psr.transpose() << "}\n";
-  std::cout << "psrdot: {" << psrdot.transpose() << "}\n\n";
+
+  console->info("psr: [{}]", psr.transpose());
+  console->info("psrdot: [{}]\n", psrdot.transpose());
 
   // 3. Least squares position estimation
   Eigen::Vector<double, 8> x = Eigen::Vector<double, 8>::Zero();
@@ -301,12 +311,12 @@ int main() {
   Eigen::Vector3d lla =
       navtools::ecef2lla(x.segment(0, 3)).array() * navtools::LLA_RAD2DEG<double>.array();
 
-  std::cout << "lla: {" << lla.transpose() << "}\n";
-  std::cout << "xyz: {" << x.segment(0, 3).transpose() << "}\n";
-  std::cout << "xyzv: {" << x.segment(3, 3).transpose() << "}\n";
-  std::cout << "cb: " << x(6) << "\n";
-  std::cout << "cd: " << x(7) << "\n";
-  std::cout << "P: {" << P.diagonal().transpose() << "}\n";
+  console->info("lla: [{}]", lla.transpose());
+  console->info("xyz: [{}]", x.segment(0, 3).transpose());
+  console->info("xyzv: [{}]", x.segment(3, 3).transpose());
+  console->info("cb: {}", x(6));
+  console->info("cd: {}", x(7));
+  console->info("P: [{}]", P.diagonal().transpose());
 
   return 0;
 }

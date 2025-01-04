@@ -1,3 +1,6 @@
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/stopwatch.h>
 
 #include <array>
 #include <fstream>
@@ -13,6 +16,11 @@
 bool MODE = 1;  // 0 - Loop Filters, 1 - Kalman Filter
 
 int main() {
+  // initialize logger
+  std::shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("sturdr-console");
+  console->set_pattern("\033[1;34m[%D %T.%e][%^%l%$\033[1;34m]: \033[0m%v");
+  console->set_level(spdlog::level::trace);
+
   // config
   double samp_freq = 20e6;
   double intmd_freq = navtools::TWO_PI<double> * 5000445.88565834;
@@ -37,7 +45,7 @@ int main() {
   std::ifstream file(
       "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
   if (!file.is_open()) {
-    std::cerr << "Error opening file!" << std::endl;
+    console->error("Error opening file!");
     return 1;
   }
   file.seekg(code_samples, std::ios::beg);
@@ -69,6 +77,7 @@ int main() {
   kf.Init(w0d, w0p, w0f, k, rem_carr_phase, doppler, rem_code_phase, cno, T, intmd_freq, code_freq);
 
   // run tracking
+  spdlog::stopwatch sw;
   double carr_freq_nco = intmd_freq + doppler;
   double code_freq_nco = code_freq;
   Eigen::VectorXcd code_prompt, code_early, code_late, carr, rfdata;
@@ -139,19 +148,22 @@ int main() {
 
     // save results
 
-    std::cout << "------------------------------\n";
-    std::cout << "i: " << i << ", n_samp: " << n_samp << "\n";
-    std::cout << "IE: " << E.real() << ", IP: " << P.real() << ", IL: " << L.real() << "\n";
-    std::cout << "QE: " << E.imag() << ", QP: " << P.imag() << ", QL: " << L.imag() << "\n";
-    std::cout << "phase_err: " << phase_err << ", freq_err: " << freq_err
-              << ", chip_err: " << chip_err << "\n";
-    std::cout << "cno: " << 10.0 * std::log10(cno) << ", code_lock: " << code_lock
-              << ", carr_lock: " << carr_lock << "\n";
-    std::cout << "code_doppler: " << code_doppler << ", rem_code_phase: " << rem_code_phase << "\n";
-    std::cout << "carr_jitter: " << jitter / navtools::TWO_PI<double> << ", carr_doppler: "
-              << doppler / navtools::TWO_PI<double> << ", rem_carr_phase: " << rem_carr_phase
-              << "\n\n";
+    console->info("------------------------------");
+    console->info("i: {}, n_samp: {}", i, n_samp);
+    console->info("IE: {}, IP: {}, IL: {}", E.real(), P.real(), L.real());
+    console->info("QE: {}, QP: {}, QL: {}", E.imag(), P.imag(), L.imag());
+    console->info("phase_err: {}, freq_err: {}, chip_err: {}", phase_err, freq_err, chip_err);
+    console->info(
+        "cno: {}, code_lock: {}, carr_lock: {}", 10.0 * std::log10(cno), code_lock, carr_lock);
+    console->info("code_doppler: {}, rem_code_phase: {}", code_doppler, rem_code_phase);
+    console->info(
+        "carr_jitter: {}, carr_doppler: {}, rem_carr_phase: {}\n",
+        jitter / navtools::TWO_PI<double>,
+        doppler / navtools::TWO_PI<double>,
+        rem_carr_phase);
   }
+  std::cout << "\n";
+  console->debug("Time elapsed: {}", sw);
 
   return 0;
 }

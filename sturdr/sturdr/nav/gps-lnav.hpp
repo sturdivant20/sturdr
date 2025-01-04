@@ -114,6 +114,12 @@ class GpsLnavParser {
    */
   double GetTimeOfWeek();
 
+  /**
+   * *=== AreEphemeridesParsed ===*
+   * @returns True|False based on if subframe 1,2 and 3 have been parsed
+   */
+  bool AreEphemeridesParsed();
+
  private:
   bool preamble_sync_{false};
   bool sub1_parsed_{false};

@@ -149,4 +149,5 @@ double FllNddcp(
 double FllVariance(const double &cno, const double &T);
 
 }  // end namespace sturdr
+
 #endif
