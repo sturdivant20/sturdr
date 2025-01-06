@@ -12,6 +12,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_GPS_LNAV_HPP
 #define STURDR_GPS_LNAV_HPP
 

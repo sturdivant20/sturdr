@@ -41,7 +41,7 @@ Eigen::VectorXcd CodeNCO(
     std::complex<double> m1(-1.0, 0.0);
     Eigen::VectorXcd code_up(samp_per_code);
     for (uint64_t i = 0; i < samp_per_code; i++) {
-      code_up(i) = code[static_cast<uint16_t>(std::fmod(rem_phase, N))] ? p1 : m1;
+      code_up(i) = code[static_cast<uint64_t>(std::fmod(rem_phase, N))] ? p1 : m1;
       rem_phase += code_phase_step;
     }
     rem_phase -= N;
@@ -120,8 +120,6 @@ void AccumulateEPL(
     double carr_phase_step = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
 
     // Accumulate
-    std::complex<double> p1(1.0, 0.0);
-    std::complex<double> m1(-1.0, 0.0);
     std::complex<double> x_carr;
     for (uint64_t i = 0; i < n_samp; i++) {
       // Wipe carrier
@@ -129,14 +127,14 @@ void AccumulateEPL(
 
       // Correlate
       E += x_carr *
-           (code[static_cast<uint16_t>(std::fmod(rem_code_phase + tap_spacing, N))] ? p1 : m1);
+           (code[static_cast<uint64_t>(std::fmod(rem_code_phase + tap_spacing, N))] ? 1.0 : -1.0);
       if (samp_cnt < half_samp) {
-        P1 += x_carr * (code[static_cast<uint16_t>(std::fmod(rem_code_phase, N))] ? p1 : m1);
+        P1 += x_carr * (code[static_cast<uint64_t>(std::fmod(rem_code_phase, N))] ? 1.0 : -1.0);
       } else {
-        P2 += x_carr * (code[static_cast<uint16_t>(std::fmod(rem_code_phase, N))] ? p1 : m1);
+        P2 += x_carr * (code[static_cast<uint64_t>(std::fmod(rem_code_phase, N))] ? 1.0 : -1.0);
       }
       L += x_carr *
-           (code[static_cast<uint16_t>(std::fmod(rem_code_phase - tap_spacing, N))] ? p1 : m1);
+           (code[static_cast<uint64_t>(std::fmod(rem_code_phase - tap_spacing, N))] ? 1.0 : -1.0);
 
       // propagate
       samp_cnt += 1;

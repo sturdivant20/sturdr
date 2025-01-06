@@ -15,6 +15,8 @@
 
 // TODO: SerialSearch and Peak2PeakTest
 
+#pragma once
+
 #ifndef STURDR_ACQUISITION_HPP
 #define STURDR_ACQUISITION_HPP
 

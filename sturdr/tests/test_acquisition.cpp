@@ -53,7 +53,6 @@ int main() {
   for (uint64_t i = 0; i < n_samp; i++) {
     file.read(&byte, 1);
     signal(i) = static_cast<std::complex<double>>(byte);
-    // std::cout << signal(i) << "\n";
   }
   console->debug("RF signal read from file!");
 

@@ -9,18 +9,24 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_STRUCTS_ENUMS_HPP
 #define STURDR_STRUCTS_ENUMS_HPP
 
-#include <fmt/format.h>
+// #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
 #include <cstdint>
+#include <format>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "sturdr/nav/ephemeris.hpp"
 
 namespace sturdr {
 
@@ -57,7 +63,7 @@ enum MeasurementType { UNKNOWN = 0, PSEUDORANGE = 1, DOPPLER = 2, PHASE = 4, CNO
 };  // namespace MeasurementType
 
 namespace ChannelState {
-enum ChannelState { OFF = 0, IDLE = 1, ACQUIRING = 2, TRACKING = 3 };
+enum ChannelState { OFF = 0, IDLE = 1, ACQUIRING = 2, TRACKING = 4 };
 };  // namespace ChannelState
 
 namespace TrackingFlags {
@@ -141,13 +147,20 @@ struct Config {
 };
 
 /**
- * @brief Packet of data saved to the log file
+ * @brief Minimal header for packets shared across STURDR
  */
-struct ChannelPacket {
+struct HeaderPacket {
   uint8_t ChannelNum{255};
   uint8_t Constellation{GnssSystem::UNKNOWN};
   uint8_t Signal{GnssSignal::UNKNOWN};
   uint8_t SVID{255};
+};
+
+/**
+ * @brief Minimal packet of data saved to the log file
+ */
+struct ChannelPacket {
+  HeaderPacket Header;
   uint8_t ChannelStatus{ChannelState::OFF};
   uint8_t TrackingStatus{TrackingFlags::UNKNOWN};
   uint16_t Week{65535};
@@ -175,21 +188,30 @@ struct ChannelPacket {
  * @brief Minimal packet of navigation data to be sent to the Navigator
  */
 struct NavPacket {
-  uint8_t ChannelNum{255};
-  uint8_t Constellation{GnssSystem::UNKNOWN};
-  uint8_t Signal{GnssSignal::UNKNOWN};
-  uint8_t SVID{255};
+  HeaderPacket Header;
   uint16_t Week{65535};
   double ToW{std::nan("1")};
   double CNo{std::nan("1")};
   double Doppler{std::nan("1")};
   double CodePhase{std::nan("1")};
   double CarrierPhase{std::nan("1")};
+  double DllDisc{std::nan("1")};
+  double PllDisc{std::nan("1")};
+  double FllDisc{std::nan("1")};
+};
+
+/**
+ * @brief Minimal packet of ephemeris data to be sent to the navigator
+ */
+struct EphemPacket {
+  HeaderPacket Header;
+  Ephemerides Eph;
 };
 
 };  // end namespace sturdr
 
 //! ------------------------------------------------------------------------------------------------
+//! printing overrides
 
 // *=== GnssSystem ===*
 inline std::ostream& operator<<(std::ostream& os, const sturdr::GnssSystem::GnssSystem& Token) {
@@ -530,5 +552,95 @@ inline auto fmt::formatter<sturdr::TrackingFlags::TrackingFlags>::format(
     return formatter<string_view>::format(str, ctx);
   }
 }
+
+//! ------------------------------------------------------------------------------------------------
+//! these print overrides are specific to making nice csv files
+
+// *=== ChannelPacket ===*
+inline std::ostream& operator<<(std::ostream& os, const sturdr::ChannelPacket& c) {
+  os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+     << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+     << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ","
+     << std::format("0b{:08b}", c.ChannelStatus) << "," << std::format("0b{:08b}", c.TrackingStatus)
+     << "," << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase
+     << "," << c.CarrierPhase << "," << c.IE << "," << c.IP << "," << c.IL << "," << c.QE << ","
+     << c.QP << "," << c.QL << "," << c.IP1 << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << ","
+     << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "\n";
+  return os;
+};
+template <>
+struct fmt::formatter<sturdr::ChannelPacket> : formatter<string_view> {
+  auto format(sturdr::ChannelPacket& c, format_context& ctx) const;
+};
+inline auto fmt::formatter<sturdr::ChannelPacket>::format(
+    sturdr::ChannelPacket& c, format_context& ctx) const {
+  std::ostringstream oss;
+  oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ","
+      << std::format("0b{:08b}", c.ChannelStatus) << ","
+      << std::format("0b{:08b}", c.TrackingStatus) << "," << (int)c.Week << "," << c.ToW << ","
+      << c.CNo << "," << c.Doppler << "," << c.CodePhase << "," << c.CarrierPhase << "," << c.IE
+      << "," << c.IP << "," << c.IL << "," << c.QE << "," << c.QP << "," << c.QL << "," << c.IP1
+      << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << "," << c.DllDisc << "," << c.PllDisc << ","
+      << c.FllDisc;
+  return formatter<string_view>::format(oss.str(), ctx);
+};
+
+// *=== NavPacket ===*
+inline std::ostream& operator<<(std::ostream& os, const sturdr::NavPacket& c) {
+  os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+     << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+     << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << (int)c.Week
+     << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase << ","
+     << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "\n";
+  return os;
+};
+template <>
+struct fmt::formatter<sturdr::NavPacket> : formatter<string_view> {
+  auto format(sturdr::NavPacket& c, format_context& ctx) const;
+};
+inline auto fmt::formatter<sturdr::NavPacket>::format(
+    sturdr::NavPacket& c, format_context& ctx) const {
+  std::ostringstream oss;
+  oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << (int)c.Week
+      << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase << ","
+      << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc;
+  return formatter<string_view>::format(oss.str(), ctx);
+};
+
+// *=== EphemPacket ===*
+inline std::ostream& operator<<(std::ostream& os, const sturdr::EphemPacket& c) {
+  os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+     << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+     << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ""
+     << c.Eph.iode << "," << c.Eph.iodc << "," << c.Eph.toe << "," << c.Eph.toc << "," << c.Eph.tgd
+     << "," << c.Eph.af2 << "," << c.Eph.af1 << "," << c.Eph.af0 << "," << c.Eph.e << ","
+     << c.Eph.sqrtA << "," << c.Eph.deltan << "," << c.Eph.m0 << "," << c.Eph.omega0 << ","
+     << c.Eph.omega << "," << c.Eph.omegaDot << "," << c.Eph.i0 << "," << c.Eph.iDot << ","
+     << c.Eph.cuc << "," << c.Eph.cus << "," << c.Eph.cic << "," << c.Eph.cis << "," << c.Eph.crc
+     << "," << c.Eph.crs << "," << c.Eph.ura << "," << c.Eph.health << "\n";
+  return os;
+};
+template <>
+struct fmt::formatter<sturdr::EphemPacket> : formatter<string_view> {
+  auto format(sturdr::EphemPacket& c, format_context& ctx) const;
+};
+inline auto fmt::formatter<sturdr::EphemPacket>::format(
+    sturdr::EphemPacket& c, format_context& ctx) const {
+  std::ostringstream oss;
+  oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ""
+      << c.Eph.iode << "," << c.Eph.iodc << "," << c.Eph.toe << "," << c.Eph.toc << "," << c.Eph.tgd
+      << "," << c.Eph.af2 << "," << c.Eph.af1 << "," << c.Eph.af0 << "," << c.Eph.e << ","
+      << c.Eph.sqrtA << "," << c.Eph.deltan << "," << c.Eph.m0 << "," << c.Eph.omega0 << ","
+      << c.Eph.omega << "," << c.Eph.omegaDot << "," << c.Eph.i0 << "," << c.Eph.iDot << ","
+      << c.Eph.cuc << "," << c.Eph.cus << "," << c.Eph.cic << "," << c.Eph.cis << "," << c.Eph.crc
+      << "," << c.Eph.crs << "," << c.Eph.ura << "," << c.Eph.health;
+  return formatter<string_view>::format(oss.str(), ctx);
+};
 
 #endif

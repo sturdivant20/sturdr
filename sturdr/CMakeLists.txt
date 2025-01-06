@@ -75,10 +75,13 @@ set(STURDR_HDRS
 
     sturdr/utils/concurrent-barrier.hpp
     sturdr/utils/concurrent-queue.hpp
+    sturdr/utils/data-type-adapters.hpp
     sturdr/utils/fftw-wrapper.hpp
     sturdr/utils/gnss-constants.hpp
     sturdr/utils/io-tools.hpp
     sturdr/utils/structs-enums.hpp
+
+    sturdr/receiver.hpp
 )
 
 set(STURDR_SRCS
@@ -98,6 +101,8 @@ set(STURDR_SRCS
 
     sturdr/utils/fftw-wrapper.cpp
     sturdr/utils/io-tools.cpp
+
+    sturdr/receiver.cpp
 )
 
 # --- Create the C++ Library ---

@@ -12,12 +12,16 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_CHANNEL_HPP
 #define STURDR_CHANNEL_HPP
 
+#include <spdlog/async.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
 #include <Eigen/Dense>
 #include <chrono>
-#include <complex>
 #include <memory>
 #include <navtools/constants.hpp>
 #include <thread>
@@ -46,7 +50,6 @@ class Channel {
       const Config &config,
       const SturdrFftPlans &fft_plans,
       std::shared_ptr<Eigen::VectorXcd> shm,
-      std::shared_ptr<ConcurrentQueue<ChannelPacket>> channel_queue,
       std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentBarrier> end_barrier,
@@ -58,7 +61,6 @@ class Channel {
         shm_write_ptr_{0},
         start_bar_{start_barrier},
         end_bar_{end_barrier},
-        channel_queue_{channel_queue},
         nav_queue_{nav_queue},
         fft_plans_{fft_plans},
         intmd_freq_rad_{navtools::TWO_PI<double> * config.rfsignal.intmd_freq},
@@ -68,13 +70,24 @@ class Channel {
     channel_id_ = "Sturdr_Ch" + std::to_string(channel_num);
     shm_samp_chunk_size_ = conf_.general.ms_chunk_size * conf_.rfsignal.samp_freq / 1000;
     shm_samp_write_size_ = conf_.general.ms_read_size * conf_.rfsignal.samp_freq / 1000;
+
+    // initialize file logger
+    file_log_ = spdlog::basic_logger_st<spdlog::async_factory>(
+        channel_id_ + "_Logger", conf_.general.out_folder + "/" + channel_id_ + "_Log.csv", true);
+    file_log_->set_pattern("%v");
+    file_log_->info(
+        "ChannelNum,Constellation,Signal,SVID,ChannelStatus,TrackingStatus,Week,ToW,"
+        "CNo,Doppler,CodePhase,CarrierPhase,IE,IP,IL,QE,QP,QL,IP1,IP2,QP1,QP2,"
+        "DllDisc,PllDisc,FllDisc");
   };
 
   /**
    * *=== ~Channel ===*
    * @brief Destructor
    */
-  virtual ~Channel(){};
+  virtual ~Channel() {
+    join();
+  };
 
   /**
    * *=== start ===*
@@ -98,6 +111,36 @@ class Channel {
   };
 
   /**
+   * *=== Run ===*
+   * @brief Run channel processing
+   */
+  virtual void run() {
+    // wait for shm_ to be updated
+    start_bar_->Wait();
+
+    while (*still_running_) {
+      // update shm_ writer buffer (necessary because writer is a different process)
+      UpdateShmWriterPtr();
+
+      // process data
+      if (channel_msg_.ChannelStatus == ChannelState::TRACKING) {
+        Track();
+        nav_queue_->push(nav_msg_);
+      } else if (channel_msg_.ChannelStatus == ChannelState::ACQUIRING) {
+        Acquire();
+      }
+      // channel_queue_->push(channel_msg_);
+      file_log_->info("{}", channel_msg_);
+
+      // wait for all channels to finish
+      end_bar_->WaitFor(timeout_);
+
+      // wait for shm_ to be updated
+      start_bar_->WaitFor(timeout_);
+    }
+  };
+
+  /**
    * @brief abstract functions to be defined per specific channel specifications
    */
   virtual void SetSatellite(uint8_t sv_id) = 0;
@@ -114,8 +157,7 @@ class Channel {
   uint64_t shm_samp_write_size_;           // size of shm writer updates
   std::shared_ptr<ConcurrentBarrier> start_bar_;  // barrier synchronizing shm_ memory
   std::shared_ptr<ConcurrentBarrier> end_bar_;    // barrier synchronizing channel processing
-  std::shared_ptr<ConcurrentQueue<ChannelPacket>> channel_queue_;  // queue for channel messages
-  std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;          // queue for navigation messages
+  std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;  // queue for navigation messages
   std::shared_ptr<std::thread> thread_;
   SturdrFftPlans fft_plans_;  // bool to indicate processing is still being performed
   double intmd_freq_rad_;
@@ -124,6 +166,7 @@ class Channel {
   std::shared_ptr<bool> still_running_;
   std::chrono::milliseconds timeout_;
   std::shared_ptr<spdlog::logger> log_;
+  std::shared_ptr<spdlog::logger> file_log_;
 
   /**
    * *=== UpdateShmWriterPtr ===*
@@ -149,7 +192,6 @@ class Channel {
   /**
    * @brief abstract functions to be defined per specific channel specifications
    */
-  virtual void run() = 0;
   virtual void Acquire() = 0;
   virtual void Track() = 0;
   virtual bool DataBitSync() = 0;

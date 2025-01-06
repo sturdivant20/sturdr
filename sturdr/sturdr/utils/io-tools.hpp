@@ -9,6 +9,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_IO_TOOLS_HPP
 #define STURDR_IO_TOOLS_HPP
 

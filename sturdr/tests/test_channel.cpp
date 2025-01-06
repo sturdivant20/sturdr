@@ -1,6 +1,6 @@
 
+#include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 
 #include <Eigen/Dense>
@@ -15,13 +15,14 @@
 #include "sturdr/utils/io-tools.hpp"
 #include "sturdr/utils/structs-enums.hpp"
 
-using ChannelQueue = sturdr::ConcurrentQueue<sturdr::ChannelPacket>;
 using NavQueue = sturdr::ConcurrentQueue<sturdr::NavPacket>;
 using Barrier = sturdr::ConcurrentBarrier;
 
 int main() {
   // initialize logger
-  std::shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("sturdr-console");
+  // std::shared_ptr<spdlog::logger> console = spdlog::stdout_color_mt("sturdr-console");
+  std::shared_ptr<spdlog::logger> console =
+      spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console");
   console->set_pattern("\033[1;34m[%D %T.%e][%^%l%$\033[1;34m]: \033[0m%v");
   console->set_level(spdlog::level::info);
 
@@ -30,8 +31,8 @@ int main() {
   conf.general.scenario = "test_channel";
   conf.general.in_file = "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin";
   conf.general.out_folder = "./results";
-  conf.general.log_level = spdlog::level::trace;
-  conf.general.ms_to_process = 10000;
+  conf.general.log_level = spdlog::level::info;
+  conf.general.ms_to_process = 32000;
   conf.general.ms_chunk_size = 100;
   conf.general.ms_read_size = 20;
   conf.general.reference_pos_x = 422596.629;
@@ -45,20 +46,20 @@ int main() {
   conf.rfsignal.max_channels = 7;
   conf.acquisition.threshold = 12.0;
   conf.acquisition.doppler_range = 5000.0;
-  conf.acquisition.doppler_step = 100.0;
+  conf.acquisition.doppler_step = 250.0;
   conf.acquisition.num_coh_per = 1;
   conf.acquisition.num_noncoh_per = 5;
-  conf.tracking.min_converg_time_ms = 150;
+  conf.tracking.min_converg_time_ms = 100;
   conf.tracking.tap_epl_wide = 0.5;
   conf.tracking.tap_epl_standard = 0.25;
   conf.tracking.tap_epl_narrow = 0.1;
   conf.tracking.dll_bw_wide = 1.0;
   conf.tracking.pll_bw_wide = 15.0;
   conf.tracking.fll_bw_wide = 5.0;
-  conf.tracking.dll_bw_standard = 0.5;
+  conf.tracking.dll_bw_standard = 0.1;
   conf.tracking.pll_bw_standard = 10.0;
   conf.tracking.fll_bw_standard = 1.0;
-  conf.tracking.dll_bw_narrow = 0.1;
+  conf.tracking.dll_bw_narrow = 0.01;
   conf.tracking.pll_bw_narrow = 6.0;
   conf.tracking.fll_bw_narrow = 0.1;
   conf.navigation.use_psr = true;
@@ -81,7 +82,6 @@ int main() {
   console->info("shm_samp_chunk_size = {}", shm_samp_chunk_size);
 
   // initialize thread safe queues
-  std::shared_ptr<ChannelQueue> channel_queue = std::make_shared<ChannelQueue>();
   std::shared_ptr<NavQueue> nav_queue = std::make_shared<NavQueue>();
   console->debug("Queues created!");
 
@@ -118,15 +118,7 @@ int main() {
     // chs.push_back(sturdr::GpsL1caChannel(
     //     conf, p, shm, channel_queue, nav_queue, start_barrier, end_barrier, channel_num));
     chs.emplace_back(
-        conf,
-        p,
-        shm,
-        channel_queue,
-        nav_queue,
-        start_barrier,
-        end_barrier,
-        channel_num,
-        still_running);
+        conf, p, shm, nav_queue, start_barrier, end_barrier, channel_num, still_running);
     chs[channel_num].SetSatellite(prn[channel_num]);
     console->info("Channel {} created and set to GPS{}!", channel_num, prn[channel_num]);
     chs[channel_num].start();

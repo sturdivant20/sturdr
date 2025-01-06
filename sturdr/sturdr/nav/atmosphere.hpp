@@ -9,6 +9,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_ATMOSPHERE_HPP
 #define STURDR_ATMOSPHERE_HPP
 

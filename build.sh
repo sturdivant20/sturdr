@@ -36,6 +36,7 @@ case "$OSTYPE" in
         -DCMAKE_BUILD_TYPE=$BUILDTYPE \
         -DCMAKE_C_COMPILER=$C_COMPILER \
         -DCMAKE_CXX_COMPILER=$CXX_COMPILER \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         ;;
   darwin*)
     echo -e "${BoldMagenta}-- OS: mac${Reset}"; 
@@ -45,6 +46,7 @@ case "$OSTYPE" in
         -DCMAKE_BUILD_TYPE=$BUILDTYPE
         -DCMAKE_C_COMPILER=$C_COMPILER \
         -DCMAKE_CXX_COMPILER=$CXX_COMPILER \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         ;;
   msys*)
     echo -e "${BoldMagenta}-- OS: windows${Reset}";
@@ -54,7 +56,8 @@ case "$OSTYPE" in
         -DCMAKE_C_COMPILER=C:/MinGW/bin/gcc.exe \
         -DINSTALL_NAVTOOLS_EXAMPLES=False \
         -DCMAKE_INSTALL_PREFIX=../build \
-        -DCMAKE_BUILD_TYPE=$BUILDTYPE
+        -DCMAKE_BUILD_TYPE=$BUILDTYPE \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         ;;
   solaris*)
     echo -e "${BoldMagenta}-- OS: solaris${Reset}";;
@@ -64,7 +67,7 @@ case "$OSTYPE" in
     echo -e "${BoldMagenta}-- OS: unknown${Reset}";;
 esac
 
-cmake --build . -- -j4
+cmake --build . -j 8
 # make
 # make install
 cd ..

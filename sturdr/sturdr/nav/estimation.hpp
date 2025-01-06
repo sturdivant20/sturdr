@@ -13,13 +13,14 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_ESTIMATION_HPP
 #define STURDR_ESTIMATION_HPP
 
 #include <spdlog/spdlog.h>
 
 #include <Eigen/Dense>
-#include <iostream>
 #include <navtools/constants.hpp>
 
 #include "sturdr/dsp/discriminator.hpp"
@@ -85,7 +86,6 @@ bool LeastSquares(
       R(i, i) = 1.0 / (beta2 * DllVariance(cno(i), T));
       R(N + i, N + i) = 1.0 / (lambda2 * FllVariance(cno(i), T));
     }
-    // std::cout << "R: {\n" << R.diagonal() << "\n}\n";
 
     // Recursive estimation
     Eigen::Vector<double, 8> dx;
@@ -106,10 +106,6 @@ bool LeastSquares(
             udot,
             pred_psr,
             pred_psrdot);
-        // std::cout << "u: {" << u.transpose() << "}\n";
-        // std::cout << "udot: {" << udot.transpose() << "}\n";
-        // std::cout << "pred_psr: " << pred_psr << "\n";
-        // std::cout << "pred_psrdot: " << pred_psrdot << "\n\n";
 
         // update the measurement matrix and innovation
         H.block(i, 0, 1, 3) = u.transpose();
@@ -124,8 +120,6 @@ bool LeastSquares(
       dx = P * H.transpose() * R * dz;
       x += dx;
       if (dx.segment(0, 3).norm() < 1e-6) {
-        // std::cout << "k = " << k << " iterations, norm(dx) = " << dx.segment(0, 3).norm() <<
-        // "\n";
         break;
       }
     }
@@ -214,7 +208,6 @@ class NavKF {
         R(i, i) = beta2 * DllVariance(cno(i), T);
         R(N + i, N + i) = lambda2 * FllVariance(cno(i), T);
       }
-      // std::cout << "R: {\n" << R.diagonal() << "\n}\n";
 
       // Innovation
       Eigen::Vector<double, 8> dx;

@@ -17,6 +17,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_TRACKING_HPP
 #define STURDR_TRACKING_HPP
 
@@ -182,13 +184,15 @@ class TrackingKF {
    * @return Current state estimates of PLL/DLL Kalman Filter
    *          -> (Phase, doppler, jitter, chips, chip_rate)
    */
-  Eigen::Vector<double, 5> Run(double &chip_err, double &phase_err, double &freq_err);
+  void Run(double &chip_err, double &phase_err, double &freq_err);
 
   void SetRemCarrierPhase(const double &rem_carrier_phase);
   void SetRemCodePhase(const double &rem_code_phase);
 
- private:
+  // make this accessible?
   Eigen::Vector<double, 5> x_;
+
+ private:
   Eigen::Matrix<double, 5, 5> P_;
   Eigen::Matrix<double, 5, 5> Q_;
   Eigen::Matrix<double, 3, 3> R_;

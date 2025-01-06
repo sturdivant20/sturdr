@@ -13,6 +13,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_GNSS_SIGNAL_HPP
 #define STURDR_GNSS_SIGNAL_HPP
 

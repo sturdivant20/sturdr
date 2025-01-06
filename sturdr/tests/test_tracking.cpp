@@ -4,7 +4,6 @@
 
 #include <array>
 #include <fstream>
-#include <iostream>
 #include <navtools/constants.hpp>
 
 #include "sturdr/channel/gps-l1ca-channel.hpp"
@@ -130,12 +129,12 @@ int main() {
     if (MODE) {
       kf.UpdateDynamicsParam(w0d, w0p, w0f, k, T);
       kf.UpdateMeasurementsParam(cno, T);
-      Eigen::Vector<double, 5> x = kf.Run(chip_err, phase_err, freq_err);
-      rem_carr_phase = std::fmod(x(0), navtools::TWO_PI<double>);
-      doppler = x(1);
-      jitter = x(2);
-      rem_code_phase = x(3) - code_len;
-      code_doppler = x(4);
+      kf.Run(chip_err, phase_err, freq_err);
+      rem_carr_phase = std::fmod(kf.x_(0), navtools::TWO_PI<double>);
+      doppler = kf.x_(1);
+      jitter = kf.x_(2);
+      rem_code_phase = kf.x_(3) - code_len;
+      code_doppler = kf.x_(4);
       kf.SetRemCarrierPhase(rem_carr_phase);
       kf.SetRemCodePhase(rem_code_phase);
     } else {

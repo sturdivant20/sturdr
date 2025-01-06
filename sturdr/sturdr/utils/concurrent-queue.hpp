@@ -9,6 +9,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_CONCURRENT_QUEUE_HPP
 #define STURDR_CONCURRENT_QUEUE_HPP
 

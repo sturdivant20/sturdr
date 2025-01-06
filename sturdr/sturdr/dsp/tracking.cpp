@@ -192,7 +192,7 @@ void TrackingKF::UpdateMeasurementsParam(const double &cno, const double &T) {
 }
 
 // *=== Run ===*
-Eigen::Vector<double, 5> TrackingKF::Run(double &chip_err, double &phase_err, double &freq_err) {
+void TrackingKF::Run(double &chip_err, double &phase_err, double &freq_err) {
   try {
     // Prediction
     x_ = F_ * x_ + G_ * u_;
@@ -207,10 +207,10 @@ Eigen::Vector<double, 5> TrackingKF::Run(double &chip_err, double &phase_err, do
   } catch (std::exception &e) {
     spdlog::get("sturdr-console")
         ->error("tracking.cpp TrackingKF::Run failed! Error -> {}", e.what());
-    return std::nan("1") * Eigen::Vector<double, 5>::Ones();
+    // return std::nan("1") * Eigen::Vector<double, 5>::Ones();
   }
 
-  return x_;
+  // return x_;
 }
 
 void TrackingKF::SetRemCarrierPhase(const double &rem_carrier_phase) {

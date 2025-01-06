@@ -14,6 +14,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_GPS_L1CA_CHANNEL_HPP
 #define STURDR_GPS_L1CA_CHANNEL_HPP
 
@@ -55,7 +57,6 @@ class GpsL1caChannel : public Channel {
       const Config &config,
       const SturdrFftPlans &fft_plans,
       std::shared_ptr<Eigen::VectorXcd> shm,
-      std::shared_ptr<ConcurrentQueue<ChannelPacket>> channel_queue,
       std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentBarrier> end_barrier,
@@ -68,18 +69,6 @@ class GpsL1caChannel : public Channel {
    */
   ~GpsL1caChannel();
 
-  // /**
-  //  * *=== start ===*
-  //  * @brief Places all the channel operations inside a separate thread
-  //  */
-  // void start();
-
-  // /**
-  //  * *=== join ===*
-  //  * @brief Kills the channel thread and joins back with the main process
-  //  */
-  // void join();
-
   /**
    * *=== SetSatellite ===*
    * @brief Set satellite tracked by channel to given prn
@@ -87,11 +76,11 @@ class GpsL1caChannel : public Channel {
   void SetSatellite(uint8_t sv_id);
 
  protected:
-  /**
-   * *=== Run ===*
-   * @brief Run channel processing
-   */
-  void run();
+  // /**
+  //  * *=== Run ===*
+  //  * @brief Run channel processing
+  //  */
+  // void run();
 
   /**
    * *=== Acquire ===*

@@ -55,11 +55,6 @@ void RangeAndRate(
   Eigen::Vector3d dv = (vel + navtools::WGS84_OMEGA_SKEW<double> * pos) -
                        C_i_e * (sv_vel + navtools::WGS84_OMEGA_SKEW<double> * sv_pos);
   udot = (dv * r2 - dr * dv.dot(dr)) / (r2 * r);
-  // std::cout << "dr = " << dr.transpose() << "\n";
-  // std::cout << "dv = " << dv.transpose() << "\n";
-  // std::cout << "dv * r^2 = " << (dv * r2).transpose() << "\n";
-  // std::cout << "dv @ dr = " << dv.dot(dr) << "\n";
-  // std::cout << "-dr * (dv @ dr) = " << (-dr * dv.dot(dr)).transpose() << "\n";
   pred_psrdot = u.dot(dv) + cd;
 }
 

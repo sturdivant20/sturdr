@@ -12,6 +12,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_EPHEMERIS_HPP
 #define STURDR_EPHEMERIS_HPP
 
@@ -277,7 +279,7 @@ inline auto fmt::formatter<sturdr::Ephemerides>::format(
   oss << "\tcrc      = " << c.crc << "\n";
   oss << "\tcrs      = " << c.crs << "\n";
   oss << "\tura      = " << c.ura << "\n";
-  oss << "\thealth   = " << c.health << "\n";
+  oss << "\thealth   = " << c.health;
   return formatter<string_view>::format(oss.str(), ctx);
 };
 

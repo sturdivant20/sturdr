@@ -19,7 +19,6 @@
 
 #include <cmath>
 #include <exception>
-#include <iostream>
 #include <navtools/constants.hpp>
 
 #include "sturdr/dsp/gnss-signal.hpp"

@@ -14,6 +14,8 @@
 
 #include "sturdr/nav/gps-lnav.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <exception>
 #include <navtools/binary-ops.hpp>
 
@@ -39,158 +41,175 @@ GpsLnavParser::~GpsLnavParser() {
 
 // *=== NextBit ===*
 bool GpsLnavParser::NextBit(const bool &bit) {
-  // data bits ordered [-2 -1 0 ... 29]
-  bool subframe_parsed = false;
+  try {
+    // data bits ordered [-2 -1 0 ... 29]
+    bool subframe_parsed = false;
 
-  // shift prev 32 to the left and insert next bit
-  prev_32_bits_ <<= 1;
-  navtools::ModifyBit<false>(prev_32_bits_, 31, bit);
-  bit_cnt_ += 1;
+    // shift prev 32 to the left and insert next bit
+    prev_32_bits_ <<= 1;
+    navtools::SetBitTo<false>(prev_32_bits_, 31, bit);
+    bit_cnt_ += 1;
+    // std::bitset<32> tmp(prev_32_bits_);
 
-  // Step 1: find preamble
-  if (!preamble_sync_) {
-    // Check most recent 8 bits for a preamble
-    uint8_t test = static_cast<uint8_t>(prev_32_bits_ & 0x000000FF);
-    if ((test == LNAV_PREAMBLE_BITS) || (test == LNAV_INV_PREAMBLE_BITS)) {
-      if (bits_since_preamble_ == 301) {
-        // If here, an initial preamble has been detected
-        bit_cnt_ = 8;
-        word_cnt_ = 0;
-        bits_since_preamble_ = 0;
-      } else if (bits_since_preamble_ == 300) {
-        // If here, a second preamble has been successfully detected 300 bits apart!
-        preamble_sync_ = true;
+    // Step 1: find preamble
+    if (!preamble_sync_) {
+      // Check most recent 8 bits for a preamble
+      uint8_t test = static_cast<uint8_t>(prev_32_bits_ & 0x000000FF);
+      if ((test == LNAV_PREAMBLE_BITS) || (test == LNAV_INV_PREAMBLE_BITS)) {
+        if (bits_since_preamble_ == 301) {
+          // If here, an initial preamble has been detected
+          bit_cnt_ = 8;
+          word_cnt_ = 0;
+          bits_since_preamble_ = 0;
+        } else if (bits_since_preamble_ == 300) {
+          // If here, a second preamble has been successfully detected 300 bits apart!
+          preamble_sync_ = true;
+          subframe_parsed = ParseSubframe();
+          bit_cnt_ = 8;
+          word_cnt_ = 0;
+          bits_since_preamble_ = 0;
+        } else {
+          // There is another preamble detection here, log it
+          preamble_idx_.push_back(bits_since_preamble_);
+        }
+      }
+
+      // Check if preamble failed to sync
+      if (bits_since_preamble_ == 300) {
+        // Sync failed, reset to next detection
+        uint16_t bits_to_shift = (preamble_idx_[0] % 30) + 1;
+        uint16_t words_to_shift = preamble_idx_[0] / 30;
+
+        // shift down full words
+        if (words_to_shift > 0) {
+          for (uint16_t i = 0; i < (10 - words_to_shift); i++) {
+            subframe[i] = subframe[i + words_to_shift];
+          }
+        }
+
+        // shift down remaining bits
+        if (bits_to_shift > 0) {
+          uint32_t curr_bits, next_bits;
+          for (uint16_t i = 0; i < (9 - words_to_shift); i++) {
+            curr_bits = ((subframe[i] & 0xFFFFFFFC) << (bits_to_shift - 1));
+            next_bits = (subframe[i + 1] >> (31 - bits_to_shift));
+            subframe[i] = curr_bits | next_bits;
+          }
+        }
+
+        // update counters
+        bits_since_preamble_ -= preamble_idx_[0];
+        bit_cnt_ = 31 - bits_to_shift + 8;  // +8 from preamble
+        word_cnt_ = 9 - words_to_shift;
+
+        // git rid of used detection and update detection counter
+        for (uint16_t &x : preamble_idx_) {
+          x -= preamble_idx_[0];
+        }
+        preamble_idx_.erase(preamble_idx_.begin());
+      }
+
+      // increment bit counter
+      if (bits_since_preamble_ < 300) bits_since_preamble_++;
+    }
+
+    // Step 2: Save words
+    if (bit_cnt_ == 30) {
+      subframe[word_cnt_] = prev_32_bits_;
+      bit_cnt_ = 0;
+      word_cnt_ += 1;
+    }
+
+    // Step 3: Parse subframe
+    if (word_cnt_ == 10) {
+      word_cnt_ = 0;
+      if (preamble_sync_) {
         subframe_parsed = ParseSubframe();
-        bit_cnt_ = 8;
-        word_cnt_ = 0;
-        bits_since_preamble_ = 0;
-      } else {
-        // There is another preamble detection here, log it
-        preamble_idx_.push_back(bits_since_preamble_);
       }
     }
 
-    // Check if preamble failed to sync
-    if (bits_since_preamble_ == 300) {
-      // Sync failed, reset to next detection
-      uint16_t bits_to_shift = (preamble_idx_[0] % 30) + 1;
-      uint16_t words_to_shift = preamble_idx_[0] / 30;
-
-      // shift down full words
-      if (words_to_shift > 0) {
-        for (uint16_t i = 0; i < (10 - words_to_shift); i++) {
-          subframe[i] = subframe[i + words_to_shift];
-        }
-      }
-
-      // shift down remaining bits
-      if (bits_to_shift > 0) {
-        uint32_t curr_bits, next_bits;
-        for (uint16_t i = 0; i < (9 - words_to_shift); i++) {
-          curr_bits = ((subframe[i] & 0xFFFFFFFC) << (bits_to_shift - 1));
-          next_bits = (subframe[i + 1] >> (31 - bits_to_shift));
-          subframe[i] = curr_bits | next_bits;
-        }
-      }
-
-      // update counters
-      bits_since_preamble_ -= preamble_idx_[0];
-      bit_cnt_ = 31 - bits_to_shift + 8;  // +8 from preamble
-      word_cnt_ = 9 - words_to_shift;
-
-      // git rid of used detection and update detection counter
-      for (uint16_t &x : preamble_idx_) {
-        x -= preamble_idx_[0];
-      }
-      preamble_idx_.erase(preamble_idx_.begin());
-    }
-
-    // increment bit counter
-    bits_since_preamble_++;
+    return subframe_parsed;
+  } catch (std::exception &e) {
+    spdlog::get("sturdr-console")->error("gps-lnav.cpp NextBit failed! Error -> {}", e.what());
+    return false;
   }
-
-  // Step 2: Save words
-  if (bit_cnt_ == 30) {
-    subframe[word_cnt_] = prev_32_bits_;
-    bit_cnt_ = 0;
-    word_cnt_ += 1;
-  }
-
-  // Step 3: Parse subframe
-  if (word_cnt_ == 10) {
-    word_cnt_ = 0;
-    if (preamble_sync_) {
-      subframe_parsed = ParseSubframe();
-    }
-  }
-
-  return subframe_parsed;
 }
 
 // *=== ParseSubframe ===*
 bool GpsLnavParser::ParseSubframe() {
-  // data bits ordered [-2 -1 0 ... 29]
+  try {
+    // data bits ordered [-2 -1 0 ... 29]
 
-  // Step 1: Validate received data bits
-  bool D29star, D30star;
-  for (uint16_t i = 0; i < 10; i++) {
-    D29star = navtools::CheckBit<false>(subframe[i], 0);
-    D30star = navtools::CheckBit<false>(subframe[i], 0);
+    // Step 1: Validate received data bits
+    bool D29star, D30star;
+    for (uint16_t i = 0; i < 10; i++) {
+      D29star = navtools::CheckBit<false>(subframe[i], 0);
+      D30star = navtools::CheckBit<false>(subframe[i], 1);
 
-    // check bit polarity
-    if (D30star) subframe[i] ^= 0x3FFFFFC0;
+      // check bit polarity
+      if (D30star) subframe[i] ^= 0x3FFFFFC0;
 
-    // check parity
-    if (!ParityCheck(subframe[i], D29star, D30star)) {
-      throw std::runtime_error("GpsLnavParser::ParseSubframe Invalid parity check!");
+      // check parity
+      if (!ParityCheck(subframe[i], D29star, D30star)) {
+        throw std::runtime_error("Invalid parity check!");
+      }
     }
+
+    // Step 2: Get subframe id
+    uint8_t sub_id = static_cast<uint8_t>((subframe[1] & 0x00000700) >> 8);
+
+    // Step 3: Parse subframe
+    bool subframe_parsed = false;
+    switch (sub_id) {
+      case 1:
+        LoadSubframe1();
+        sub1_parsed_ = true;
+        subframe_parsed = true;
+        spdlog::get("sturdr-console")->debug("Subframe 1 parsed!");
+        break;
+      case 2:
+        LoadSubframe2();
+        sub2_parsed_ = true;
+        subframe_parsed = true;
+        spdlog::get("sturdr-console")->debug("Subframe 2 parsed!");
+        break;
+      case 3:
+        LoadSubframe3();
+        sub3_parsed_ = true;
+        subframe_parsed = true;
+        spdlog::get("sturdr-console")->debug("Subframe 3 parsed!");
+        break;
+      case 4:
+        subframe_parsed = true;
+        spdlog::get("sturdr-console")->debug("Subframe 4 parsed!");
+        break;
+      case 5:
+        subframe_parsed = true;
+        spdlog::get("sturdr-console")->debug("Subframe 5 parsed!");
+        break;
+      default:
+        throw std::range_error("GpsLnavParser::ParseSubframe Invalid subframe ID!");
+        break;
+    }
+
+    return subframe_parsed;
+  } catch (std::exception &e) {
+    spdlog::get("sturdr-console")
+        ->error("gps-lnav.cpp ParseSubframe failed! Error -> {}", e.what());
+    return false;
   }
-
-  // Step 2: Get subframe id
-  uint8_t sub_id = static_cast<uint8_t>((subframe[1] & 0x00000700) >> 8);
-
-  // Step 3: Parse subframe
-  bool subframe_parsed = false;
-  switch (sub_id) {
-    case 1:
-      LoadSubframe1();
-      sub1_parsed_ = true;
-      subframe_parsed = true;
-      break;
-    case 2:
-      LoadSubframe2();
-      sub2_parsed_ = true;
-      subframe_parsed = true;
-      break;
-    case 3:
-      LoadSubframe3();
-      sub3_parsed_ = true;
-      subframe_parsed = true;
-      break;
-    case 4:
-      subframe_parsed = true;
-      break;
-    case 5:
-      subframe_parsed = true;
-      break;
-    default:
-      throw std::range_error("GpsLnavParser::ParseSubframe Invalid subframe ID!");
-      break;
-  }
-
-  return subframe_parsed;
 }
 
 // *=== ParityCheck ===*
 bool GpsLnavParser::ParityCheck(const uint32_t &gpsword, const bool &D29star, const bool &D30star) {
   // Calculate the parity
   uint32_t parity = 0;
-  navtools::ModifyBit<false>(parity, 26, D29star ^ navtools::MultiXor<false>(gpsword, GPS_D25));
-  navtools::ModifyBit<false>(parity, 27, D30star ^ navtools::MultiXor<false>(gpsword, GPS_D26));
-  navtools::ModifyBit<false>(parity, 28, D29star ^ navtools::MultiXor<false>(gpsword, GPS_D27));
-  navtools::ModifyBit<false>(parity, 29, D30star ^ navtools::MultiXor<false>(gpsword, GPS_D28));
-  navtools::ModifyBit<false>(parity, 30, D30star ^ navtools::MultiXor<false>(gpsword, GPS_D29));
-  navtools::ModifyBit<false>(parity, 31, D29star ^ navtools::MultiXor<false>(gpsword, GPS_D30));
+  navtools::SetBitTo<false>(parity, 26, D29star ^ navtools::MultiXor<14, false>(gpsword, GPS_D25));
+  navtools::SetBitTo<false>(parity, 27, D30star ^ navtools::MultiXor<14, false>(gpsword, GPS_D26));
+  navtools::SetBitTo<false>(parity, 28, D29star ^ navtools::MultiXor<14, false>(gpsword, GPS_D27));
+  navtools::SetBitTo<false>(parity, 29, D30star ^ navtools::MultiXor<14, false>(gpsword, GPS_D28));
+  navtools::SetBitTo<false>(parity, 30, D30star ^ navtools::MultiXor<15, false>(gpsword, GPS_D29));
+  navtools::SetBitTo<false>(parity, 31, D29star ^ navtools::MultiXor<13, false>(gpsword, GPS_D30));
 
   // compare the parity
   if (parity == (gpsword & 0x0000003F)) {

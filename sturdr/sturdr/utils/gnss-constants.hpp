@@ -12,6 +12,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_GNSS_CONSTANTS_HPP
 #define STURDR_GNSS_CONSTANTS_HPP
 

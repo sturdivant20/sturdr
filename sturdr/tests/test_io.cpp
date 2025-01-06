@@ -4,7 +4,6 @@
 #include <spdlog/spdlog.h>
 
 #include <Eigen/Dense>
-#include <iostream>
 #include <sstream>
 
 #include "sturdr/nav/clock.hpp"

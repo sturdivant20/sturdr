@@ -9,6 +9,8 @@
  * =======  ========================================================================================
  */
 
+#pragma once
+
 #ifndef STURDR_FFTW_WRAPPER_HPP
 #define STURDR_FFTW_WRAPPER_HPP
 
