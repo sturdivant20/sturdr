@@ -3,7 +3,7 @@ scenario        : GPS_L1CA_TEST
 ms_to_process   : 31900
 ms_chunk_size   : 100
 ms_read_size    : 20
-in_file         : ../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin
+in_file         : ./rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin
 out_folder      : ./results
 reference_pos_x : 422596.629
 reference_pos_y : -5362864.287

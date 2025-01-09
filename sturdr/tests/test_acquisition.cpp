@@ -41,8 +41,7 @@ int main() {
 
   // load signal
   uint64_t n_samp = static_cast<uint64_t>(c_per * nc_per * static_cast<int>(samp_freq) / 1000);
-  std::ifstream file(
-      "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
+  std::ifstream file("./rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
   if (!file.is_open()) {
     console->error("Error opening file!");
     return 1;

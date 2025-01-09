@@ -29,7 +29,7 @@ int main() {
   // config
   sturdr::Config conf;
   conf.general.scenario = "test_channel";
-  conf.general.in_file = "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin";
+  conf.general.in_file = "./rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin";
   conf.general.out_folder = "./results";
   conf.general.log_level = spdlog::level::info;
   conf.general.ms_to_process = 32000;

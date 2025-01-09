@@ -41,8 +41,7 @@ int main() {
   double cno = 1000.0;
 
   // open file
-  std::ifstream file(
-      "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
+  std::ifstream file("./rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
   if (!file.is_open()) {
     console->error("Error opening file!");
     return 1;

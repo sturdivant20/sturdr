@@ -1,6 +1,10 @@
 # cmake
 sudo apt install cmake -y
 
+# clang
+sudo apt install clang -y
+sudo apt install clang-format -y
+
 # spdlog
 # git clone -b v2.x git@github.com:gabime/spdlog.git spdlog
 sudo apt install libspdlog-dev -y
@@ -16,6 +20,7 @@ git clone -b main git@github.com:navengine/navtools.git navtools
 cd ~/Downloads
 wget http://www.fftw.org/fftw-3.3.10.tar.gz
 tar -xf fftw-3.3.10.tar.gz
+cd fftw-3.3.10
 sudo ./configure --enable-type-prefix --enable-threads
 sudo make
 sudo make install
