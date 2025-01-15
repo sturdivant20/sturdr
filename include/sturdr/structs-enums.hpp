@@ -22,11 +22,9 @@
 #include <format>
 #include <iomanip>
 #include <iostream>
+#include <satutils/ephemeris.hpp>
 #include <sstream>
 #include <string>
-#include <vector>
-
-#include "sturdr/ephemeris.hpp"
 
 namespace sturdr {
 
@@ -205,7 +203,7 @@ struct NavPacket {
  */
 struct EphemPacket {
   HeaderPacket Header;
-  Ephemerides Eph;
+  satutils::KeplerElements<double> Eph;
 };
 
 };  // end namespace sturdr

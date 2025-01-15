@@ -6,13 +6,13 @@
 #include <Eigen/Dense>
 #include <complex>
 #include <memory>
+#include <sturdio/binary-file.hpp>
 #include <vector>
 
+#include "sturdr/channel-gps-l1ca.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
 #include "sturdr/fftw-wrapper.hpp"
-#include "sturdr/gps-l1ca-channel.hpp"
-#include "sturdr/io-tools.hpp"
 #include "sturdr/structs-enums.hpp"
 
 using NavQueue = sturdr::ConcurrentQueue<sturdr::NavPacket>;
@@ -92,7 +92,7 @@ int main() {
   console->debug("Barriers created!");
 
   // initialize file reader
-  sturdr::RfDataFile file(conf.general.in_file);
+  sturdio::BinaryFile file(conf.general.in_file);
   Eigen::Vector<int8_t, Eigen::Dynamic> in_stream(shm_samp_write_size);
   console->debug("RfDataFile created!");
 

@@ -4,11 +4,12 @@
 
 #include <array>
 #include <fstream>
+#include <iostream>
 #include <navtools/constants.hpp>
+#include <satutils/code-gen.hpp>
 
 #include "sturdr/discriminator.hpp"
 #include "sturdr/gnss-signal.hpp"
-#include "sturdr/gps-l1ca-channel.hpp"
 #include "sturdr/lock-detectors.hpp"
 #include "sturdr/tracking.hpp"
 
@@ -30,7 +31,7 @@ int main() {
 
   // acquisition handover
   std::array<bool, 1023> code;
-  sturdr::CodeGenCA(code, 1);
+  satutils::CodeGenCA(code, 1);
   double doppler = navtools::TWO_PI<double> * 1800.0;
   double jitter = 0.0;
   int code_samples = 17414;

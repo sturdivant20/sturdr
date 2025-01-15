@@ -1,9 +1,9 @@
 /**
- * *gps-l1ca-channel.hpp*
+ * *channel-gps-l1ca.hpp*
  *
  * =======  ========================================================================================
- * @file    sturdr/gps-l1ca-channel.py
- * @brief   Implementation of channel.py for GPS L1 C/A signals.
+ * @file    sturdr/channel-gps-l1ca.hpp
+ * @brief   Implementation of channel for GPS L1 C/A signals.
  * @date    December 2024
  * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
  *            - Kaplan & Hegarty
@@ -16,27 +16,19 @@
 
 #pragma once
 
-#ifndef STURDR_GPS_L1CA_CHANNEL_HPP
-#define STURDR_GPS_L1CA_CHANNEL_HPP
+#ifndef STURDR_CHANNEL_GPS_L1CA_HPP
+#define STURDR_CHANNEL_GPS_L1CA_HPP
 
 #include <spdlog/spdlog.h>
 
 #include <array>
 #include <complex>
+#include <satutils/gps-lnav.hpp>
 
 #include "sturdr/channel.hpp"
-#include "sturdr/gps-lnav.hpp"
 #include "sturdr/tracking.hpp"
 
 namespace sturdr {
-
-/**
- * *=== CodeGenCA ===*
- * @brief Generate the GPS L1 C/A code for the specified prn
- * @param sequence  Code sequence
- * @param prn       PRN id of code to create
- */
-void CodeGenCA(std::array<bool, 1023> &sequence, const uint8_t prn);
 
 //! ------------------------------------------------------------------------------------------------
 
@@ -154,7 +146,7 @@ class GpsL1caChannel : public Channel {
   // Telemetry
   int cnt_;
   uint8_t bit_sync_hist_[20];
-  GpsLnavParser gps_lnav_;
+  satutils::GpsLnav<double> gps_lnav_;
 };
 
 }  // end namespace sturdr

@@ -22,25 +22,22 @@
 #include <complex>
 #include <memory>
 #include <string>
+#include <sturdio/binary-file.hpp>
 #include <thread>
 #include <vector>
 
-#include "sturdr/channel/channel.hpp"
-#include "sturdr/channel/gps-l1ca-channel.hpp"
-#include "sturdr/nav/ephemeris.hpp"
-#include "sturdr/nav/estimation.hpp"
-#include "sturdr/utils/concurrent-barrier.hpp"
-#include "sturdr/utils/concurrent-queue.hpp"
-#include "sturdr/utils/data-type-adapters.hpp"
-#include "sturdr/utils/fftw-wrapper.hpp"
-#include "sturdr/utils/io-tools.hpp"
-#include "sturdr/utils/structs-enums.hpp"
-
-using NavQueue = sturdr::ConcurrentQueue<sturdr::NavPacket>;
-using EphQueue = sturdr::ConcurrentQueue<sturdr::EphemPacket>;
-using Barrier = sturdr::ConcurrentBarrier;
+#include "sturdr/channel.hpp"
+#include "sturdr/concurrent-barrier.hpp"
+#include "sturdr/concurrent-queue.hpp"
+#include "sturdr/data-type-adapters.hpp"
+#include "sturdr/fftw-wrapper.hpp"
+#include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
+
+using NavQueue = ConcurrentQueue<NavPacket>;
+using EphQueue = ConcurrentQueue<EphemPacket>;
+using Barrier = ConcurrentBarrier;
 
 template <typename RfDataType>
 class Receiver {
@@ -75,7 +72,7 @@ class Receiver {
   std::vector<std::shared_ptr<Channel>> channels_;
 
   // Signal data
-  RfDataFile rf_file_;
+  sturdio::BinaryFile rf_file_;
   DataTypeAdapter rf_adapter_;
   std::vector<RfDataType> rf_data_;
   Eigen::VectorXcd rf_shm_;
@@ -85,7 +82,7 @@ class Receiver {
 
   // navigation
   std::shared_ptr<std::thread> nav_thread_;
-  NavKF nav_kf_;
+  // NavKF nav_kf_;
 
   // spdlog
   std::shared_ptr<spdlog::logger> log_;      // console/terminal logger

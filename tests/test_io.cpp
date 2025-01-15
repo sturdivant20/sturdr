@@ -5,9 +5,10 @@
 
 #include <Eigen/Dense>
 #include <sstream>
+#include <sturdins/nav-clock.hpp>
+#include <sturdio/binary-file.hpp>
+#include <sturdio/yaml-parser.hpp>
 
-#include "sturdr/clock.hpp"
-#include "sturdr/io-tools.hpp"
 #include "sturdr/structs-enums.hpp"
 
 int main() {
@@ -17,7 +18,7 @@ int main() {
   console->set_level(spdlog::level::trace);
 
   // intialize sdr struct and generate settings
-  sturdr::YamlParser yp("config/gps_l1ca_rcvr.yaml");
+  sturdio::YamlParser yp("config/gps_l1ca_rcvr.yaml");
   console->info("yaml file parsed");
   uint64_t ms_to_process = yp.GetVar<uint64_t>("ms_to_process");
   std::string scenario = yp.GetVar<std::string>("scenario");
@@ -36,7 +37,7 @@ int main() {
   console->info("reference_pos_z: {}", reference_pos_z);
 
   // parse some data using class
-  sturdr::RfDataFile file(in_file);
+  sturdio::BinaryFile file(in_file);
   const int N = 10;
   // std::vector<int8_t> stream(N);
   Eigen::Vector<int8_t, N> stream;
@@ -59,7 +60,7 @@ int main() {
   console->error("Tracking Status: {}", (sturdr::TrackingFlags::TrackingFlags)0b10010111);
 
   // get a nav clock
-  sturdr::NavigationClock clk = sturdr::GetNavClock(clock_model);
+  sturdins::NavigationClock clk = sturdins::GetNavClock(clock_model);
   console->critical("Clock Param: h0={}, h1={}, h2={}", clk.h0, clk.h1, clk.h2);
 
   return 0;

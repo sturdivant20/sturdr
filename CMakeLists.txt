@@ -37,6 +37,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Ofast -ffast-math")
 find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(navtools REQUIRED)
+find_package(satutils REQUIRED)
+find_package(sturdio REQUIRED)
+find_package(sturdins REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(FFTW REQUIRED fftw3 IMPORTED_TARGET)
 
@@ -58,51 +61,30 @@ else()
 endif()
 
 set(STURDR_HDRS
-    include/sturdr/channel.hpp
-    include/sturdr/gps-l1ca-channel.hpp
-
     include/sturdr/acquisition.hpp
-    include/sturdr/discriminator.hpp
-    include/sturdr/gnss-signal.hpp
-    include/sturdr/lock-detectors.hpp
-    include/sturdr/tracking.hpp
-
-    include/sturdr/atmosphere.hpp
-    include/sturdr/clock.hpp
-    include/sturdr/ephemeris.hpp
-    include/sturdr/estimation.hpp
-    include/sturdr/gps-lnav.hpp
-
+    include/sturdr/channel.hpp
+    include/sturdr/channel-gps-l1ca.hpp
     include/sturdr/concurrent-barrier.hpp
     include/sturdr/concurrent-queue.hpp
     include/sturdr/data-type-adapters.hpp
+    include/sturdr/discriminator.hpp
     include/sturdr/fftw-wrapper.hpp
-    include/sturdr/gnss-constants.hpp
-    include/sturdr/io-tools.hpp
-    include/sturdr/structs-enums.hpp
-
+    include/sturdr/gnss-signal.hpp
+    include/sturdr/lock-detectors.hpp
     include/sturdr/receiver.hpp
+    include/sturdr/structs-enums.hpp
+    include/sturdr/tracking.hpp
 )
 
 set(STURDR_SRCS
-    src/gps-l1ca-channel.cpp
-
     src/acquisition.cpp
-    src/gnss-signal.cpp
+    src/channel-gps-l1ca.cpp
     src/discriminator.cpp
-    src/lock-detectors.cpp
-    src/tracking.cpp
-
-    src/atmosphere.cpp
-    src/clock.cpp
-    src/ephemeris.cpp
-    src/estimation.cpp
-    src/gps-lnav.cpp
-
     src/fftw-wrapper.cpp
-    src/io-tools.cpp
-
+    src/gnss-signal.cpp
+    src/lock-detectors.cpp
     src/receiver.cpp
+    src/tracking.cpp
 )
 
 # --- Create the C++ Library ---
@@ -119,18 +101,24 @@ target_link_libraries(
     Eigen3::Eigen
     spdlog::spdlog
     navtools
+    satutils
+    sturdio
+    sturdins
     PkgConfig::FFTW
     ${FFTW_DOUBLE_THREADS_LIB}
 )
 
 # --- Add Executables ---
-file(GLOB testfiles "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
-foreach(file ${testfiles})
-    # message(${file})
-    get_filename_component(testname ${file} NAME_WE)
-    add_executable(${testname} ${file})
-    target_link_libraries( ${testname} PUBLIC ${PROJECT_NAME})
-endforeach(file ${testfiles})
+if (NOT DEFINED INSTALL_STURDR_EXAMPLES OR NOT INSTALL_STURDR_EXAMPLES)
+else()
+    file(GLOB testfiles "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
+    foreach(file ${testfiles})
+        # message(${file})
+        get_filename_component(testname ${file} NAME_WE)
+        add_executable(${testname} ${file})
+        target_link_libraries( ${testname} PUBLIC ${PROJECT_NAME})
+    endforeach(file ${testfiles})
+endif()
 
 # --- Make Library 'Findable' for other CMake Packages ---
 include(CMakePackageConfigHelpers)

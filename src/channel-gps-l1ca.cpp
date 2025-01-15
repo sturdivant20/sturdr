@@ -1,9 +1,9 @@
 /**
- * *gps-l1ca-channel.hpp*
+ * *channel-gps-l1ca.cpp*
  *
  * =======  ========================================================================================
- * @file    sturdr/gps-l1ca-channel.py
- * @brief   Implementation of channel.py for GPS L1 C/A signals.
+ * @file    sturdr/channel-gps-l1ca.cpp
+ * @brief   Implementation of channel for GPS L1 C/A signals.
  * @date    December 2024
  * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
  *            - Kaplan & Hegarty
@@ -14,7 +14,7 @@
  * =======  ========================================================================================
  */
 
-#include "sturdr/gps-l1ca-channel.hpp"
+#include "sturdr/channel-gps-l1ca.hpp"
 
 #include <Eigen/Dense>
 #include <cassert>
@@ -22,76 +22,16 @@
 #include <exception>
 #include <navtools/binary-ops.hpp>
 #include <navtools/constants.hpp>
+#include <satutils/code-gen.hpp>
+#include <satutils/gnss-constants.hpp>
 
 #include "sturdr/acquisition.hpp"
 #include "sturdr/discriminator.hpp"
-#include "sturdr/gnss-constants.hpp"
 #include "sturdr/gnss-signal.hpp"
 #include "sturdr/lock-detectors.hpp"
 #include "sturdr/tracking.hpp"
 
 namespace sturdr {
-
-void CodeGenCA(std::array<bool, 1023> &sequence, uint8_t prn) {
-  assert(!((prn < 1) || (prn > 32)));
-  prn -= 1;
-
-  static constexpr uint8_t g2_out_taps[32][2] = {
-      /*01 {2, 6} */ {1, 5},
-      /*02 {3, 7} */ {2, 6},
-      /*03 {4, 8} */ {3, 7},
-      /*04 {5, 9} */ {4, 8},
-      /*05 {1, 9} */ {0, 8},
-      /*06 {2, 10}*/ {1, 9},
-      /*07 {1, 8} */ {0, 7},
-      /*08 {2, 9} */ {1, 8},
-      /*09 {3, 10}*/ {2, 9},
-      /*10 {2, 3} */ {1, 2},
-      /*11 {3, 4} */ {2, 3},
-      /*12 {5, 6} */ {4, 5},
-      /*13 {6, 7} */ {5, 6},
-      /*14 {7, 8} */ {6, 7},
-      /*15 {8, 9} */ {7, 8},
-      /*16 {9, 10}*/ {8, 9},
-      /*17 {1, 4} */ {0, 3},
-      /*18 {2, 5} */ {1, 4},
-      /*19 {3, 6} */ {2, 5},
-      /*20 {4, 7} */ {3, 6},
-      /*21 {5, 8} */ {4, 7},
-      /*22 {6, 9} */ {5, 8},
-      /*23 {1, 3} */ {0, 2},
-      /*24 {4, 6} */ {3, 5},
-      /*25 {5, 7} */ {4, 6},
-      /*26 {6, 8} */ {5, 7},
-      /*27 {7, 9} */ {6, 8},
-      /*28 {8, 10}*/ {7, 9},
-      /*29 {1, 6} */ {0, 5},
-      /*30 {2, 7} */ {1, 6},
-      /*31 {3, 8} */ {2, 7},
-      /*32 {4, 9} */ {3, 8}};
-
-  // Linear-feedback shift registers
-  uint32_t G1 = 0xFFFFFFFF;
-  uint32_t G2 = 0xFFFFFFFF;
-
-  uint8_t taps1[2] = {2, 9};              // 3,10
-  uint8_t taps2[6] = {1, 2, 5, 7, 8, 9};  // 2,3,6,8,9,10
-
-  for (std::size_t i = 0; i < 1023; i++) {
-    // set value in sequence
-    sequence[i] = navtools::CheckBit<true>(G1, 9u) ^
-                  navtools::CheckBit<true>(G2, g2_out_taps[prn][0]) ^
-                  navtools::CheckBit<true>(G2, g2_out_taps[prn][1]);
-
-    // shift the registers and set first bits
-    bool feedback1 = navtools::MultiXor<2, true>(G1, taps1);
-    bool feedback2 = navtools::MultiXor<6, true>(G2, taps2);
-    G1 <<= 1;
-    G2 <<= 1;
-    navtools::SetBitTo<true>(G1, 0, feedback1);
-    navtools::SetBitTo<true>(G2, 0, feedback2);
-  }
-}
 
 //! ------------------------------------------------------------------------------------------------
 
@@ -151,10 +91,10 @@ GpsL1caChannel::GpsL1caChannel(
 
   // sample constants
   samp_per_ms_ = static_cast<int>(conf_.rfsignal.samp_freq / 1000.0);
-  samp_per_chip_ = static_cast<int>(conf_.rfsignal.samp_freq / GPS_L1CA_CODE_FREQ);
+  samp_per_chip_ = static_cast<int>(conf_.rfsignal.samp_freq / satutils::GPS_CA_CODE_RATE<>);
 
   // Tracking filter
-  kappa_ = GPS_L1CA_CODE_FREQ / (navtools::TWO_PI<double> * GPS_L1CA_CARRIER_FREQ);
+  kappa_ = satutils::GPS_CA_CODE_RATE<> / (navtools::TWO_PI<double> * satutils::GPS_L1_FREQUENCY<>);
   w0d_ = NaturalFrequency(conf_.tracking.dll_bw_wide, 2);
   w0p_ = NaturalFrequency(conf_.tracking.pll_bw_wide, 3);
   w0f_ = NaturalFrequency(conf_.tracking.fll_bw_wide, 2);
@@ -174,7 +114,7 @@ void GpsL1caChannel::SetSatellite(uint8_t sv_id) {
     nav_msg_.Header.SVID = sv_id;
 
     // generate requested code
-    CodeGenCA(code_, sv_id);
+    satutils::CodeGenCA(code_, sv_id);
 
     // initialize acquisition sample parameters
     total_samp_ = conf_.acquisition.num_coh_per * conf_.acquisition.num_noncoh_per * samp_per_ms_;
@@ -226,7 +166,7 @@ void GpsL1caChannel::Acquire() {
         conf_.acquisition.doppler_range,
         conf_.acquisition.doppler_step,
         conf_.rfsignal.samp_freq,
-        GPS_L1CA_CODE_FREQ,
+        satutils::GPS_CA_CODE_RATE<>,
         conf_.rfsignal.intmd_freq,
         conf_.acquisition.num_coh_per,
         conf_.acquisition.num_noncoh_per);
@@ -246,7 +186,7 @@ void GpsL1caChannel::Acquire() {
       carr_doppler_ = navtools::TWO_PI<double> * channel_msg_.Doppler;
       code_doppler_ = kappa_ * carr_doppler_;
       nco_carr_freq_ = intmd_freq_rad_ + carr_doppler_;
-      nco_code_freq_ = GPS_L1CA_CODE_FREQ + code_doppler_;
+      nco_code_freq_ = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
 
       // initialize tracking filter states
       filt_.Init(
@@ -260,12 +200,14 @@ void GpsL1caChannel::Acquire() {
           cno_mag_,
           T_,
           intmd_freq_rad_,
-          GPS_L1CA_CODE_FREQ);
+          satutils::GPS_CA_CODE_RATE<>);
 
       // initialize tracking filter NCO
-      double code_phase_step = (GPS_L1CA_CODE_FREQ + code_doppler_) / conf_.rfsignal.samp_freq;
+      double code_phase_step =
+          (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
       total_samp_ = static_cast<uint64_t>(
-          (static_cast<double>(PDI_ * GPS_L1CA_CODE_SIZE) - rem_code_phase_) / code_phase_step);
+          (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - rem_code_phase_) /
+          code_phase_step);
       half_samp_ = total_samp_ / 2;
       samp_processed_ = 0;
       log_->info(
@@ -359,10 +301,10 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
         rem_carr_phase_ = std::fmod(filt_.x_(0), navtools::TWO_PI<double>);
         carr_doppler_ = filt_.x_(1);
         carr_jitter_ = filt_.x_(2);
-        rem_code_phase_ = filt_.x_(3) - static_cast<double>(PDI_) * GPS_L1CA_CODE_SIZE;
+        rem_code_phase_ = filt_.x_(3) - static_cast<double>(PDI_) * satutils::GPS_CA_CODE_LENGTH;
         code_doppler_ = filt_.x_(4) + kappa_ * (filt_.x_(1) + t * filt_.x_(2));
         nco_carr_freq_ = intmd_freq_rad_ + carr_doppler_;
-        nco_code_freq_ = GPS_L1CA_CODE_FREQ + code_doppler_;
+        nco_code_freq_ = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
         filt_.x_(0) = rem_carr_phase_;
         filt_.x_(3) = rem_code_phase_;
         // filt_.SetRemCarrierPhase(rem_carr_phase_);
@@ -441,9 +383,11 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
 
         // prepare next nco period
         cnt_ += PDI_;
-        double code_phase_step = (GPS_L1CA_CODE_FREQ + code_doppler_) / conf_.rfsignal.samp_freq;
+        double code_phase_step =
+            (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
         total_samp_ = static_cast<uint64_t>(
-            (static_cast<double>(PDI_ * GPS_L1CA_CODE_SIZE) - rem_code_phase_) / code_phase_step);
+            (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - rem_code_phase_) /
+            code_phase_step);
         half_samp_ = total_samp_ / 2;
         samp_processed_ = 0;
 
@@ -499,9 +443,11 @@ bool GpsL1caChannel::DataBitSync() {
           // immediately continue integrating with extended (20 ms) period
           T_ = 0.02;
           PDI_ = 20;
-          double code_phase_step = (GPS_L1CA_CODE_FREQ + code_doppler_) / conf_.rfsignal.samp_freq;
+          double code_phase_step =
+              (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
           total_samp_ = static_cast<uint64_t>(
-              (static_cast<double>(PDI_ * GPS_L1CA_CODE_SIZE) - rem_code_phase_) / code_phase_step);
+              (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - rem_code_phase_) /
+              code_phase_step);
           half_samp_ = total_samp_ / 2;
           P1_ += P2_;
           P2_ = std::complex<double>(0.0, 0.0);
@@ -521,7 +467,7 @@ void GpsL1caChannel::Demodulate() {
   try {
     // Keep replacing bits while phase locked
     bool bit = P_.real() > 0.0;
-    if (gps_lnav_.NextBit(bit)) {
+    if (gps_lnav_.SetNextBit(bit)) {
       // reset sample count after subframe has been parsed
       channel_msg_.Week = gps_lnav_.GetWeekNumber();
       channel_msg_.ToW = gps_lnav_.GetTimeOfWeek() - 0.02;
@@ -536,8 +482,8 @@ void GpsL1caChannel::Demodulate() {
       log_->info(
           "{}: GPS{} ephemeris subframes 1,2 and 3 parsed!", channel_id_, channel_msg_.Header.SVID);
       channel_msg_.TrackingStatus |= TrackingFlags::EPH_DECODED;
-      log_->debug(
-          "{}: GPS{} {}", channel_id_, channel_msg_.Header.SVID, gps_lnav_.GetEphemerides());
+      // log_->debug(
+      //     "{}: GPS{} {}", channel_id_, channel_msg_.Header.SVID, gps_lnav_.GetEphemerides());
     }
   } catch (std::exception &e) {
     log_->error("gps-l1ca-channel.cpp Demodulate failed! Error -> {}", e.what());

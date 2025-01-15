@@ -6,9 +6,9 @@
 #include <array>
 #include <complex>
 #include <fstream>
+#include <satutils/code-gen.hpp>
 
 #include "sturdr/acquisition.hpp"
-#include "sturdr/gps-l1ca-channel.hpp"
 
 int main() {
   // Create spdlog multi-threaded console/terminal logger
@@ -58,7 +58,7 @@ int main() {
 
   // generate ca code
   std::array<bool, 1023> code;
-  sturdr::CodeGenCA(code, 1);
+  satutils::CodeGenCA(code, 1);
   console->debug("C/A code generated!");
 
   // run acquisition
