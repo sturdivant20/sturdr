@@ -71,19 +71,21 @@ set(STURDR_HDRS
     include/sturdr/fftw-wrapper.hpp
     include/sturdr/gnss-signal.hpp
     include/sturdr/lock-detectors.hpp
-    include/sturdr/receiver.hpp
     include/sturdr/structs-enums.hpp
+    include/sturdr/sturdr.hpp
     include/sturdr/tracking.hpp
 )
 
 set(STURDR_SRCS
     src/acquisition.cpp
     src/channel-gps-l1ca.cpp
+    src/data-type-adapters.cpp
     src/discriminator.cpp
     src/fftw-wrapper.cpp
     src/gnss-signal.cpp
     src/lock-detectors.cpp
-    src/receiver.cpp
+    src/structs-enums.cpp
+    src/sturdr.cpp
     src/tracking.cpp
 )
 
@@ -119,6 +121,8 @@ else()
         target_link_libraries( ${testname} PUBLIC ${PROJECT_NAME})
     endforeach(file ${testfiles})
 endif()
+add_executable(run_sturdr scripts/run_sturdr.cpp)
+target_link_libraries(run_sturdr PUBLIC ${PROJECT_NAME})
 
 # --- Make Library 'Findable' for other CMake Packages ---
 include(CMakePackageConfigHelpers)

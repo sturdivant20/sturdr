@@ -39,18 +39,21 @@ namespace sturdr {
 GpsL1caChannel::GpsL1caChannel(
     const Config &config,
     const AcquisitionSetup &acq_setup,
-    std::shared_ptr<Eigen::VectorXcd> shm,
-    std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
-    std::shared_ptr<ConcurrentBarrier> start_barrier,
-    std::shared_ptr<ConcurrentBarrier> end_barrier,
-    int &channel_num,
-    std::shared_ptr<bool> still_running,
-    void (*GetNewPrnFunc)(uint8_t &))
+    const std::shared_ptr<Eigen::VectorXcd> shm,
+    const std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
+    const std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue,
+    const std::shared_ptr<ConcurrentBarrier> start_barrier,
+    const std::shared_ptr<ConcurrentBarrier> end_barrier,
+    const int &channel_num,
+    const std::shared_ptr<bool> still_running,
+    // void (*GetNewPrnFunc)(uint8_t &))
+    std::function<void(uint8_t &)> GetNewPrnFunc)
     : Channel(
           config,
           acq_setup,
           shm,
           nav_queue,
+          eph_queue,
           start_barrier,
           end_barrier,
           channel_num,
@@ -110,6 +113,9 @@ GpsL1caChannel::~GpsL1caChannel() {
 // *=== SetSatellite ===*
 void GpsL1caChannel::SetSatellite(uint8_t sv_id) {
   try {
+    GetNewPrnFunc_(sv_id);
+    // std::cout << "sv_id:" << sv_id << "\n";
+
     // update channel status
     channel_msg_.Header.SVID = sv_id;
     channel_msg_.ChannelStatus = ChannelState::ACQUIRING;
@@ -125,34 +131,6 @@ void GpsL1caChannel::SetSatellite(uint8_t sv_id) {
     log_->error("gps-l1ca-channel.cpp SetSatellite failed! Error -> {}", e.what());
   }
 }
-
-// // *=== Run ===*
-// void GpsL1caChannel::run() {
-//   // wait for shm_ to be updated
-//   start_bar_->Wait();
-
-//   while (*still_running_) {
-//     // update shm_ writer buffer (necessary because writer is a different process)
-//     UpdateShmWriterPtr();
-
-//     // process data
-//     if (channel_msg_.ChannelStatus == ChannelState::TRACKING) {
-//       Track();
-//       nav_queue_->push(nav_msg_);
-//     } else if (channel_msg_.ChannelStatus == ChannelState::ACQUIRING) {
-//       Acquire();
-//     }
-//     channel_queue_->push(channel_msg_);
-
-//     // wait for all channels to finish
-//     end_bar_->WaitFor(timeout_);
-
-//     // wait for shm_ to be updated
-//     start_bar_->WaitFor(timeout_);
-//     // log_->error("GpsL1caChannel::run going??? still_running_ = {}", *still_running_);
-//   }
-//   // log_->warn("Made it out of GpsL1caChannel::run!");
-// }
 
 // *=== Acquire ===*
 void GpsL1caChannel::Acquire() {
@@ -239,7 +217,6 @@ void GpsL1caChannel::Acquire() {
           channel_id_,
           metric);
       // get new prn
-      GetNewPrnFunc_(channel_msg_.Header.SVID);
       SetSatellite(channel_msg_.Header.SVID);
 
       // update samp_remaining_
@@ -395,7 +372,8 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
         channel_msg_.DllDisc = chip_err;
         channel_msg_.PllDisc = phase_err;
         channel_msg_.FllDisc = freq_err;
-        log_->debug(
+        // maybe just comment this log out
+        log_->trace(
             "{}: GPS{} - CNo = {:.1f}, Doppler = {:.1f}, IP = {:.1f}, QP = {:.1f}",
             channel_id_,
             channel_msg_.Header.SVID,

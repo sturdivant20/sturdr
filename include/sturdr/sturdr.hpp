@@ -1,41 +1,91 @@
 /**
- * *receiver.hpp*
+ * *sturdr.hpp*
  *
  * =======  ========================================================================================
- * @file    sturdr/receiver.hpp
+ * @file    sturdr/sturdr.hpp
  * @brief   STURDR receiver implementation.
  * @date    December 2024
  * =======  ========================================================================================
  */
 
-#ifndef STURDR_RECEIVER_HPP
-#define STURDR_RECEIVER_HPP
+// TODO: add channel vectors for other GNSS signal types
 
-#include <spdlog/async.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/stopwatch.h>
+#ifndef STURDR_STURDR_HPP
+#define STURDR_STURDR_HPP
 
-#include <Eigen/Dense>
-#include <complex>
+#include <spdlog/spdlog.h>
+
+#include <array>
+#include <cstdint>
+#include <functional>
 #include <memory>
-#include <string>
+#include <mutex>
 #include <sturdio/binary-file.hpp>
-#include <thread>
 #include <vector>
 
-#include "sturdr/channel.hpp"
+#include "sturdr/acquisition.hpp"
+#include "sturdr/channel-gps-l1ca.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
-#include "sturdr/data-type-adapters.hpp"
-#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
 
-using NavQueue = ConcurrentQueue<NavPacket>;
-using EphQueue = ConcurrentQueue<EphemPacket>;
-using Barrier = ConcurrentBarrier;
+template <typename RfDataType>
+class SturDR {
+ public:
+  /**
+   * *=== SturDR ===*
+   * @brief Constructor
+   * @param yaml_fname string containing signal file name
+   */
+  SturDR(const std::string yaml_fname);
+
+  /**
+   * *=== Run ===*
+   * @brief Run the receiver
+   */
+  void Run();
+
+ private:
+  /**
+   * @brief configuration parameters
+   */
+  Config conf_;
+  std::shared_ptr<spdlog::logger> log_;
+  sturdio::BinaryFile fid_;
+  Eigen::Vector<RfDataType, Eigen::Dynamic> rf_stream_;
+  // void (*DataTypeAdapterFunc_)(const RfDataType[], std::complex<double>[], const int &);
+  std::function<void(RfDataType[], std::complex<double>[], const int &)> DataTypeAdapterFunc_;
+  uint64_t shm_ptr_;
+  uint64_t shm_chunk_size_samp_;
+  uint64_t shm_write_size_samp_;
+  std::shared_ptr<Eigen::VectorXcd> shm_;
+  std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;
+  std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue_;
+  std::shared_ptr<ConcurrentBarrier> start_barrier_;
+  std::shared_ptr<ConcurrentBarrier> end_barrier_;
+  std::array<std::array<bool, 1023>, 32> codes_;
+  std::vector<uint8_t> available_prn_;
+  std::vector<uint8_t> used_prn_;
+  int ptr_prn_;
+  std::mutex mtx_prn_;
+  AcquisitionSetup acq_setup_;
+  std::shared_ptr<bool> running_;
+  std::vector<GpsL1caChannel> gps_channels_;
+
+  /**
+   * *=== Init ===*
+   * @brief Initialize SDR
+   */
+  void Init(const std::string &yaml_fname);
+
+  /**
+   * @brief Thread safe function for a channel to request a new PRN
+   * @param prn current channel prn
+   */
+  void GetNewPrn(uint8_t &prn);
+};
 
 // template <typename RfDataType>
 // class Receiver {

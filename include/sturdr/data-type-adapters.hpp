@@ -4,7 +4,7 @@
  * =======  ========================================================================================
  * @file    sturdr/data-type-adapters.hpp
  * @brief   STURDR data-type-adapters.
- * @date    December 2024
+ * @date    January 2025
  * =======  ========================================================================================
  */
 
@@ -13,121 +13,53 @@
 
 #include <complex>
 #include <cstdint>
-#include <functional>
 
 namespace sturdr {
 
-// /**
-//  * *=== DataToDouble ===*
-//  * @brief convert array of T to doubles
-//  */
-// template <int Size, typename T>
-// void DataToDouble(const T in[], double out[]) {
-//   for (int i = 0; i < Size; i++) {
-//     out[i] = static_cast<double>(in[i]);
-//   }
+// union DataTypeAdapter {
+//   void (*ByteToDouble)(int8_t[], double[]);
+//   void (*ShortToDouble)(int16_t[], double[]);
+//   void (*ByteToIDouble)(int8_t[], std::complex<double>[]);
+//   void (*ShortToIDouble)(int16_t[], std::complex<double>[]);
+//   void (*IByteToIDouble)(std::complex<int8_t>[], std::complex<double>[]);
+//   void (*IShortToIDouble)(std::complex<int8_t>[], std::complex<double>[]);
 // };
-
-// /**
-//  * *=== DataToIDouble ===*
-//  * @brief convert array of T to doubles
-//  */
-// template <int Size, typename T>
-// void DataToIDouble(const T in[], std::complex<double> out[]) {
-//   for (int i = 0; i < Size; i++) {
-//     out[i] = static_cast<double>(in[i]);
-//   }
-// };
-
-// /**
-//  * *=== IDataToIDouble ===*
-//  * @brief convert array of T to doubles
-//  */
-// template <int Size, typename T>
-// void IDataToIDouble(const std::complex<T> in[], std::complex<double> out[]) {
-//   for (int i = 0; i < Size; i++) {
-//     out[i] =
-//         std::complex<double>(static_cast<double>(in[i].real()),
-//         static_cast<double>(in[i].imag()));
-//   }
-// };
-
-union DataTypeAdapter {
-  std::function<void(int8_t[], double[])> ByteToDouble;
-  std::function<void(int16_t[], double[])> ShortToDouble;
-  std::function<void(int8_t[], std::complex<double>[])> ByteToIDouble;
-  std::function<void(int16_t[], std::complex<double>[])> ShortToIDouble;
-  std::function<void(std::complex<int8_t>[], std::complex<double>[])> IByteToIDouble;
-  std::function<void(std::complex<int16_t>[], std::complex<double>[])> IShortToIDouble;
-};
 
 /**
  * *=== ByteToDouble ===*
  * @brief convert array of bytes (int8) to doubles
  */
-template <int Size>
-void ByteToDouble(const int8_t in[], double out[]) {
-  for (int i = 0; i < Size; i++) {
-    out[i] = static_cast<double>(in[i]);
-  }
-};
+void ByteToDouble(const int8_t in[], double out[], const int &len);
 
 /**
  * *=== ShortToDouble ===*
  * @brief convert array of shorts (int16) to doubles
  */
-template <int Size>
-void ShortToDouble(const int16_t in[], double out[]) {
-  for (int i = 0; i < Size; i++) {
-    out[i] = static_cast<double>(in[i]);
-  }
-};
+void ShortToDouble(const int16_t in[], double out[], const int &len);
 
 /**
  * *=== ByteToIDouble ===*
  * @brief convert array of bytes (int8) to complex doubles
  */
-template <int Size>
-void ByteToIDouble(const int8_t in[], std::complex<double> out[]) {
-  for (int i = 0; i < Size; i++) {
-    out[i] = static_cast<std::complex<double>>(in[i]);
-  }
-};
+void ByteToIDouble(const int8_t in[], std::complex<double> out[], const int &len);
 
 /**
  * *=== ShortToIDouble ===*
  * @brief convert array of shorts (int16) to complex doubles
  */
-template <int Size>
-void ShortToIDouble(const int16_t in[], std::complex<double> out[]) {
-  for (int i = 0; i < Size; i++) {
-    out[i] = static_cast<std::complex<double>>(in[i]);
-  }
-};
+void ShortToIDouble(const int16_t in[], std::complex<double> out[], const int &len);
 
 /**
  * *=== IByteToIDouble ===*
  * @brief convert array of complex bytes (int8) to complex doubles
  */
-template <int Size>
-void IByteToIDouble(const std::complex<int8_t> in[], std::complex<double> out[]) {
-  for (int i = 0; i < Size; i++) {
-    out[i] =
-        std::complex<double>(static_cast<double>(in[i].real()), static_cast<double>(in[i].imag()));
-  }
-};
+void IByteToIDouble(const std::complex<int8_t> in[], std::complex<double> out[], const int &len);
 
 /**
  * *=== IShortToIDouble ===*
  * @brief convert array of complex shorts (int16) to complex doubles
  */
-template <int Size>
-void IShortToIDouble(const std::complex<int16_t> in[], std::complex<double> out[]) {
-  for (int i = 0; i < Size; i++) {
-    out[i] =
-        std::complex<double>(static_cast<double>(in[i].real()), static_cast<double>(in[i].imag()));
-  }
-};
+void IShortToIDouble(const std::complex<int16_t> in[], std::complex<double> out[], const int &len);
 
 }  // namespace sturdr
 

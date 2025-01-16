@@ -4,7 +4,7 @@
  * =======  ========================================================================================
  * @file    sturdr/structs-enums.hpp
  * @brief   Common structs and enum definitions used across STURDR.
- * @date    December 2024
+ * @date    January 2025
  * @author  Daniel Sturdivant <sturdivant20@gmail.com>
  * =======  ========================================================================================
  */
@@ -12,16 +12,12 @@
 #ifndef STURDR_STRUCTS_ENUMS_HPP
 #define STURDR_STRUCTS_ENUMS_HPP
 
-// #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
 #include <cstdint>
-#include <format>
-#include <iomanip>
 #include <iostream>
 #include <satutils/ephemeris.hpp>
-#include <sstream>
 #include <string>
 
 namespace sturdr {
@@ -212,433 +208,243 @@ struct EphemPacket {
 //! printing overrides
 
 // *=== GnssSystem ===*
-inline std::ostream& operator<<(std::ostream& os, const sturdr::GnssSystem::GnssSystem& Token) {
-  switch (Token) {
-    case sturdr::GnssSystem::GnssSystem::UNKNOWN:
-      os << "UNKNOWN";
-      break;
-    case sturdr::GnssSystem::GnssSystem::GPS:
-      os << "GPS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::GALILEO:
-      os << "GALILEO";
-      break;
-    case sturdr::GnssSystem::GnssSystem::GLONASS:
-      os << "GLONASS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::BEIDOU:
-      os << "BEIDOU";
-      break;
-    case sturdr::GnssSystem::GnssSystem::QZSS:
-      os << "QZSS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::IRNSS:
-      os << "IRNSS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::SBAS:
-      os << "SBAS";
-      break;
-  }
-  return os;
-};
+std::ostream& operator<<(std::ostream& os, const sturdr::GnssSystem::GnssSystem& Token);
 template <>
 struct fmt::formatter<sturdr::GnssSystem::GnssSystem> : formatter<string_view> {
-  auto format(sturdr::GnssSystem::GnssSystem& c, format_context& ctx) const;
+  auto format(sturdr::GnssSystem::GnssSystem& c, format_context& ctx) const {
+    string_view name = "";
+    switch (c) {
+      case sturdr::GnssSystem::GnssSystem::UNKNOWN:
+        name = "UNKNOWN";
+        break;
+      case sturdr::GnssSystem::GnssSystem::GPS:
+        name = "GPS";
+        break;
+      case sturdr::GnssSystem::GnssSystem::GALILEO:
+        name = "GALILEO";
+        break;
+      case sturdr::GnssSystem::GnssSystem::GLONASS:
+        name = "GLONASS";
+        break;
+      case sturdr::GnssSystem::GnssSystem::BEIDOU:
+        name = "BEIDOU";
+        break;
+      case sturdr::GnssSystem::GnssSystem::QZSS:
+        name = "QZSS";
+        break;
+      case sturdr::GnssSystem::GnssSystem::IRNSS:
+        name = "IRNSS";
+        break;
+      case sturdr::GnssSystem::GnssSystem::SBAS:
+        name = "SBAS";
+        break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  };
 };
-inline auto fmt::formatter<sturdr::GnssSystem::GnssSystem>::format(
-    sturdr::GnssSystem::GnssSystem& c, format_context& ctx) const {
-  string_view name = "";
-  switch (c) {
-    case sturdr::GnssSystem::GnssSystem::UNKNOWN:
-      name = "UNKNOWN";
-      break;
-    case sturdr::GnssSystem::GnssSystem::GPS:
-      name = "GPS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::GALILEO:
-      name = "GALILEO";
-      break;
-    case sturdr::GnssSystem::GnssSystem::GLONASS:
-      name = "GLONASS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::BEIDOU:
-      name = "BEIDOU";
-      break;
-    case sturdr::GnssSystem::GnssSystem::QZSS:
-      name = "QZSS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::IRNSS:
-      name = "IRNSS";
-      break;
-    case sturdr::GnssSystem::GnssSystem::SBAS:
-      name = "SBAS";
-      break;
-  }
-  return formatter<string_view>::format(name, ctx);
-}
 
 // *=== GnssSignal ===*
-inline std::ostream& operator<<(std::ostream& os, const sturdr::GnssSignal::GnssSignal& Token) {
-  switch (Token) {
-    case sturdr::GnssSignal::GnssSignal::UNKNOWN:
-      os << "UNKNOWN";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L1CA:
-      os << "GPS_L1CA";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L1C:
-      os << "GPS_L1C";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L2C:
-      os << "GPS_L2C";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L5:
-      os << "GPS_L5";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E1:
-      os << "GALILEO_E1";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E6:
-      os << "GALILEO_E6";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E5:
-      os << "GALILEO_E5";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E5a:
-      os << "GALILEO_E5a";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E5b:
-      os << "GALILEO_E5b";
-      break;
-  }
-  return os;
-};
+std::ostream& operator<<(std::ostream& os, const sturdr::GnssSignal::GnssSignal& Token);
 template <>
 struct fmt::formatter<sturdr::GnssSignal::GnssSignal> : formatter<string_view> {
-  auto format(sturdr::GnssSignal::GnssSignal& c, format_context& ctx) const;
+  auto format(sturdr::GnssSignal::GnssSignal& c, format_context& ctx) const {
+    string_view name = "";
+    switch (c) {
+      case sturdr::GnssSignal::GnssSignal::UNKNOWN:
+        name = "UNKNOWN";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GPS_L1CA:
+        name = "GPS_L1CA";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GPS_L1C:
+        name = "GPS_L1C";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GPS_L2C:
+        name = "GPS_L2C";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GPS_L5:
+        name = "GPS_L5";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GALILEO_E1:
+        name = "GALILEO_E1";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GALILEO_E6:
+        name = "GALILEO_E6";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GALILEO_E5:
+        name = "GALILEO_E5";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GALILEO_E5a:
+        name = "GALILEO_E5a";
+        break;
+      case sturdr::GnssSignal::GnssSignal::GALILEO_E5b:
+        name = "GALILEO_E5b";
+        break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  };
 };
-inline auto fmt::formatter<sturdr::GnssSignal::GnssSignal>::format(
-    sturdr::GnssSignal::GnssSignal& c, format_context& ctx) const {
-  string_view name = "";
-  switch (c) {
-    case sturdr::GnssSignal::GnssSignal::UNKNOWN:
-      name = "UNKNOWN";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L1CA:
-      name = "GPS_L1CA";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L1C:
-      name = "GPS_L1C";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L2C:
-      name = "GPS_L2C";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GPS_L5:
-      name = "GPS_L5";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E1:
-      name = "GALILEO_E1";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E6:
-      name = "GALILEO_E6";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E5:
-      name = "GALILEO_E5";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E5a:
-      name = "GALILEO_E5a";
-      break;
-    case sturdr::GnssSignal::GnssSignal::GALILEO_E5b:
-      name = "GALILEO_E5b";
-      break;
-  }
-  return formatter<string_view>::format(name, ctx);
-}
 
 // *=== MeasurementType ===*
-inline std::ostream& operator<<(
-    std::ostream& os, const sturdr::MeasurementType::MeasurementType& Token) {
-  if (Token == 0) {
-    os << "UNKNOWN";
-  } else {
-    uint8_t bitmask = 0b00000001;
-    std::ostringstream oss;
-    while (bitmask) {
-      switch (Token & bitmask) {
-        case sturdr::MeasurementType::MeasurementType::PSEUDORANGE:
-          oss << "PSEUDORANGE & ";
-          break;
-        case sturdr::MeasurementType::MeasurementType::DOPPLER:
-          oss << "DOPPLER & ";
-          break;
-        case sturdr::MeasurementType::MeasurementType::PHASE:
-          oss << "PHASE & ";
-          break;
-        case sturdr::MeasurementType::MeasurementType::CNO:
-          oss << "CNO & ";
-          break;
-      }
-      bitmask <<= 1;
-    }
-    std::string str = oss.str();
-    str.erase(str.length() - 3);
-    os << str;
-  }
-  return os;
-};
+std::ostream& operator<<(std::ostream& os, const sturdr::MeasurementType::MeasurementType& Token);
 template <>
 struct fmt::formatter<sturdr::MeasurementType::MeasurementType> : formatter<string_view> {
-  auto format(sturdr::MeasurementType::MeasurementType& c, format_context& ctx) const;
-};
-inline auto fmt::formatter<sturdr::MeasurementType::MeasurementType>::format(
-    sturdr::MeasurementType::MeasurementType& c, format_context& ctx) const {
-  if (c == 0) {
-    return formatter<string_view>::format("UNKNOWN", ctx);
-  } else {
-    uint8_t bitmask = 0b00000001;
-    std::ostringstream oss;
-    while (bitmask) {
-      switch (c & bitmask) {
-        case sturdr::MeasurementType::MeasurementType::PSEUDORANGE:
-          oss << "PSEUDORANGE & ";
-          break;
-        case sturdr::MeasurementType::MeasurementType::DOPPLER:
-          oss << "DOPPLER & ";
-          break;
-        case sturdr::MeasurementType::MeasurementType::PHASE:
-          oss << "PHASE & ";
-          break;
-        case sturdr::MeasurementType::MeasurementType::CNO:
-          oss << "CNO & ";
-          break;
+  auto format(sturdr::MeasurementType::MeasurementType& c, format_context& ctx) const {
+    if (c == 0) {
+      return formatter<string_view>::format("UNKNOWN", ctx);
+    } else {
+      uint8_t bitmask = 0b00000001;
+      std::ostringstream oss;
+      while (bitmask) {
+        switch (c & bitmask) {
+          case sturdr::MeasurementType::MeasurementType::PSEUDORANGE:
+            oss << "PSEUDORANGE & ";
+            break;
+          case sturdr::MeasurementType::MeasurementType::DOPPLER:
+            oss << "DOPPLER & ";
+            break;
+          case sturdr::MeasurementType::MeasurementType::PHASE:
+            oss << "PHASE & ";
+            break;
+          case sturdr::MeasurementType::MeasurementType::CNO:
+            oss << "CNO & ";
+            break;
+        }
+        bitmask <<= 1;
       }
-      bitmask <<= 1;
+      std::string str = oss.str();
+      str.erase(str.length() - 3);
+      return formatter<string_view>::format(str, ctx);
     }
-    std::string str = oss.str();
-    str.erase(str.length() - 3);
-    return formatter<string_view>::format(str, ctx);
-  }
-}
+  };
+};
 
 // *=== ChannelState ===*
-inline std::ostream& operator<<(std::ostream& os, const sturdr::ChannelState::ChannelState& Token) {
-  switch (Token) {
-    case sturdr::ChannelState::ChannelState::OFF:
-      os << "OFF";
-      break;
-    case sturdr::ChannelState::ChannelState::IDLE:
-      os << "IDLE";
-      break;
-    case sturdr::ChannelState::ChannelState::ACQUIRING:
-      os << "ACQUIRING";
-      break;
-    case sturdr::ChannelState::ChannelState::TRACKING:
-      os << "TRACKING";
-      break;
-  }
-  return os;
-};
+inline std::ostream& operator<<(std::ostream& os, const sturdr::ChannelState::ChannelState& Token);
 template <>
 struct fmt::formatter<sturdr::ChannelState::ChannelState> : formatter<string_view> {
-  auto format(sturdr::ChannelState::ChannelState& c, format_context& ctx) const;
+  auto format(sturdr::ChannelState::ChannelState& c, format_context& ctx) const {
+    string_view name = "";
+    switch (c) {
+      case sturdr::ChannelState::ChannelState::OFF:
+        name = "OFF";
+        break;
+      case sturdr::ChannelState::ChannelState::IDLE:
+        name = "IDLE";
+        break;
+      case sturdr::ChannelState::ChannelState::ACQUIRING:
+        name = "ACQUIRING";
+        break;
+      case sturdr::ChannelState::ChannelState::TRACKING:
+        name = "TRACKING";
+        break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  };
 };
-inline auto fmt::formatter<sturdr::ChannelState::ChannelState>::format(
-    sturdr::ChannelState::ChannelState& c, format_context& ctx) const {
-  string_view name = "";
-  switch (c) {
-    case sturdr::ChannelState::ChannelState::OFF:
-      name = "OFF";
-      break;
-    case sturdr::ChannelState::ChannelState::IDLE:
-      name = "IDLE";
-      break;
-    case sturdr::ChannelState::ChannelState::ACQUIRING:
-      name = "ACQUIRING";
-      break;
-    case sturdr::ChannelState::ChannelState::TRACKING:
-      name = "TRACKING";
-      break;
-  }
-  return formatter<string_view>::format(name, ctx);
-}
 
 // *=== TrackingFlags ===*
 inline std::ostream& operator<<(
-    std::ostream& os, const sturdr::TrackingFlags::TrackingFlags& Token) {
-  if (Token == 0) {
-    os << "UNKNOWN";
-  } else {
-    uint8_t bitmask = 0b00000001;
-    std::ostringstream oss;
-    while (bitmask) {
-      switch (Token & bitmask) {
-        case sturdr::TrackingFlags::TrackingFlags::ACQUIRED:
-          oss << "ACQUIRED & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::CODE_LOCK:
-          oss << "CODE_LOCK & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::CARRIER_LOCK:
-          oss << "CARRIER_LOCK & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::BIT_SYNC:
-          oss << "BIT_SYNC & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::SUBFRAME_SYNC:
-          oss << "SUBFRAME_SYNC & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::TOW_DECODED:
-          oss << "TOW_DECODED & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::EPH_DECODED:
-          oss << "EPH_DECODED & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::FINE_LOCK:
-          oss << "FINE_LOCK & ";
-          break;
-      }
-      bitmask <<= 1;
-    }
-    std::string str = oss.str();
-    str.erase(str.length() - 3);
-    os << str;
-  }
-  return os;
-};
+    std::ostream& os, const sturdr::TrackingFlags::TrackingFlags& Token);
 template <>
 struct fmt::formatter<sturdr::TrackingFlags::TrackingFlags> : formatter<string_view> {
-  auto format(sturdr::TrackingFlags::TrackingFlags& c, format_context& ctx) const;
-};
-inline auto fmt::formatter<sturdr::TrackingFlags::TrackingFlags>::format(
-    sturdr::TrackingFlags::TrackingFlags& c, format_context& ctx) const {
-  if (c == 0) {
-    return formatter<string_view>::format("UNKNOWN", ctx);
-  } else {
-    uint8_t bitmask = 0b00000001;
-    std::ostringstream oss;
-    while (bitmask) {
-      switch (c & bitmask) {
-        case sturdr::TrackingFlags::TrackingFlags::ACQUIRED:
-          oss << "ACQUIRED & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::CODE_LOCK:
-          oss << "CODE_LOCK & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::CARRIER_LOCK:
-          oss << "CARRIER_LOCK & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::BIT_SYNC:
-          oss << "BIT_SYNC & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::SUBFRAME_SYNC:
-          oss << "SUBFRAME_SYNC & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::TOW_DECODED:
-          oss << "TOW_DECODED & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::EPH_DECODED:
-          oss << "EPH_DECODED & ";
-          break;
-        case sturdr::TrackingFlags::TrackingFlags::FINE_LOCK:
-          oss << "FINE_LOCK & ";
-          break;
+  auto format(sturdr::TrackingFlags::TrackingFlags& c, format_context& ctx) const {
+    if (c == 0) {
+      return formatter<string_view>::format("UNKNOWN", ctx);
+    } else {
+      uint8_t bitmask = 0b00000001;
+      std::ostringstream oss;
+      while (bitmask) {
+        switch (c & bitmask) {
+          case sturdr::TrackingFlags::TrackingFlags::ACQUIRED:
+            oss << "ACQUIRED & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::CODE_LOCK:
+            oss << "CODE_LOCK & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::CARRIER_LOCK:
+            oss << "CARRIER_LOCK & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::BIT_SYNC:
+            oss << "BIT_SYNC & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::SUBFRAME_SYNC:
+            oss << "SUBFRAME_SYNC & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::TOW_DECODED:
+            oss << "TOW_DECODED & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::EPH_DECODED:
+            oss << "EPH_DECODED & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::FINE_LOCK:
+            oss << "FINE_LOCK & ";
+            break;
+        }
+        bitmask <<= 1;
       }
-      bitmask <<= 1;
+      std::string str = oss.str();
+      str.erase(str.length() - 3);
+      return formatter<string_view>::format(str, ctx);
     }
-    std::string str = oss.str();
-    str.erase(str.length() - 3);
-    return formatter<string_view>::format(str, ctx);
-  }
-}
+  };
+};
 
 //! ------------------------------------------------------------------------------------------------
 //! these print overrides are specific to making nice csv files
 
 // *=== ChannelPacket ===*
-inline std::ostream& operator<<(std::ostream& os, const sturdr::ChannelPacket& c) {
-  os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
-     << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
-     << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ","
-     << std::format("0b{:08b}", c.ChannelStatus) << "," << std::format("0b{:08b}", c.TrackingStatus)
-     << "," << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase
-     << "," << c.CarrierPhase << "," << c.IE << "," << c.IP << "," << c.IL << "," << c.QE << ","
-     << c.QP << "," << c.QL << "," << c.IP1 << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << ","
-     << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "\n";
-  return os;
-};
+std::ostream& operator<<(std::ostream& os, const sturdr::ChannelPacket& c);
 template <>
 struct fmt::formatter<sturdr::ChannelPacket> : formatter<string_view> {
-  auto format(sturdr::ChannelPacket& c, format_context& ctx) const;
-};
-inline auto fmt::formatter<sturdr::ChannelPacket>::format(
-    sturdr::ChannelPacket& c, format_context& ctx) const {
-  std::ostringstream oss;
-  oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
-      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
-      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ","
-      << std::format("0b{:08b}", c.ChannelStatus) << ","
-      << std::format("0b{:08b}", c.TrackingStatus) << "," << (int)c.Week << "," << c.ToW << ","
-      << c.CNo << "," << c.Doppler << "," << c.CodePhase << "," << c.CarrierPhase << "," << c.IE
-      << "," << c.IP << "," << c.IL << "," << c.QE << "," << c.QP << "," << c.QL << "," << c.IP1
-      << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << "," << c.DllDisc << "," << c.PllDisc << ","
-      << c.FllDisc;
-  return formatter<string_view>::format(oss.str(), ctx);
+  auto format(sturdr::ChannelPacket& c, format_context& ctx) const {
+    std::ostringstream oss;
+    oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+        << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+        << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ","
+        << std::format("0b{:08b}", c.ChannelStatus) << ","
+        << std::format("0b{:08b}", c.TrackingStatus) << "," << (int)c.Week << "," << c.ToW << ","
+        << c.CNo << "," << c.Doppler << "," << c.CodePhase << "," << c.CarrierPhase << "," << c.IE
+        << "," << c.IP << "," << c.IL << "," << c.QE << "," << c.QP << "," << c.QL << "," << c.IP1
+        << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << "," << c.DllDisc << "," << c.PllDisc
+        << "," << c.FllDisc;
+    return formatter<string_view>::format(oss.str(), ctx);
+  };
 };
 
 // *=== NavPacket ===*
-inline std::ostream& operator<<(std::ostream& os, const sturdr::NavPacket& c) {
-  os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
-     << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
-     << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << (int)c.Week
-     << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase << ","
-     << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "\n";
-  return os;
-};
+std::ostream& operator<<(std::ostream& os, const sturdr::NavPacket& c);
 template <>
 struct fmt::formatter<sturdr::NavPacket> : formatter<string_view> {
-  auto format(sturdr::NavPacket& c, format_context& ctx) const;
-};
-inline auto fmt::formatter<sturdr::NavPacket>::format(
-    sturdr::NavPacket& c, format_context& ctx) const {
-  std::ostringstream oss;
-  oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
-      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
-      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << (int)c.Week
-      << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase << ","
-      << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc;
-  return formatter<string_view>::format(oss.str(), ctx);
+  auto format(sturdr::NavPacket& c, format_context& ctx) const {
+    std::ostringstream oss;
+    oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+        << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+        << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID
+        << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase
+        << "," << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc;
+    return formatter<string_view>::format(oss.str(), ctx);
+  };
 };
 
 // *=== EphemPacket ===*
-inline std::ostream& operator<<(std::ostream& os, const sturdr::EphemPacket& c) {
-  os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
-     << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
-     << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ""
-     << c.Eph.iode << "," << c.Eph.iodc << "," << c.Eph.toe << "," << c.Eph.toc << "," << c.Eph.tgd
-     << "," << c.Eph.af2 << "," << c.Eph.af1 << "," << c.Eph.af0 << "," << c.Eph.e << ","
-     << c.Eph.sqrtA << "," << c.Eph.deltan << "," << c.Eph.m0 << "," << c.Eph.omega0 << ","
-     << c.Eph.omega << "," << c.Eph.omegaDot << "," << c.Eph.i0 << "," << c.Eph.iDot << ","
-     << c.Eph.cuc << "," << c.Eph.cus << "," << c.Eph.cic << "," << c.Eph.cis << "," << c.Eph.crc
-     << "," << c.Eph.crs << "," << c.Eph.ura << "," << c.Eph.health << "\n";
-  return os;
-};
+std::ostream& operator<<(std::ostream& os, const sturdr::EphemPacket& c);
 template <>
 struct fmt::formatter<sturdr::EphemPacket> : formatter<string_view> {
-  auto format(sturdr::EphemPacket& c, format_context& ctx) const;
+  auto format(sturdr::EphemPacket& c, format_context& ctx) const {
+    std::ostringstream oss;
+    oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
+        << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
+        << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ""
+        << c.Eph.iode << "," << c.Eph.iodc << "," << c.Eph.toe << "," << c.Eph.toc << ","
+        << c.Eph.tgd << "," << c.Eph.af2 << "," << c.Eph.af1 << "," << c.Eph.af0 << "," << c.Eph.e
+        << "," << c.Eph.sqrtA << "," << c.Eph.deltan << "," << c.Eph.m0 << "," << c.Eph.omega0
+        << "," << c.Eph.omega << "," << c.Eph.omegaDot << "," << c.Eph.i0 << "," << c.Eph.iDot
+        << "," << c.Eph.cuc << "," << c.Eph.cus << "," << c.Eph.cic << "," << c.Eph.cis << ","
+        << c.Eph.crc << "," << c.Eph.crs << "," << c.Eph.ura << "," << c.Eph.health;
+    return formatter<string_view>::format(oss.str(), ctx);
+  };
 };
-inline auto fmt::formatter<sturdr::EphemPacket>::format(
-    sturdr::EphemPacket& c, format_context& ctx) const {
-  std::ostringstream oss;
-  oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
-      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
-      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ""
-      << c.Eph.iode << "," << c.Eph.iodc << "," << c.Eph.toe << "," << c.Eph.toc << "," << c.Eph.tgd
-      << "," << c.Eph.af2 << "," << c.Eph.af1 << "," << c.Eph.af0 << "," << c.Eph.e << ","
-      << c.Eph.sqrtA << "," << c.Eph.deltan << "," << c.Eph.m0 << "," << c.Eph.omega0 << ","
-      << c.Eph.omega << "," << c.Eph.omegaDot << "," << c.Eph.i0 << "," << c.Eph.iDot << ","
-      << c.Eph.cuc << "," << c.Eph.cus << "," << c.Eph.cic << "," << c.Eph.cis << "," << c.Eph.crc
-      << "," << c.Eph.crs << "," << c.Eph.ura << "," << c.Eph.health;
-  return formatter<string_view>::format(oss.str(), ctx);
-};
+;
 
 #endif

@@ -36,6 +36,7 @@ struct AcquisitionSetup {
   Eigen::MatrixXcd code_fft;
   Eigen::MatrixXcd carr_rep;
 
+  AcquisitionSetup(){};
   AcquisitionSetup(uint64_t rows, uint64_t cols)
       : code_fft{Eigen::MatrixXcd(32, cols)}, carr_rep{Eigen::MatrixXcd(rows, cols)} {};
 };

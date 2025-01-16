@@ -20,6 +20,7 @@
 
 #include <Eigen/Dense>
 #include <chrono>
+#include <functional>
 #include <memory>
 #include <navtools/constants.hpp>
 #include <thread>
@@ -47,13 +48,15 @@ class Channel {
   Channel(
       const Config &config,
       const AcquisitionSetup &acq_setup,
-      std::shared_ptr<Eigen::VectorXcd> shm,
-      std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
-      std::shared_ptr<ConcurrentBarrier> start_barrier,
-      std::shared_ptr<ConcurrentBarrier> end_barrier,
-      int &channel_num,
-      std::shared_ptr<bool> still_running,
-      void (*GetNewPrnFunc)(uint8_t &))
+      const std::shared_ptr<Eigen::VectorXcd> shm,
+      const std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
+      const std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue,
+      const std::shared_ptr<ConcurrentBarrier> start_barrier,
+      const std::shared_ptr<ConcurrentBarrier> end_barrier,
+      const int &channel_num,
+      const std::shared_ptr<bool> still_running,
+      // void (*GetNewPrnFunc)(uint8_t &))
+      std::function<void(uint8_t &)> GetNewPrnFunc)
       : conf_{config},
         shm_{shm},
         shm_read_ptr_{0},
@@ -61,6 +64,7 @@ class Channel {
         start_bar_{start_barrier},
         end_bar_{end_barrier},
         nav_queue_{nav_queue},
+        eph_queue_{eph_queue},
         acq_fails_{0},
         acq_setup_{acq_setup},
         intmd_freq_rad_{navtools::TWO_PI<double> * config.rfsignal.intmd_freq},
@@ -165,7 +169,8 @@ class Channel {
   uint64_t shm_samp_write_size_;           // size of shm writer updates
   std::shared_ptr<ConcurrentBarrier> start_bar_;  // barrier synchronizing shm_ memory
   std::shared_ptr<ConcurrentBarrier> end_bar_;    // barrier synchronizing channel processing
-  std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;  // queue for navigation messages
+  std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;    // queue for navigation messages
+  std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue_;  // queue for navigation messages
   std::shared_ptr<std::thread> thread_;
   int acq_fails_;
   AcquisitionSetup acq_setup_;  // bool to indicate processing is still being performed
@@ -176,7 +181,8 @@ class Channel {
   std::chrono::milliseconds timeout_;
   std::shared_ptr<spdlog::logger> log_;
   std::shared_ptr<spdlog::logger> file_log_;
-  void (*GetNewPrnFunc_)(uint8_t &);
+  // void (*GetNewPrnFunc_)(uint8_t &);
+  std::function<void(uint8_t &)> GetNewPrnFunc_;
 
   /**
    * *=== UpdateShmWriterPtr ===*

@@ -21,10 +21,12 @@
 
 #include <array>
 #include <complex>
+#include <functional>
 #include <satutils/gps-lnav.hpp>
 
 #include "sturdr/acquisition.hpp"
 #include "sturdr/channel.hpp"
+#include "sturdr/structs-enums.hpp"
 #include "sturdr/tracking.hpp"
 
 namespace sturdr {
@@ -47,13 +49,15 @@ class GpsL1caChannel : public Channel {
   GpsL1caChannel(
       const Config &config,
       const AcquisitionSetup &acq_setup,
-      std::shared_ptr<Eigen::VectorXcd> shm,
-      std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
-      std::shared_ptr<ConcurrentBarrier> start_barrier,
-      std::shared_ptr<ConcurrentBarrier> end_barrier,
-      int &channel_num,
-      std::shared_ptr<bool> still_running,
-      void (*GetNewPrnFunc)(uint8_t &));
+      const std::shared_ptr<Eigen::VectorXcd> shm,
+      const std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
+      const std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue,
+      const std::shared_ptr<ConcurrentBarrier> start_barrier,
+      const std::shared_ptr<ConcurrentBarrier> end_barrier,
+      const int &channel_num,
+      const std::shared_ptr<bool> still_running,
+      // void (*GetNewPrnFunc)(uint8_t &));
+      std::function<void(uint8_t &)> GetNewPrnFunc);
 
   /**
    * *=== ~GpsL1caChannel ===*
