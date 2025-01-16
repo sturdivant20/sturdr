@@ -86,8 +86,7 @@ void FLLassistedPLL_3rdOrder(
     const double &w0f) {
   try {
     double w0p2 = w0p * w0p;
-    double w0p3 = w0p2 * w0p;
-    double acc_accum_k = acc_accum + T * (w0p3 * phase_err + w0f * w0f * freq_err);
+    double acc_accum_k = acc_accum + T * (w0p2 * w0p * phase_err + w0f * w0f * freq_err);
     double vel_accum_k = vel_accum + T * (0.5 * (acc_accum_k + acc_accum) + b * w0p2 * phase_err +
                                           a * w0f * freq_err);
     nco_freq = 0.5 * (vel_accum_k + vel_accum) + c * w0p * phase_err;
@@ -127,8 +126,7 @@ void PLL_3rdOrder(
     const double &w0) {
   try {
     double w02 = w0 * w0;
-    double w03 = w02 * w0;
-    double acc_accum_k = acc_accum + T * w03 * phase_err;
+    double acc_accum_k = acc_accum + T * w02 * w0 * phase_err;
     double vel_accum_k = vel_accum + T * (0.5 * (acc_accum_k + acc_accum) + b * w02 * phase_err);
     nco_freq = 0.5 * (vel_accum_k + vel_accum) + c * w0 * phase_err;
     vel_accum = vel_accum_k;
@@ -142,7 +140,13 @@ void PLL_3rdOrder(
 //! ------------------------------------------------------------------------------------------------
 
 // *=== TrackingKF ===*
-TrackingKF::TrackingKF(){};
+TrackingKF::TrackingKF()
+    : P_{Eigen::Matrix<double, 5, 5>::Zero()},
+      Q_{Eigen::Matrix<double, 5, 5>::Zero()},
+      R_{Eigen::Matrix<double, 3, 3>::Zero()},
+      F_{Eigen::Matrix<double, 5, 5>::Identity()},
+      G_{Eigen::Matrix<double, 5, 2>::Zero()},
+      H_{Eigen::Matrix<double, 3, 5>::Zero()} {};
 
 // *=== ~TrackingKF ===*
 TrackingKF::~TrackingKF(){};
@@ -161,9 +165,7 @@ void TrackingKF::Init(
     const double &code_freq) {
   // Initialize state and covariance
   x_ << init_carr_phase, init_carr_doppler, 0.0, init_code_phase, 0.0;
-  P_ = Eigen::Matrix<double, 5, 5>::Zero();
-  P_.diagonal() << navtools::PI_SQU<double> / 3.0, navtools::TWO_PI<double> * 500.0, 100.0, 0.5,
-      10.0;
+  P_.diagonal() << navtools::PI_SQU<double> / 3.0, navtools::PI_SQU<> * 125e3, 1000.0, 1.0, 100.0;
 
   // Initialize dynamic model
   make_F(init_k, init_T);
@@ -173,7 +175,6 @@ void TrackingKF::Init(
 
   // Initialize measurement model
   make_H();
-  R_ = Eigen::Matrix<double, 3, 3>::Zero();
   make_R(init_cno, init_T);
 }
 
@@ -222,25 +223,33 @@ void TrackingKF::SetRemCodePhase(const double &rem_code_phase) {
 
 // *=== make_F ===*
 void TrackingKF::make_F(const double &k, const double &T) {
-  double T2 = T * T;
+  // double T2 = T * T;
   // clang-format off
-  F_ << 1.0,     T,     0.5 * T2, 0.0, 0.0,
-        0.0,   1.0,            T, 0.0, 0.0,
-        0.0,   0.0,          1.0, 0.0, 0.0,
-        0.0, k * T, 0.5 * k * T2, 1.0,   T,
-        0.0,   0.0,          0.0, 0.0, 1.0;
+  // F_ << 1.0,     T,     0.5 * T2, 0.0, 0.0,
+  //       0.0,   1.0,            T, 0.0, 0.0,
+  //       0.0,   0.0,          1.0, 0.0, 0.0,
+  //       0.0, k * T, 0.5 * k * T2, 1.0,   T,
+  //       0.0,   0.0,          0.0, 0.0, 1.0;
   // clang-format on
+  F_(0, 1) = T;
+  F_(0, 2) = 0.5 * T * T;
+  F_(1, 2) = T;
+  F_(3, 1) = k * T;
+  F_(3, 2) = 0.5 * F_(3, 1) * T;
+  F_(3, 4) = T;
 }
 
 // *=== make_F ===*
 void TrackingKF::make_G(const double &T) {
   // clang-format off
-  G_ <<   T, 0.0,
-        0.0, 0.0,
-        0.0, 0.0,
-        0.0,   T,
-        0.0, 0.0;
+  // G_ <<   T, 0.0,
+  //       0.0, 0.0,
+  //       0.0, 0.0,
+  //       0.0,   T,
+  //       0.0, 0.0;
   // clang-format on
+  G_(0, 0) = T;
+  G_(3, 1) = T;
 }
 
 // *=== make_Q ===*
@@ -248,25 +257,47 @@ void TrackingKF::make_Q(
     const double &w0d, const double &w0p, const double &w0f, const double &k, const double &T) {
   double T2 = T * T;
   double T3 = T * T2;
-  double T4 = T * T3;
-  double T5 = T * T4;
-  double k2 = k * k;
+  // double T4 = T * T3;
+  // double T5 = T * T4;
+  // double k2 = k * k;
   // clang-format off
-  Q_ <<       (w0f*T5)/20. + (w0p*T3)/3.,   (T2*(w0f*T2 + 4.*w0p))/8.,   (T3*w0f)/6.,               (T3*k*(3.*w0f*T2 + 2.0*w0p))/60.,          0.,
-               (w0f*T4)/8. + (w0p*T2)/2.,         (w0f*T3)/3. + w0p*T,   (T2*w0f)/2.,                    (T2*k*(w0f*T2 + 4.*w0p))/8.,          0.,
-                             (T3*w0f)/6.,                 (T2*w0f)/2.,         T*w0f,                                  (T3*k*w0f)/6.,          0.,
-        (T3*k*(3.*w0f*T2 + 20.*w0p))/60., (T2*k*(w0f*T2 + 4.*w0p))/8., (T3*k*w0f)/6., (T3*(3.*w0f*T2*k2 + 20.*w0p*k2 + 20.*w0d))/60., (T2*w0d)/2.,
-                                      0.,                          0.,            0.,                                    (T2*w0d)/2.,       T*w0d;
+  // Q_ <<       (w0f*T5)/20. + (w0p*T3)/3.,   (T2*(w0f*T2 + 4.*w0p))/8.,   (T3*w0f)/6.,               (T3*k*(3.*w0f*T2 + 2.0*w0p))/60.,          0.,
+  //              (w0f*T4)/8. + (w0p*T2)/2.,         (w0f*T3)/3. + w0p*T,   (T2*w0f)/2.,                    (T2*k*(w0f*T2 + 4.*w0p))/8.,          0.,
+  //                            (T3*w0f)/6.,                 (T2*w0f)/2.,         T*w0f,                                  (T3*k*w0f)/6.,          0.,
+  //       (T3*k*(3.*w0f*T2 + 20.*w0p))/60., (T2*k*(w0f*T2 + 4.*w0p))/8., (T3*k*w0f)/6., (T3*(3.*w0f*T2*k2 + 20.*w0p*k2 + 20.*w0d))/60., (T2*w0d)/2.,
+  //                                     0.,                          0.,            0.,                                    (T2*w0d)/2.,       T*w0d;
   // clang-format on
+  Q_(0, 0) = T3 * ((w0f * T2) / 20.0 + w0p / 3.0);
+  Q_(0, 1) = T2 * ((w0f * T2) / 8.0 + w0p / 2.0);
+  Q_(0, 2) = (T3 * w0f) / 6.0;
+  Q_(0, 3) = (T3 * k * (3.0 * w0f * T2 + 2.0 * w0p)) / 60.0;
+  Q_(1, 0) = Q_(0, 1);
+  Q_(1, 1) = (w0f * T3) / 3. + w0p * T;
+  Q_(1, 2) = (T2 * w0f) / 2.0;
+  Q_(1, 3) = (T2 * k * (w0f * T2 + 4. * w0p)) / 8.0;
+  Q_(2, 0) = Q_(0, 1);
+  Q_(2, 1) = Q_(1, 2);
+  Q_(2, 2) = T * w0f;
+  Q_(2, 3) = (T3 * k * w0f) / 6.0;
+  Q_(3, 0) = Q_(0, 3);
+  Q_(3, 1) = Q_(1, 3);
+  Q_(3, 2) = Q_(2, 3);
+  Q_(3, 3) = (T3 * k * k * (3.0 * w0f * T2 + 20.0 * (w0p + w0d))) / 60.0;
+  Q_(3, 4) = (T2 * w0d) / 2.0;
+  Q_(4, 3) = Q_(3, 4);
+  Q_(4, 4) = T * w0d;
 }
 
 // *=== make_H ===*
 void TrackingKF::make_H() {
-  // clang-format off
-  H_ << 1.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 1.0, 0.0;
-  // clang-format on
+  // // clang-format off
+  // H_ << 1.0, 0.0, 0.0, 0.0, 0.0,
+  //       0.0, 1.0, 0.0, 0.0, 0.0,
+  //       0.0, 0.0, 0.0, 1.0, 0.0;
+  // // clang-format on
+  H_(0, 0) = 1.0;
+  H_(1, 1) = 1.0;
+  H_(2, 3) = 1.0;
 }
 
 // *=== make_R ===*

@@ -17,8 +17,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_TRACKING_HPP
 #define STURDR_TRACKING_HPP
 

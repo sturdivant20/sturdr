@@ -17,8 +17,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_LOCK_DETECTORS_HPP
 #define STURDR_LOCK_DETECTORS_HPP
 

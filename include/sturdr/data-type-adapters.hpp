@@ -8,8 +8,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_DATA_TYPE_ADAPTERS_HPP
 #define STURDR_DATA_TYPE_ADAPTERS_HPP
 

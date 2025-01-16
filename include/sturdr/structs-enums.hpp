@@ -9,8 +9,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_STRUCTS_ENUMS_HPP
 #define STURDR_STRUCTS_ENUMS_HPP
 
@@ -109,8 +107,10 @@ struct AcquisitionConfig {
   double doppler_step;
   uint8_t num_coh_per;
   uint8_t num_noncoh_per;
+  uint16_t max_failed_attempts;
 };
 struct TrackingConfig {
+  uint16_t fll_pull_in_time_ms;
   uint16_t min_converg_time_ms;
   double tap_epl_wide;
   double tap_epl_standard;

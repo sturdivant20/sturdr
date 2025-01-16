@@ -14,8 +14,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_CHANNEL_GPS_L1CA_HPP
 #define STURDR_CHANNEL_GPS_L1CA_HPP
 
@@ -25,6 +23,7 @@
 #include <complex>
 #include <satutils/gps-lnav.hpp>
 
+#include "sturdr/acquisition.hpp"
 #include "sturdr/channel.hpp"
 #include "sturdr/tracking.hpp"
 
@@ -47,13 +46,14 @@ class GpsL1caChannel : public Channel {
    */
   GpsL1caChannel(
       const Config &config,
-      const SturdrFftPlans &fft_plans,
+      const AcquisitionSetup &acq_setup,
       std::shared_ptr<Eigen::VectorXcd> shm,
       std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentBarrier> end_barrier,
       int &channel_num,
-      std::shared_ptr<bool> still_running);
+      std::shared_ptr<bool> still_running,
+      void (*GetNewPrnFunc)(uint8_t &));
 
   /**
    * *=== ~GpsL1caChannel ===*

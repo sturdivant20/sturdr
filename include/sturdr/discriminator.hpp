@@ -17,8 +17,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_DISCRIMINATOR_HPP
 #define STURDR_DISCRIMINATOR_HPP
 

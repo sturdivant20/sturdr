@@ -38,22 +38,24 @@ namespace sturdr {
 // *=== GpsL1caChannel ===*
 GpsL1caChannel::GpsL1caChannel(
     const Config &config,
-    const SturdrFftPlans &fft_plans,
+    const AcquisitionSetup &acq_setup,
     std::shared_ptr<Eigen::VectorXcd> shm,
     std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
     std::shared_ptr<ConcurrentBarrier> start_barrier,
     std::shared_ptr<ConcurrentBarrier> end_barrier,
     int &channel_num,
-    std::shared_ptr<bool> still_running)
+    std::shared_ptr<bool> still_running,
+    void (*GetNewPrnFunc)(uint8_t &))
     : Channel(
           config,
-          fft_plans,
+          acq_setup,
           shm,
           nav_queue,
           start_barrier,
           end_barrier,
           channel_num,
-          still_running),
+          still_running,
+          GetNewPrnFunc),
       rem_code_phase_{0.0},
       code_doppler_{0.0},
       rem_carr_phase_{0.0},
@@ -94,7 +96,7 @@ GpsL1caChannel::GpsL1caChannel(
   samp_per_chip_ = static_cast<int>(conf_.rfsignal.samp_freq / satutils::GPS_CA_CODE_RATE<>);
 
   // Tracking filter
-  kappa_ = satutils::GPS_CA_CODE_RATE<> / (navtools::TWO_PI<double> * satutils::GPS_L1_FREQUENCY<>);
+  kappa_ = satutils::GPS_CA_CODE_RATE<> / (navtools::TWO_PI<> * satutils::GPS_L1_FREQUENCY<>);
   w0d_ = NaturalFrequency(conf_.tracking.dll_bw_wide, 2);
   w0p_ = NaturalFrequency(conf_.tracking.pll_bw_wide, 3);
   w0f_ = NaturalFrequency(conf_.tracking.fll_bw_wide, 2);
@@ -155,78 +157,99 @@ void GpsL1caChannel::SetSatellite(uint8_t sv_id) {
 // *=== Acquire ===*
 void GpsL1caChannel::Acquire() {
   try {
-    // Make sure enough data is inside shm_
-    if (UnreadSampleCount() < total_samp_) return;
+    samp_remaining_ = UnreadSampleCount();
 
-    // Perform acquisition
-    Eigen::MatrixXd corr_map = PcpsSearch(
-        fft_plans_,
-        shm_->segment(shm_read_ptr_, total_samp_),
-        code_,
-        conf_.acquisition.doppler_range,
-        conf_.acquisition.doppler_step,
-        conf_.rfsignal.samp_freq,
-        satutils::GPS_CA_CODE_RATE<>,
-        conf_.rfsignal.intmd_freq,
-        conf_.acquisition.num_coh_per,
-        conf_.acquisition.num_noncoh_per);
-    int peak_idx[2];
-    double metric;
-    Peak2NoiseFloorTest(corr_map, peak_idx, metric);
-
-    // did we acquire?
-    if (metric > conf_.acquisition.threshold) {
-      // SUCCESS
-      channel_msg_.TrackingStatus |= TrackingFlags::ACQUIRED;
-      channel_msg_.ChannelStatus = ChannelState::TRACKING;
-      channel_msg_.Doppler = -conf_.acquisition.doppler_range +
-                             static_cast<double>(peak_idx[0]) * conf_.acquisition.doppler_step;
-      shm_read_ptr_ += (total_samp_ + peak_idx[1] - samp_per_ms_);
-      shm_read_ptr_ %= shm_samp_chunk_size_;
-      carr_doppler_ = navtools::TWO_PI<double> * channel_msg_.Doppler;
-      code_doppler_ = kappa_ * carr_doppler_;
-      nco_carr_freq_ = intmd_freq_rad_ + carr_doppler_;
-      nco_code_freq_ = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
-
-      // initialize tracking filter states
-      filt_.Init(
-          w0d_,
-          w0p_,
-          w0f_,
-          kappa_,
-          rem_carr_phase_,
-          carr_doppler_,
-          rem_code_phase_,
-          cno_mag_,
-          T_,
-          intmd_freq_rad_,
-          satutils::GPS_CA_CODE_RATE<>);
-
-      // initialize tracking filter NCO
-      double code_phase_step =
-          (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
-      total_samp_ = static_cast<uint64_t>(
-          (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - rem_code_phase_) /
-          code_phase_step);
-      half_samp_ = total_samp_ / 2;
-      samp_processed_ = 0;
-      log_->info(
-          "{}: GPS{} acquired! Doppler (Hz) = {:.0f}, Code Phase (samp) = {:d}, metric = {:.1f}",
-          channel_id_,
+    while (samp_remaining_ >= total_samp_) {
+      // Perform acquisition
+      Eigen::MatrixXd corr_map = PcpsSearch(
+          shm_->segment(shm_read_ptr_, total_samp_),
+          conf_.acquisition.num_coh_per,
+          conf_.acquisition.num_noncoh_per,
           channel_msg_.Header.SVID,
-          channel_msg_.Doppler,
-          peak_idx[1],
-          metric);
+          acq_setup_);
+      // Eigen::MatrixXd corr_map = PcpsSearch(
+      //     fft_plans_,
+      //     shm_->segment(shm_read_ptr_, total_samp_),
+      //     code_,
+      //     conf_.acquisition.doppler_range,
+      //     conf_.acquisition.doppler_step,
+      //     conf_.rfsignal.samp_freq,
+      //     satutils::GPS_CA_CODE_RATE<>,
+      //     conf_.rfsignal.intmd_freq,
+      //     conf_.acquisition.num_coh_per,
+      //     conf_.acquisition.num_noncoh_per);
+      int peak_idx[2];
+      double metric;
+      GlrtTest(corr_map, peak_idx, metric, shm_->segment(shm_read_ptr_, total_samp_));
 
-    } else {
-      // FAILURE
+      // did we acquire?
+      if (metric > conf_.acquisition.threshold) {
+        // --- SUCCESS ---
+        channel_msg_.TrackingStatus |= TrackingFlags::ACQUIRED;
+        channel_msg_.ChannelStatus = ChannelState::TRACKING;
+        channel_msg_.Doppler = -conf_.acquisition.doppler_range +
+                               static_cast<double>(peak_idx[0]) * conf_.acquisition.doppler_step;
+        shm_read_ptr_ += (total_samp_ + peak_idx[1] - samp_per_ms_);
+        shm_read_ptr_ %= shm_samp_chunk_size_;
+        carr_doppler_ = navtools::TWO_PI<> * channel_msg_.Doppler;
+        code_doppler_ = kappa_ * carr_doppler_;
+        nco_carr_freq_ = intmd_freq_rad_ + carr_doppler_;
+        nco_code_freq_ = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
+
+        // initialize tracking filter states
+        filt_.Init(
+            w0d_,
+            w0p_,
+            w0f_,
+            kappa_,
+            rem_carr_phase_,
+            carr_doppler_,
+            rem_code_phase_,
+            cno_mag_,
+            T_,
+            intmd_freq_rad_,
+            satutils::GPS_CA_CODE_RATE<>);
+
+        // initialize tracking filter NCO
+        double code_phase_step =
+            (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
+        total_samp_ = static_cast<uint64_t>(
+            (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - rem_code_phase_) /
+            code_phase_step);
+        half_samp_ = total_samp_ / 2;
+        samp_processed_ = 0;
+        log_->info(
+            "{}: GPS{} acquired! Doppler (Hz) = {:.0f}, Code Phase (samp) = {:d}, metric = {:.1f}",
+            channel_id_,
+            channel_msg_.Header.SVID,
+            channel_msg_.Doppler,
+            peak_idx[1],
+            metric);
+        // Track();
+        return;
+      }
+
+      // --- FAILURE ---
       shm_read_ptr_ += total_samp_;
       shm_read_ptr_ %= shm_samp_chunk_size_;
-      channel_msg_.ChannelStatus = ChannelState::IDLE;
-      log_->info(
-          "Acquisition for GPS{} on {} failed, resetting to idle!",
+      // channel_msg_.ChannelStatus = ChannelState::IDLE;
+      log_->debug(
+          "Acquisition for GPS{} on {} failed, metric = {:.1f}!",
           channel_msg_.Header.SVID,
-          channel_id_);
+          channel_id_,
+          metric);
+      // get new prn
+      GetNewPrnFunc_(channel_msg_.Header.SVID);
+      SetSatellite(channel_msg_.Header.SVID);
+
+      // update samp_remaining_
+      samp_remaining_ = UnreadSampleCount();
+      acq_fails_++;
+      if (acq_fails_ > conf_.acquisition.max_failed_attempts) {
+        channel_msg_.ChannelStatus = ChannelState::IDLE;
+        return;
+      }
+      // log_->error("acq_fails: {}, samp_remaining: {}", acq_fails_, samp_remaining_);
     }
   } catch (std::exception &e) {
     log_->error("gps-l1ca-channel.cpp Acquire failed! Error -> {}", e.what());
@@ -298,10 +321,10 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
         filt_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
         filt_.UpdateMeasurementsParam(cno_mag_, T_);
         filt_.Run(chip_err, phase_err, freq_err);
-        rem_carr_phase_ = std::fmod(filt_.x_(0), navtools::TWO_PI<double>);
+        rem_carr_phase_ = std::fmod(filt_.x_(0), navtools::TWO_PI<>);
         carr_doppler_ = filt_.x_(1);
         carr_jitter_ = filt_.x_(2);
-        rem_code_phase_ = filt_.x_(3) - static_cast<double>(PDI_) * satutils::GPS_CA_CODE_LENGTH;
+        rem_code_phase_ = filt_.x_(3) - static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH);
         code_doppler_ = filt_.x_(4) + kappa_ * (filt_.x_(1) + t * filt_.x_(2));
         nco_carr_freq_ = intmd_freq_rad_ + carr_doppler_;
         nco_code_freq_ = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
@@ -312,7 +335,7 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
 
         // update navigation message
         nav_msg_.CNo = cno_mag_;
-        nav_msg_.Doppler = carr_doppler_ / navtools::TWO_PI<double>;
+        nav_msg_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
         nav_msg_.CodePhase = rem_code_phase_;
         nav_msg_.CarrierPhase = rem_carr_phase_;
 

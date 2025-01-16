@@ -18,7 +18,7 @@ int main() {
   console->set_level(spdlog::level::trace);
 
   // intialize sdr struct and generate settings
-  sturdio::YamlParser yp("config/gps_l1ca_rcvr.yaml");
+  sturdio::YamlParser yp("config/nordnav_rcvr.yaml");
   console->info("yaml file parsed");
   uint64_t ms_to_process = yp.GetVar<uint64_t>("ms_to_process");
   std::string scenario = yp.GetVar<std::string>("scenario");
@@ -27,6 +27,7 @@ int main() {
   double reference_pos_y = yp.GetVar<double>("reference_pos_y");
   double reference_pos_z = yp.GetVar<double>("reference_pos_z");
   std::string clock_model = yp.GetVar<std::string>("clock_model");
+  double samp_freq = yp.GetVar<double>("samp_freq");
 
   // print out some variables
   console->info("ms_to_process: {}", ms_to_process);
@@ -35,6 +36,7 @@ int main() {
   console->info("reference_pos_x: {}", reference_pos_x);
   console->info("reference_pos_y: {}", reference_pos_y);
   console->info("reference_pos_z: {}", reference_pos_z);
+  console->info("samp_freq: {}", samp_freq);
 
   // parse some data using class
   sturdio::BinaryFile file(in_file);

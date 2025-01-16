@@ -7,6 +7,7 @@
 #include <complex>
 #include <fstream>
 #include <satutils/code-gen.hpp>
+#include <satutils/gnss-constants.hpp>
 
 #include "sturdr/acquisition.hpp"
 
@@ -20,7 +21,6 @@ int main() {
   // Initialize
   double samp_freq = 20e6;
   double intmd_freq = 5000445.88565834;
-  double code_freq = 1.023e6;
   double threshold = 12.0;
   double d_range = 5000.0;
   double d_step = 100.0;
@@ -29,20 +29,18 @@ int main() {
   // double carr_freq = 1575.42e6;
   // bool test_p2n = true;
 
-  // create fft plans (shared across all threads)
-  int samp_per_ms = static_cast<int>(samp_freq / 1000.0);
-  int n_dopp_bins = static_cast<int>(2.0 * d_range / d_step + 1.0);
-  sturdr::SturdrFftPlans p;
-  p.fft = sturdr::Create1dFftPlan(samp_per_ms, true);
-  p.ifft = sturdr::Create1dFftPlan(samp_per_ms, false);
-  p.fft_many = sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, true);
-  p.ifft_many = sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, false);
+  // initialize acquisition matrices
+  std::array<std::array<bool, 1023>, 32> codes;
+  for (int i = 0; i < 32; i++) {
+    satutils::CodeGenCA(codes[i], i + 1);
+  }
+  sturdr::AcquisitionSetup acq_setup = sturdr::InitAcquisitionMatrices(
+      codes, d_range, d_step, samp_freq, satutils::GPS_CA_CODE_RATE<>, intmd_freq);
   console->debug("FFT plans created!");
 
   // load signal
   uint64_t n_samp = static_cast<uint64_t>(c_per * nc_per * static_cast<int>(samp_freq) / 1000);
-  std::ifstream file(
-      "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
+  std::ifstream file("data/gpsBase_IFEN_IF.bin", std::ios::binary);
   if (!file.is_open()) {
     console->error("Error opening file!");
     return 1;
@@ -57,13 +55,15 @@ int main() {
   console->debug("RF signal read from file!");
 
   // generate ca code
+  uint8_t prn = 1;
   std::array<bool, 1023> code;
-  satutils::CodeGenCA(code, 1);
+  satutils::CodeGenCA(code, prn);
   console->debug("C/A code generated!");
 
   // run acquisition
-  Eigen::MatrixXd corr_map = sturdr::PcpsSearch(
-      p, signal, code, d_range, d_step, samp_freq, code_freq, intmd_freq, c_per, nc_per);
+  // Eigen::MatrixXd corr_map = sturdr::PcpsSearch(
+  //     p, signal, code, d_range, d_step, samp_freq, code_freq, intmd_freq, c_per, nc_per);
+  Eigen::MatrixXd corr_map = PcpsSearch(signal, c_per, nc_per, prn, acq_setup);
   int peak_idx[2];
   double metric;
   sturdr::Peak2NoiseFloorTest(corr_map, peak_idx, metric);

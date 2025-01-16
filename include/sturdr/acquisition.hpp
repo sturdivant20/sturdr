@@ -15,17 +15,49 @@
 
 // TODO: SerialSearch and Peak2PeakTest
 
-#pragma once
-
 #ifndef STURDR_ACQUISITION_HPP
 #define STURDR_ACQUISITION_HPP
 
 #include <Eigen/Dense>
 #include <array>
 
-#include "sturdr/fftw-wrapper.hpp"
+#include "fftw3.h"
 
 namespace sturdr {
+
+/**
+ * @brief Acquisition NCO replica constants to reduce numerical stress during runtime
+ */
+struct AcquisitionSetup {
+  fftw_plan fft;
+  fftw_plan ifft;
+  fftw_plan fft_many;
+  fftw_plan ifft_many;
+  Eigen::MatrixXcd code_fft;
+  Eigen::MatrixXcd carr_rep;
+
+  AcquisitionSetup(uint64_t rows, uint64_t cols)
+      : code_fft{Eigen::MatrixXcd(32, cols)}, carr_rep{Eigen::MatrixXcd(rows, cols)} {};
+};
+
+/**
+ * @brief initializes known code ffts and carrier replicas
+ * @param    codes       Local code (not upsampled)
+ * @param    d_range     Max doppler frequency to search [Hz]
+ * @param    d_step      Frequency step for doppler search [Z]
+ * @param    samp_freq   Front end sampling frequency [Hz]
+ * @param    code_freq   GNSS signal code frequency [Hz]
+ * @param    intmd_freq  Intermediate frequency of the RF signal [Hz]
+ * @param    code_fft
+ * @param    carr_rep
+ */
+AcquisitionSetup InitAcquisitionMatrices(
+    const std::array<std::array<bool, 1023>, 32> &codes,
+    const double &d_range,
+    const double &d_step,
+    const double &samp_freq,
+    const double &code_freq,
+    const double &intmd_freq);
 
 //! === SerialSearch ===
 
@@ -44,16 +76,22 @@ namespace sturdr {
  * @return 2D correlation results
  */
 Eigen::MatrixXd PcpsSearch(
-    const SturdrFftPlans &p,
     const Eigen::VectorXcd &rfdata,
-    const std::array<bool, 1023> &code,
-    const double &d_range,
-    const double &d_step,
-    const double &samp_freq,
-    const double &code_freq,
-    const double &intmd_freq,
     const uint8_t &c_per,
-    const uint8_t &nc_per);
+    const uint8_t &nc_per,
+    const uint8_t &prn,
+    AcquisitionSetup &acq_setup);
+// Eigen::MatrixXd PcpsSearch(
+//     const SturdrFftPlans &p,
+//     const Eigen::VectorXcd &rfdata,
+//     const std::array<bool, 1023> &code,
+//     const double &d_range,
+//     const double &d_step,
+//     const double &samp_freq,
+//     const double &code_freq,
+//     const double &intmd_freq,
+//     const uint8_t &c_per,
+//     const uint8_t &nc_per);
 
 //! === Peak2PeakTest ===
 
@@ -65,6 +103,19 @@ Eigen::MatrixXd PcpsSearch(
  * @param metric         Ratio between the highest and second highest peaks
  */
 void Peak2NoiseFloorTest(const Eigen::MatrixXd &corr_map, int peak_idx[2], double &metric);
+
+/**
+ * *=== GlrtTest ===*
+ * @brief General likelihood ratio test
+ * @param corr_map       2D-array from correlation method
+ * @param peak_idx       Indexes of highest correlation peak
+ * @param metric         Ratio between the highest and second highest peaks
+ */
+void GlrtTest(
+    const Eigen::MatrixXd &corr_map,
+    int peak_idx[2],
+    double &metric,
+    const Eigen::VectorXcd &rfdata);
 
 }  // end namespace sturdr
 

@@ -13,13 +13,10 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_GNSS_SIGNAL_HPP
 #define STURDR_GNSS_SIGNAL_HPP
 
 #include <Eigen/Dense>
-#include <array>
 
 namespace sturdr {
 
@@ -33,10 +30,7 @@ namespace sturdr {
  * @return Upsampled version of provided code
  */
 Eigen::VectorXcd CodeNCO(
-    const std::array<bool, 1023> &code,
-    const double &code_freq,
-    const double &samp_freq,
-    double &rem_phase);
+    const bool code[1023], const double &code_freq, const double &samp_freq, double &rem_phase);
 
 /**
  * *=== CarrierNCO ===*

@@ -12,8 +12,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_CHANNEL_HPP
 #define STURDR_CHANNEL_HPP
 
@@ -26,9 +24,9 @@
 #include <navtools/constants.hpp>
 #include <thread>
 
+#include "sturdr/acquisition.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
-#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
@@ -48,13 +46,14 @@ class Channel {
    */
   Channel(
       const Config &config,
-      const SturdrFftPlans &fft_plans,
+      const AcquisitionSetup &acq_setup,
       std::shared_ptr<Eigen::VectorXcd> shm,
       std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentBarrier> end_barrier,
       int &channel_num,
-      std::shared_ptr<bool> still_running)
+      std::shared_ptr<bool> still_running,
+      void (*GetNewPrnFunc)(uint8_t &))
       : conf_{config},
         shm_{shm},
         shm_read_ptr_{0},
@@ -62,11 +61,13 @@ class Channel {
         start_bar_{start_barrier},
         end_bar_{end_barrier},
         nav_queue_{nav_queue},
-        fft_plans_{fft_plans},
+        acq_fails_{0},
+        acq_setup_{acq_setup},
         intmd_freq_rad_{navtools::TWO_PI<double> * config.rfsignal.intmd_freq},
         still_running_{still_running},
-        timeout_{100},
-        log_{spdlog::get("sturdr-console")} {
+        timeout_{1000},
+        log_{spdlog::get("sturdr-console")},
+        GetNewPrnFunc_{GetNewPrnFunc} {
     channel_id_ = "Sturdr_Ch" + std::to_string(channel_num);
     shm_samp_chunk_size_ = conf_.general.ms_chunk_size * conf_.rfsignal.samp_freq / 1000;
     shm_samp_write_size_ = conf_.general.ms_read_size * conf_.rfsignal.samp_freq / 1000;
@@ -115,7 +116,7 @@ class Channel {
    * @brief Run channel processing
    */
   virtual void run() {
-    // wait for shm_ to be updated
+    // wait for shm_ to be initialized
     start_bar_->Wait();
 
     while (*still_running_) {
@@ -123,11 +124,18 @@ class Channel {
       UpdateShmWriterPtr();
 
       // process data
-      if (channel_msg_.ChannelStatus == ChannelState::TRACKING) {
-        Track();
-        nav_queue_->push(nav_msg_);
-      } else if (channel_msg_.ChannelStatus == ChannelState::ACQUIRING) {
-        Acquire();
+      switch (channel_msg_.ChannelStatus) {
+        case (ChannelState::TRACKING):
+          Track();
+          nav_queue_->push(nav_msg_);
+          break;
+        case (ChannelState::ACQUIRING):
+          Acquire();
+          break;
+        case (ChannelState::IDLE):
+          // GetNewPrnFunc_(channel_msg_.Header.SVID);
+          // SetSatellite(channel_msg_.Header.SVID);
+          break;
       }
       // channel_queue_->push(channel_msg_);
       file_log_->info("{}", channel_msg_);
@@ -159,7 +167,8 @@ class Channel {
   std::shared_ptr<ConcurrentBarrier> end_bar_;    // barrier synchronizing channel processing
   std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;  // queue for navigation messages
   std::shared_ptr<std::thread> thread_;
-  SturdrFftPlans fft_plans_;  // bool to indicate processing is still being performed
+  int acq_fails_;
+  AcquisitionSetup acq_setup_;  // bool to indicate processing is still being performed
   double intmd_freq_rad_;
   double nco_code_freq_;
   double nco_carr_freq_;
@@ -167,6 +176,7 @@ class Channel {
   std::chrono::milliseconds timeout_;
   std::shared_ptr<spdlog::logger> log_;
   std::shared_ptr<spdlog::logger> file_log_;
+  void (*GetNewPrnFunc_)(uint8_t &);
 
   /**
    * *=== UpdateShmWriterPtr ===*

@@ -9,8 +9,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_FFTW_WRAPPER_HPP
 #define STURDR_FFTW_WRAPPER_HPP
 
@@ -20,12 +18,12 @@
 
 namespace sturdr {
 
-struct SturdrFftPlans {
-  fftw_plan fft;
-  fftw_plan ifft;
-  fftw_plan fft_many;
-  fftw_plan ifft_many;
-};
+// struct SturdrFftPlans {
+//   fftw_plan fft;
+//   fftw_plan ifft;
+//   fftw_plan fft_many;
+//   fftw_plan ifft_many;
+// };
 
 //! === ThreadSafety ===
 /// @brief Ensures the creation of FFT planners does not conflict with other processes

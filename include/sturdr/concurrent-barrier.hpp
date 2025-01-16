@@ -9,8 +9,6 @@
  * =======  ========================================================================================
  */
 
-#pragma once
-
 #ifndef STURDR_CONCURRENT_BARRIER_HPP
 #define STURDR_CONCURRENT_BARRIER_HPP
 

@@ -26,13 +26,10 @@ namespace sturdr {
 
 // *=== CodeNCO ===*
 Eigen::VectorXcd CodeNCO(
-    const std::array<bool, 1023> &code,
-    const double &code_freq,
-    const double &samp_freq,
-    double &rem_phase) {
+    const bool code[1023], const double &code_freq, const double &samp_freq, double &rem_phase) {
   try {
     // Initialize
-    double N = static_cast<double>(code.size());
+    double N = 1023.0;
     double code_phase_step = code_freq / samp_freq;
     uint64_t samp_per_code = static_cast<uint64_t>(std::ceil((N - rem_phase) / code_phase_step));
 

@@ -42,8 +42,7 @@ int main() {
   double cno = 1000.0;
 
   // open file
-  std::ifstream file(
-      "../sturdr/rfdata/class_ifen_8bit_20e6_if_5000445.88565834.bin", std::ios::binary);
+  std::ifstream file("data/gpsBase_IFEN_IF.bin", std::ios::binary);
   if (!file.is_open()) {
     console->error("Error opening file!");
     return 1;
@@ -85,7 +84,7 @@ int main() {
   for (uint64_t i = 0; i < 1000; i++) {
     // upsample code
     code_freq_nco = code_freq + code_doppler;
-    code_prompt = sturdr::CodeNCO(code, code_freq_nco, samp_freq, rem_code_phase);
+    code_prompt = sturdr::CodeNCO(code.data(), code_freq_nco, samp_freq, rem_code_phase);
     code_early = sturdr::CircShift(code_prompt, +tap_spacing);
     code_late = sturdr::CircShift(code_prompt, -tap_spacing);
 
