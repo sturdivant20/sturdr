@@ -52,7 +52,8 @@ AcquisitionSetup InitAcquisitionMatrices(
   // Initialize code replicas
   double rem_phase = 0.0;
   for (int i = 0; i < 32; i++) {
-    acq_setup.code_fft.row(i) = CodeNCO(codes[i].data(), code_freq, samp_freq, rem_phase);
+    acq_setup.code_fft.row(i) =
+        CodeNCO(codes[i].data(), code_freq, samp_freq, rem_phase, samp_per_ms);
   }
   ExecuteManyFftPlan(acq_setup.fft, acq_setup.code_fft, acq_setup.code_fft);
   acq_setup.code_fft = acq_setup.code_fft.conjugate() / samp_per_ms;

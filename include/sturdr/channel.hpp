@@ -49,14 +49,13 @@ class Channel {
       const Config &config,
       const AcquisitionSetup &acq_setup,
       const std::shared_ptr<Eigen::VectorXcd> shm,
-      const std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
-      const std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue,
+      const std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+      const std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       const std::shared_ptr<ConcurrentBarrier> start_barrier,
       const std::shared_ptr<ConcurrentBarrier> end_barrier,
       const int &channel_num,
       const std::shared_ptr<bool> still_running,
-      // void (*GetNewPrnFunc)(uint8_t &))
-      std::function<void(uint8_t &)> GetNewPrnFunc)
+      std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc)
       : conf_{config},
         shm_{shm},
         shm_read_ptr_{0},
@@ -78,7 +77,9 @@ class Channel {
 
     // initialize file logger
     file_log_ = spdlog::basic_logger_st<spdlog::async_factory>(
-        channel_id_ + "_Logger", conf_.general.out_folder + "/" + channel_id_ + "_Log.csv", true);
+        channel_id_ + "_Logger",
+        conf_.general.out_folder + "/" + conf_.general.scenario + "/" + channel_id_ + "_Log.csv",
+        true);
     file_log_->set_pattern("%v");
     file_log_->info(
         "ChannelNum,Constellation,Signal,SVID,ChannelStatus,TrackingStatus,Week,ToW,"
@@ -131,7 +132,7 @@ class Channel {
       switch (channel_msg_.ChannelStatus) {
         case (ChannelState::TRACKING):
           Track();
-          nav_queue_->push(nav_msg_);
+          // nav_queue_->push(nav_msg_);
           break;
         case (ChannelState::ACQUIRING):
           Acquire();
@@ -141,14 +142,15 @@ class Channel {
           // SetSatellite(channel_msg_.Header.SVID);
           break;
       }
-      // channel_queue_->push(channel_msg_);
-      file_log_->info("{}", channel_msg_);
+      // file_log_->info("{}", channel_msg_);
 
       // wait for all channels to finish
-      end_bar_->WaitFor(timeout_);
+      // end_bar_->WaitFor(timeout_);
+      end_bar_->Wait();
 
       // wait for shm_ to be updated
-      start_bar_->WaitFor(timeout_);
+      // start_bar_->WaitFor(timeout_);
+      start_bar_->Wait();
     }
   };
 
@@ -161,7 +163,7 @@ class Channel {
   std::string channel_id_;
   Config conf_;
   ChannelPacket channel_msg_;
-  NavPacket nav_msg_;
+  ChannelNavPacket nav_msg_;
   std::shared_ptr<Eigen::VectorXcd> shm_;  // shared memory array
   uint64_t shm_read_ptr_;                  // location of channel inside shm_ array
   uint64_t shm_write_ptr_;                 // location of rfdata stream writer inside shm_ array
@@ -169,8 +171,8 @@ class Channel {
   uint64_t shm_samp_write_size_;           // size of shm writer updates
   std::shared_ptr<ConcurrentBarrier> start_bar_;  // barrier synchronizing shm_ memory
   std::shared_ptr<ConcurrentBarrier> end_bar_;    // barrier synchronizing channel processing
-  std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue_;    // queue for navigation messages
-  std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue_;  // queue for navigation messages
+  std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue_;    // queue for navigation messages
+  std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue_;  // queue for ephemeris messages
   std::shared_ptr<std::thread> thread_;
   int acq_fails_;
   AcquisitionSetup acq_setup_;  // bool to indicate processing is still being performed
@@ -181,8 +183,7 @@ class Channel {
   std::chrono::milliseconds timeout_;
   std::shared_ptr<spdlog::logger> log_;
   std::shared_ptr<spdlog::logger> file_log_;
-  // void (*GetNewPrnFunc_)(uint8_t &);
-  std::function<void(uint8_t &)> GetNewPrnFunc_;
+  std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc_;
 
   /**
    * *=== UpdateShmWriterPtr ===*

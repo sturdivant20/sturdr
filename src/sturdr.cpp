@@ -16,14 +16,13 @@
 #include <spdlog/stopwatch.h>
 
 #include <Eigen/Dense>
-#include <functional>
 #include <memory>
+#include <mutex>
 #include <satutils/code-gen.hpp>
-#include <satutils/gnss-constants.hpp>
 #include <sturdio/yaml-parser.hpp>
 
-#include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/data-type-adapters.hpp"
+#include "sturdr/navigator.hpp"
 
 namespace sturdr {
 
@@ -32,34 +31,44 @@ template <>
 SturDR<int8_t>::SturDR(const std::string yaml_fname)  //
     : log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
       DataTypeAdapterFunc_{&ByteToIDouble},
-      running_{std::make_shared<bool>(true)} {
+      running_{std::make_shared<bool>(true)},
+      nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
+      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()} {
   Init(yaml_fname);
 }
 template <>
 SturDR<int16_t>::SturDR(const std::string yaml_fname)  //
     : log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
       DataTypeAdapterFunc_{&ShortToIDouble},
-      running_{std::make_shared<bool>(true)} {
+      running_{std::make_shared<bool>(true)},
+      nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
+      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()} {
   Init(yaml_fname);
 }
 template <>
 SturDR<std::complex<int8_t>>::SturDR(const std::string yaml_fname)
     : log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
       DataTypeAdapterFunc_{&IByteToIDouble},
-      running_{std::make_shared<bool>(true)} {
+      running_{std::make_shared<bool>(true)},
+      nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
+      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()} {
   Init(yaml_fname);
 }
 template <>
 SturDR<std::complex<int16_t>>::SturDR(const std::string yaml_fname)
     : log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
       DataTypeAdapterFunc_{&IShortToIDouble},
-      running_{std::make_shared<bool>(true)} {
+      running_{std::make_shared<bool>(true)},
+      nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
+      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()} {
   Init(yaml_fname);
 }
 
 // *=== Run ===*
 template <typename RfDataType>
 void SturDR<RfDataType>::Run() {
+  spdlog::stopwatch sw;
+
   // initial read signal data
   fid_.fread(rf_stream_.data(), shm_write_size_samp_);
   DataTypeAdapterFunc_(
@@ -70,31 +79,46 @@ void SturDR<RfDataType>::Run() {
   shm_ptr_ %= shm_chunk_size_samp_;
 
   // run channels for specified amount of time
-  spdlog::stopwatch sw;
+  int meas_freq_ms = 1000 / (int)conf_.navigation.meas_freq;
+  int read_freq_ms = (int)conf_.general.ms_read_size;
   int n = (int)conf_.general.ms_to_process + 1;
-  int ndot = (int)conf_.general.ms_read_size;
-  for (int i = 0; i < n; i += ndot) {
-    // ready to process data
-    start_barrier_->Wait();
+  int ndot = std::min(read_freq_ms, meas_freq_ms);
 
-    // read next signal data while channels are processing
-    fid_.fread(rf_stream_.data(), shm_write_size_samp_);
-    DataTypeAdapterFunc_(
-        rf_stream_.data(),
-        shm_->segment(shm_ptr_, shm_write_size_samp_).data(),
-        shm_write_size_samp_);
-    shm_ptr_ += shm_write_size_samp_;
-    shm_ptr_ %= shm_chunk_size_samp_;
-
-    // check for screen printouts every second
-    if (i % 1000 == 0) {
-      log_->info("File time: {:.3f} s ... Processing Time: {:.3f} s", (float)i / 1000.0, sw);
+  for (int i = 0; i <= n; i += ndot) {
+    // check if time for nav update
+    if (!(i % meas_freq_ms)) {
+      nav_->Execute();
     }
 
-    // channels finished
-    end_barrier_->Wait();
+    // check if time for new data to be parsed
+    if (!(i % read_freq_ms)) {
+      // ready to process data
+      start_barrier_->Wait();
+
+      // read next signal data while channels are processing
+      fid_.fread(rf_stream_.data(), shm_write_size_samp_);
+      DataTypeAdapterFunc_(
+          rf_stream_.data(),
+          shm_->segment(shm_ptr_, shm_write_size_samp_).data(),
+          shm_write_size_samp_);
+      shm_ptr_ += shm_write_size_samp_;
+      shm_ptr_ %= shm_chunk_size_samp_;
+
+      // check for screen printouts every second
+      if (!(i % 1000)) {
+        log_->info("File time: {:.3f} s ... Processing Time: {:.3f} s", (float)i / 1000.0, sw);
+      }
+
+      // channels finished
+      end_barrier_->Wait();
+    }
   }
+
   *running_ = false;
+  start_barrier_->NotifyComplete();
+  end_barrier_->NotifyComplete();
+  nav_queue_->NotifyComplete();
+  eph_queue_->NotifyComplete();
 
   // join channels
   for (int i = 0; i < (int)conf_.rfsignal.max_channels; i++) {
@@ -162,20 +186,19 @@ void SturDR<RfDataType>::Init(const std::string &yaml_fname) {
   shm_write_size_samp_ = conf_.general.ms_read_size * conf_.rfsignal.samp_freq / 1000;
   shm_ = std::make_shared<Eigen::VectorXcd>(Eigen::VectorXcd::Zero(shm_chunk_size_samp_));
   log_->debug(
-      "SturDR shared memory vector initialized, Write Size: {}, Disk Size: {}",
+      "SturDR shared memory vector initialized, Write Size: {}, Disk Size: {}, Shm Size: {}",
       shm_write_size_samp_,
-      shm_chunk_size_samp_);
+      shm_chunk_size_samp_,
+      shm_->size());
 
   // setup binary file
   if (fid_.fopen(conf_.general.in_file)) {
     rf_stream_ = Eigen::Vector<RfDataType, Eigen::Dynamic>::Zero(shm_write_size_samp_);
-    log_->debug("SturDR RF Data file opened: {}", conf_.general.in_file);
+    log_->debug(
+        "SturDR RF Data file opened: {}, RF Sample Size: {}",
+        conf_.general.in_file,
+        rf_stream_.size());
   }
-
-  // setup channel queues
-  nav_queue_ = std::make_shared<ConcurrentQueue<NavPacket>>();
-  eph_queue_ = std::make_shared<ConcurrentQueue<EphemPacket>>();
-  log_->debug("SturDR queues created!");
 
   // initialize thread syncronization barriers
   start_barrier_ = std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1);
@@ -183,10 +206,10 @@ void SturDR<RfDataType>::Init(const std::string &yaml_fname) {
   log_->debug("SturDR barriers created!");
 
   // initialize acquisition matrices
-  ptr_prn_ = 0;
+  prn_ptr_ = 0;
   for (int i = 0; i < 32; i++) {
     satutils::CodeGenCA(codes_[i], i + 1);
-    available_prn_.push_back(i + 1);
+    prn_available_.push_back(i + 1);
   }
   acq_setup_ = sturdr::InitAcquisitionMatrices(
       codes_,
@@ -198,13 +221,12 @@ void SturDR<RfDataType>::Init(const std::string &yaml_fname) {
   log_->debug("SturDR initialized necessary acquisition matrices!");
 
   // initialize channels of requested type
-  auto reg_func = std::bind(&SturDR<RfDataType>::GetNewPrn, this, std::placeholders::_1);
-  // std::cout << "here 0\n";
+  auto reg_func =
+      std::bind(&SturDR<RfDataType>::GetNewPrn, this, std::placeholders::_1, std::placeholders::_2);
   log_->debug("SturDR number of requested channels: {}", conf_.rfsignal.max_channels);
   gps_channels_.reserve(conf_.rfsignal.max_channels);
   for (int i = 0; i < (int)conf_.rfsignal.max_channels; i++) {
-    used_prn_.push_back(i + 1);
-    // std::cout << "here 1\n";
+    prn_used_.push_back(i + 1);
     gps_channels_.emplace_back(
         conf_,
         acq_setup_,
@@ -215,42 +237,44 @@ void SturDR<RfDataType>::Init(const std::string &yaml_fname) {
         end_barrier_,
         i,
         running_,
-        // std::bind(&SturDR<RfDataType>::GetNewPrn, this, std::placeholders::_1));
-        // &SturDR<RfDataType>::GetNewPrn);
         reg_func);
-    // std::cout << "here 2\n";
     gps_channels_[i].SetSatellite(i + 1);
-    // std::cout << "here 3\n";
     gps_channels_[i].start();
     log_->info("Channel {} created and set to GPS{}!", i, i + 1);
   }
+
+  // initialize navigator
+  nav_ = std::make_unique<Navigator>(conf_, nav_queue_, eph_queue_, running_);
 }
 
 // *=== GetNewPrn ===*
 template <typename RfDataType>
-void SturDR<RfDataType>::GetNewPrn(uint8_t &prn) {
-  std::unique_lock<std::mutex> lock(mtx_prn_);
+void SturDR<RfDataType>::GetNewPrn(uint8_t &prn, std::array<bool, 1023> &code) {
+  // TODO: use map<uint8_t,bool>
+
+  std::unique_lock<std::mutex> lock(prn_mtx_);
 
   // remove prn from log
-  if (used_prn_.size() > 0) {
-    auto i = std::find(used_prn_.begin(), used_prn_.end(), prn);
-    if (i != used_prn_.end()) {
-      used_prn_.erase(i);
+  if (prn_used_.size() > 0) {
+    auto i = std::find(prn_used_.begin(), prn_used_.end(), prn);
+    if (i != prn_used_.end()) {
+      prn_used_.erase(i);
     }
   }
 
   // search for next available prn
-  while (std::find(used_prn_.begin(), used_prn_.end(), available_prn_[ptr_prn_]) !=
-         used_prn_.end()) {
-    ptr_prn_ += 1;
-    ptr_prn_ %= 32;
+  while (std::find(prn_used_.begin(), prn_used_.end(), prn_available_[prn_ptr_]) !=
+         prn_used_.end()) {
+    prn_ptr_ += 1;
+    prn_ptr_ %= 32;
   }
 
   // log new prn
-  prn = available_prn_[ptr_prn_];
-  used_prn_.push_back(prn);
-  ptr_prn_ += 1;
-  ptr_prn_ %= 32;
+  prn = prn_available_[prn_ptr_];
+  code = codes_[prn_ptr_];
+  prn_used_.push_back(prn);
+  prn_ptr_ += 1;
+  prn_ptr_ %= 32;
 }
 
 // instantiate classes

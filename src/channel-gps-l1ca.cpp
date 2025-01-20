@@ -17,7 +17,6 @@
 #include "sturdr/channel-gps-l1ca.hpp"
 
 #include <Eigen/Dense>
-#include <cassert>
 #include <cmath>
 #include <exception>
 #include <navtools/binary-ops.hpp>
@@ -29,9 +28,15 @@
 #include "sturdr/discriminator.hpp"
 #include "sturdr/gnss-signal.hpp"
 #include "sturdr/lock-detectors.hpp"
+#include "sturdr/structs-enums.hpp"
 #include "sturdr/tracking.hpp"
 
 namespace sturdr {
+
+// inline constexpr double BETA2 = navtools::LIGHT_SPEED<> * navtools::LIGHT_SPEED<> /
+//                                 satutils::GPS_CA_CODE_RATE<> / satutils::GPS_CA_CODE_RATE<>;
+// inline constexpr double LAMBDA2 = navtools::LIGHT_SPEED<> * navtools::LIGHT_SPEED<> /
+//                                   satutils::GPS_L1_FREQUENCY<> / satutils::GPS_L1_FREQUENCY<>;
 
 //! ------------------------------------------------------------------------------------------------
 
@@ -40,14 +45,14 @@ GpsL1caChannel::GpsL1caChannel(
     const Config &config,
     const AcquisitionSetup &acq_setup,
     const std::shared_ptr<Eigen::VectorXcd> shm,
-    const std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
-    const std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue,
+    const std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+    const std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     const std::shared_ptr<ConcurrentBarrier> start_barrier,
     const std::shared_ptr<ConcurrentBarrier> end_barrier,
     const int &channel_num,
     const std::shared_ptr<bool> still_running,
     // void (*GetNewPrnFunc)(uint8_t &))
-    std::function<void(uint8_t &)> GetNewPrnFunc)
+    std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc)
     : Channel(
           config,
           acq_setup,
@@ -95,8 +100,9 @@ GpsL1caChannel::GpsL1caChannel(
   nav_msg_.Header.Signal = GnssSignal::GPS_L1CA;
 
   // sample constants
-  samp_per_ms_ = static_cast<int>(conf_.rfsignal.samp_freq / 1000.0);
-  samp_per_chip_ = static_cast<int>(conf_.rfsignal.samp_freq / satutils::GPS_CA_CODE_RATE<>);
+  samp_per_ms_ = static_cast<uint64_t>(conf_.rfsignal.samp_freq / 1000.0);
+  samp_per_chip_ = static_cast<uint64_t>(conf_.rfsignal.samp_freq / satutils::GPS_CA_CODE_RATE<>);
+  samp_per_20_ms_ = samp_per_ms_ * 20;
 
   // Tracking filter
   kappa_ = satutils::GPS_CA_CODE_RATE<> / (navtools::TWO_PI<> * satutils::GPS_L1_FREQUENCY<>);
@@ -113,8 +119,7 @@ GpsL1caChannel::~GpsL1caChannel() {
 // *=== SetSatellite ===*
 void GpsL1caChannel::SetSatellite(uint8_t sv_id) {
   try {
-    GetNewPrnFunc_(sv_id);
-    // std::cout << "sv_id:" << sv_id << "\n";
+    GetNewPrnFunc_(sv_id, code_);
 
     // update channel status
     channel_msg_.Header.SVID = sv_id;
@@ -122,7 +127,7 @@ void GpsL1caChannel::SetSatellite(uint8_t sv_id) {
     nav_msg_.Header.SVID = sv_id;
 
     // generate requested code
-    satutils::CodeGenCA(code_, sv_id);
+    // satutils::CodeGenCA(code_, sv_id);
 
     // initialize acquisition sample parameters
     total_samp_ = conf_.acquisition.num_coh_per * conf_.acquisition.num_noncoh_per * samp_per_ms_;
@@ -169,6 +174,8 @@ void GpsL1caChannel::Acquire() {
                                static_cast<double>(peak_idx[0]) * conf_.acquisition.doppler_step;
         shm_read_ptr_ += (total_samp_ + peak_idx[1] - samp_per_ms_);
         shm_read_ptr_ %= shm_samp_chunk_size_;
+        samp_remaining_in_20_ms_ = samp_per_ms_ - peak_idx[1];
+
         carr_doppler_ = navtools::TWO_PI<> * channel_msg_.Doppler;
         code_doppler_ = kappa_ * carr_doppler_;
         nco_carr_freq_ = intmd_freq_rad_ + carr_doppler_;
@@ -203,7 +210,8 @@ void GpsL1caChannel::Acquire() {
             channel_msg_.Doppler,
             peak_idx[1],
             metric);
-        // Track();
+        log_->debug("samp_remaining_in_20_ms: {}", samp_remaining_in_20_ms_);
+        Track();
         return;
       }
 
@@ -237,11 +245,14 @@ void GpsL1caChannel::Acquire() {
 void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
   try {
     samp_remaining_ = UnreadSampleCount();
+    uint64_t samp_to_read;
 
     while (samp_remaining_ > 0) {
       if (samp_processed_ < total_samp_) {
         // --- INTEGRATE ---
-        uint64_t samp_to_read = std::min(total_samp_ - samp_processed_, samp_remaining_);
+        samp_to_read =
+            std::min({total_samp_ - samp_processed_, samp_remaining_, samp_remaining_in_20_ms_});
+        // samp_to_read = std::min(total_samp_ - samp_processed_, samp_remaining_);
 
         // accumulate samples of current code period
         AccumulateEPL(
@@ -263,15 +274,14 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
             L_);
         P_ += (P1_ + P2_);
 
-        // update shm_ ptr
-        shm_read_ptr_ += samp_to_read;
-        shm_read_ptr_ %= shm_samp_chunk_size_;
       } else {
         // --- DUMP ---
+        samp_to_read = 0;
+
         if (!(channel_msg_.TrackingStatus & TrackingFlags::EPH_DECODED)) {
           // still parsing ephemeris
           if (!(channel_msg_.TrackingStatus & TrackingFlags::BIT_SYNC)) {
-            // data bits not acquired - check for bit flip
+            // data bits not yet acquired - check for bit flip
             if (DataBitSync()) continue;
           } else {
             // synced to data bits - demodulate them into ephemeris
@@ -292,7 +302,17 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
 
         // lock detectors
         LockDetectors(
-            code_lock_, carr_lock_, cno_mag_, nbd_mem_, nbp_mem_, pc_mem_, pn_mem_, P_old_, P_, t);
+            code_lock_,
+            carr_lock_,
+            cno_mag_,
+            nbd_mem_,
+            nbp_mem_,
+            pc_mem_,
+            pn_mem_,
+            P_old_,
+            P_,
+            T_,
+            0.01);
 
         // loop filter
         filt_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
@@ -311,10 +331,10 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
         // filt_.SetRemCodePhase(rem_code_phase_);
 
         // update navigation message
-        nav_msg_.CNo = cno_mag_;
-        nav_msg_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
-        nav_msg_.CodePhase = rem_code_phase_;
-        nav_msg_.CarrierPhase = rem_carr_phase_;
+        // nav_msg_.CNo = cno_mag_;
+        // nav_msg_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
+        // nav_msg_.CodePhase = rem_code_phase_;
+        // nav_msg_.CarrierPhase = rem_carr_phase_;
 
         // update tracking status
         if (code_lock_) {
@@ -356,7 +376,7 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
 
         // update channel message
         channel_msg_.CNo = (cno_mag_ > 0) ? (10.0 * std::log10(cno_mag_)) : 0.0;
-        channel_msg_.Doppler = nav_msg_.Doppler;
+        channel_msg_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
         channel_msg_.CodePhase = rem_code_phase_;
         channel_msg_.CarrierPhase = rem_carr_phase_;
         channel_msg_.IE = E_.real();
@@ -374,13 +394,15 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
         channel_msg_.FllDisc = freq_err;
         // maybe just comment this log out
         log_->trace(
-            "{}: GPS{} - CNo = {:.1f}, Doppler = {:.1f}, IP = {:.1f}, QP = {:.1f}",
+            "{}: GPS{} - CNo = {:.1f}, Doppler = {:.1f}, IP = {:.1f}, QP = {:.1f}, RemCodePhase = "
+            "{:.10f}",
             channel_id_,
             channel_msg_.Header.SVID,
             channel_msg_.CNo,
             channel_msg_.Doppler,
             channel_msg_.IP,
-            channel_msg_.QP);
+            channel_msg_.QP,
+            channel_msg_.CodePhase);
 
         // prepare next nco period
         cnt_ += PDI_;
@@ -402,14 +424,48 @@ void GpsL1caChannel::Track() {  // make sure samp_remaining_ > 0 to start
       }
 
       // update samp_remaining_
+      samp_remaining_in_20_ms_ -= samp_to_read;
+      shm_read_ptr_ += samp_to_read;
+      shm_read_ptr_ %= shm_samp_chunk_size_;
       samp_remaining_ = UnreadSampleCount();
+
+      if (samp_remaining_in_20_ms_ == 0) {
+        // save intermediate phases
+        channel_msg_.CodePhase = rem_code_phase_;
+        channel_msg_.CarrierPhase = rem_carr_phase_;
+        nav_msg_.CNo = cno_mag_;
+        nav_msg_.Doppler = channel_msg_.Doppler;
+        nav_msg_.CodePhase = rem_code_phase_;
+        nav_msg_.CarrierPhase = rem_carr_phase_;
+        nav_msg_.DllDisc = channel_msg_.DllDisc;
+        nav_msg_.PllDisc = channel_msg_.PllDisc;
+        nav_msg_.FllDisc = channel_msg_.FllDisc;
+        // nav_msg_.
+
+        // update 20 ms timer
+        samp_remaining_in_20_ms_ = samp_per_20_ms_;
+
+        // update nav and file logs
+        nav_queue_->push(nav_msg_);
+        file_log_->info("{}", channel_msg_);
+      }
     }
 
-    // save intermediate phases
-    channel_msg_.CodePhase = rem_code_phase_;
-    channel_msg_.CarrierPhase = rem_carr_phase_;
-    nav_msg_.CodePhase = rem_code_phase_;
-    nav_msg_.CarrierPhase = rem_carr_phase_;
+    // // save intermediate phases
+    // channel_msg_.CodePhase = rem_code_phase_;
+    // channel_msg_.CarrierPhase = rem_carr_phase_;
+    // nav_msg_.CNo = cno_mag_;
+    // nav_msg_.Doppler = channel_msg_.Doppler;
+    // nav_msg_.CodePhase = rem_code_phase_;
+    // nav_msg_.CarrierPhase = rem_carr_phase_;
+    // nav_msg_.DllDisc = channel_msg_.DllDisc;
+    // nav_msg_.PllDisc = channel_msg_.PllDisc;
+    // nav_msg_.FllDisc = channel_msg_.FllDisc;
+
+    // // update nav and file logs
+    // nav_queue_->push(nav_msg_);
+    // file_log_->info("{}", channel_msg_);
+
   } catch (std::exception &e) {
     log_->error("gps-l1ca-channel.cpp Track failed! Error -> {}", e.what());
   }
@@ -433,13 +489,23 @@ bool GpsL1caChannel::DataBitSync() {
               "{}: GPS{} data bit sync! cnt_ = {}", channel_id_, channel_msg_.Header.SVID, cnt_);
           channel_msg_.TrackingStatus |= TrackingFlags::BIT_SYNC;
 
-          // narrow the filters
-          tap_space_ = conf_.tracking.tap_epl_narrow;
-          w0d_ = NaturalFrequency(conf_.tracking.dll_bw_narrow, 2);
-          w0p_ = NaturalFrequency(conf_.tracking.pll_bw_narrow, 3);
-          w0f_ = NaturalFrequency(conf_.tracking.fll_bw_narrow, 2);
-          // TODO: implement checks for upgrading lock status
-          channel_msg_.TrackingStatus |= TrackingFlags::FINE_LOCK;
+          // // narrow the filters
+          // tap_space_ = conf_.tracking.tap_epl_narrow;
+          // w0d_ = NaturalFrequency(conf_.tracking.dll_bw_narrow, 2);
+          // w0p_ = NaturalFrequency(conf_.tracking.pll_bw_narrow, 3);
+          // w0f_ = NaturalFrequency(conf_.tracking.fll_bw_narrow, 2);
+          // // TODO: implement checks for upgrading lock status
+          // channel_msg_.TrackingStatus |= TrackingFlags::FINE_LOCK;
+
+          // reset lock detectors
+          // code_lock_ = true;
+          // carr_lock_ = true;
+          // cno_mag_ = 0.0;
+          nbd_mem_ = 0.0;
+          nbp_mem_ = 0.0;
+          pc_mem_ = 0.0;
+          pn_mem_ = 0.0;
+          // P_old_ = std::complex<double>(0.0, 0.0);
 
           // immediately continue integrating with extended (20 ms) period
           T_ = 0.02;
@@ -447,7 +513,7 @@ bool GpsL1caChannel::DataBitSync() {
           double code_phase_step =
               (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
           total_samp_ = static_cast<uint64_t>(
-              (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - rem_code_phase_) /
+              (static_cast<double>(PDI_ * satutils::GPS_CA_CODE_LENGTH) - channel_msg_.CodePhase) /
               code_phase_step);
           half_samp_ = total_samp_ / 2;
           P1_ += P2_;
@@ -483,8 +549,14 @@ void GpsL1caChannel::Demodulate() {
       log_->info(
           "{}: GPS{} ephemeris subframes 1,2 and 3 parsed!", channel_id_, channel_msg_.Header.SVID);
       channel_msg_.TrackingStatus |= TrackingFlags::EPH_DECODED;
-      // log_->debug(
-      //     "{}: GPS{} {}", channel_id_, channel_msg_.Header.SVID, gps_lnav_.GetEphemerides());
+      ChannelEphemPacket pkt;
+      pkt.Header.ChannelNum = channel_msg_.Header.ChannelNum;
+      pkt.Header.Constellation = channel_msg_.Header.Constellation;
+      pkt.Header.Signal = channel_msg_.Header.Signal;
+      pkt.Header.SVID = channel_msg_.Header.SVID;
+      pkt.Eph = gps_lnav_.GetEphemerides();
+      eph_queue_->push(pkt);
+      // log_->debug("{}: GPS{} {}", channel_id_, channel_msg_.Header.SVID, pkt.Eph);
     }
   } catch (std::exception &e) {
     log_->error("gps-l1ca-channel.cpp Demodulate failed! Error -> {}", e.what());

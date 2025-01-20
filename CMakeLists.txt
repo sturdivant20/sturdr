@@ -27,11 +27,12 @@ set(PROJECT_VERSION ${STURDR_MAJOR_VERSION}.${STURDR_MINOR_VERSION}.${STURDR_PAT
 message(STATUS "${BoldCyan}${PROJECT_NAME} version ${PROJECT_VERSION}${Reset}")
 
 # --- Compiler Flags ---
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -W")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Ofast -ffast-math -fomit-frame-pointer -fstrict-aliasing -flto -DNDEBUG -march=native")
+# set(CMAKE_CXX_STANDARD 20)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+# set(CMAKE_CXX_FLAGS_DEBUG "-g -W")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Ofast -ffast-math -fomit-frame-pointer -fstrict-aliasing -flto -DNDEBUG -march=native")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Ofast -ffast-math")
 
 # --- Add Dependencies ---
 find_package(Eigen3 REQUIRED)
@@ -71,6 +72,7 @@ set(STURDR_HDRS
     include/sturdr/fftw-wrapper.hpp
     include/sturdr/gnss-signal.hpp
     include/sturdr/lock-detectors.hpp
+    include/sturdr/navigator.hpp
     include/sturdr/structs-enums.hpp
     include/sturdr/sturdr.hpp
     include/sturdr/tracking.hpp
@@ -84,6 +86,7 @@ set(STURDR_SRCS
     src/fftw-wrapper.cpp
     src/gnss-signal.cpp
     src/lock-detectors.cpp
+    src/navigator.cpp
     src/structs-enums.cpp
     src/sturdr.cpp
     src/tracking.cpp

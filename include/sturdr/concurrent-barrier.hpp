@@ -20,7 +20,7 @@ namespace sturdr {
 class ConcurrentBarrier {
  public:
   explicit ConcurrentBarrier(std::size_t n_threads)
-      : thresh_(n_threads), cnt_(n_threads), inst_(0) {
+      : thresh_(n_threads), cnt_(n_threads), inst_(0), is_finished_{false} {
   }
 
   void Wait() {
@@ -32,7 +32,7 @@ class ConcurrentBarrier {
       cnt_ = thresh_;
       cond_var_.notify_all();
     } else {
-      cond_var_.wait(lock, [this, gen] { return gen != inst_; });
+      cond_var_.wait(lock, [this, gen] { return (gen != inst_) || is_finished_; });
       // NOTE: The predicate lambda here protects against spurious wakeups of the thread. As long as
       //       'this->inst_' is equal to 'gen', the thread will not wake. 'this->inst_' will only
       //       increment when all threads have reached the barrier and are ready to be unblocked.
@@ -48,11 +48,17 @@ class ConcurrentBarrier {
       cnt_ = thresh_;
       cond_var_.notify_all();
     } else {
-      cond_var_.wait_for(lock, timeout, [this, gen] { return gen != inst_; });
+      cond_var_.wait_for(lock, timeout, [this, gen] { return (gen != inst_) || is_finished_; });
       // NOTE: The predicate lambda here protects against spurious wakeups of the thread. As long as
       //       'this->inst_' is equal to 'gen', the thread will not wake. 'this->inst_' will only
       //       increment when all threads have reached the barrier and are ready to be unblocked.
     }
+  }
+
+  void NotifyComplete() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    is_finished_ = true;
+    cond_var_.notify_all();
   }
 
  private:
@@ -61,6 +67,7 @@ class ConcurrentBarrier {
   std::size_t thresh_;  // number of total threads using barrier
   std::size_t cnt_;     // number of waiting threads
   std::size_t inst_;    // counter of barrier useages
+  bool is_finished_;
 };
 
 }  // namespace sturdr

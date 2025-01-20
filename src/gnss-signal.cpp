@@ -50,6 +50,36 @@ Eigen::VectorXcd CodeNCO(
     return tmp;
   }
 }
+// *=== CodeNCO ===*
+Eigen::VectorXcd CodeNCO(
+    const bool code[1023],
+    const double &code_freq,
+    const double &samp_freq,
+    double &rem_phase,
+    uint64_t &n_samp) {
+  try {
+    // Initialize
+    double N = 1023.0;
+    double code_phase_step = code_freq / samp_freq;
+    // uint64_t samp_per_code = static_cast<uint64_t>(std::ceil((N - rem_phase) / code_phase_step));
+
+    // Upsample code
+    std::complex<double> p1(1.0, 0.0);
+    std::complex<double> m1(-1.0, 0.0);
+    Eigen::VectorXcd code_up(n_samp);
+    for (uint64_t i = 0; i < n_samp; i++) {
+      code_up(i) = code[static_cast<uint64_t>(std::fmod(rem_phase, N))] ? p1 : m1;
+      rem_phase += code_phase_step;
+    }
+    rem_phase -= N;
+    return code_up;
+
+  } catch (std::exception &e) {
+    spdlog::get("sturdr-console")->error("gnss-signal.cpp CodeNCO failed! Error -> {}", e.what());
+    Eigen::VectorXcd tmp;
+    return tmp;
+  }
+}
 
 // *=== CarrierNCO ===*
 Eigen::VectorXcd CarrierNCO(

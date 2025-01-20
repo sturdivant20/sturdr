@@ -50,14 +50,13 @@ class GpsL1caChannel : public Channel {
       const Config &config,
       const AcquisitionSetup &acq_setup,
       const std::shared_ptr<Eigen::VectorXcd> shm,
-      const std::shared_ptr<ConcurrentQueue<NavPacket>> nav_queue,
-      const std::shared_ptr<ConcurrentQueue<EphemPacket>> eph_queue,
+      const std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+      const std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       const std::shared_ptr<ConcurrentBarrier> start_barrier,
       const std::shared_ptr<ConcurrentBarrier> end_barrier,
       const int &channel_num,
       const std::shared_ptr<bool> still_running,
-      // void (*GetNewPrnFunc)(uint8_t &));
-      std::function<void(uint8_t &)> GetNewPrnFunc);
+      std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc);
 
   /**
    * *=== ~GpsL1caChannel ===*
@@ -120,8 +119,10 @@ class GpsL1caChannel : public Channel {
   uint64_t half_samp_;
   uint64_t samp_processed_;
   uint64_t samp_remaining_;
-  uint64_t samp_per_ms_;
   uint64_t samp_per_chip_;
+  uint64_t samp_per_ms_;
+  uint64_t samp_per_20_ms_;  // this is used because navigation data can be updated every 20ms
+  uint64_t samp_remaining_in_20_ms_;
 
   // Tracking
   double kappa_;

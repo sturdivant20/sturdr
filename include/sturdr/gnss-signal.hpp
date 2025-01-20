@@ -31,6 +31,12 @@ namespace sturdr {
  */
 Eigen::VectorXcd CodeNCO(
     const bool code[1023], const double &code_freq, const double &samp_freq, double &rem_phase);
+Eigen::VectorXcd CodeNCO(
+    const bool code[1023],
+    const double &code_freq,
+    const double &samp_freq,
+    double &rem_phase,
+    uint64_t &n_samp);
 
 /**
  * *=== CarrierNCO ===*

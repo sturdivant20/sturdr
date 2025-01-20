@@ -21,7 +21,8 @@
 #include "sturdr/concurrent-queue.hpp"
 #include "sturdr/structs-enums.hpp"
 
-using NavQueue = sturdr::ConcurrentQueue<sturdr::NavPacket>;
+using NavQueue = sturdr::ConcurrentQueue<sturdr::ChannelNavPacket>;
+using EphemQueue = sturdr::ConcurrentQueue<sturdr::ChannelEphemPacket>;
 using Barrier = sturdr::ConcurrentBarrier;
 std::mutex mtx;
 
@@ -30,7 +31,7 @@ std::vector<uint8_t> prns(32);
 std::vector<uint8_t> prns_in_use;
 int prn_idx = 0;
 
-void GetNewPrn(uint8_t &prn) {
+void GetNewPrn(uint8_t &prn, std::array<bool, 1023> &code) {
   // spdlog::get("sturdr-console")->warn("prn a: {}, prn_idx: {}", prn, prn_idx);
   std::unique_lock<std::mutex> lock(mtx);
 
@@ -175,6 +176,7 @@ int main(int argc, char *argv[]) {
 
   // initialize thread safe queues
   std::shared_ptr<NavQueue> nav_queue = std::make_shared<NavQueue>();
+  std::shared_ptr<EphemQueue> eph_queue = std::make_shared<EphemQueue>();
   console->debug("Queues created!");
 
   // initialize thread syncronization barriers
@@ -219,6 +221,7 @@ int main(int argc, char *argv[]) {
         acq_setup,
         shm,
         nav_queue,
+        eph_queue,
         start_barrier,
         end_barrier,
         channel_num,

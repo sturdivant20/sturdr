@@ -24,13 +24,14 @@ class ConcurrentQueue {
   mutable std::mutex mutex_;
   std::queue<T> queue_;
   std::condition_variable cond_var_;
+  bool is_finished_;
 
  public:
   /**
    * *=== ConcurrentQueue ===*
    * @brief Constructor
    */
-  explicit ConcurrentQueue(){};
+  explicit ConcurrentQueue() : is_finished_{false} {};
 
   /**
    * *=== ~ConcurrentQueue ===*
@@ -59,16 +60,15 @@ class ConcurrentQueue {
    * @return True|False based on if queue had item to return
    */
   bool pop(T& data) {
-    // acquire lock
+    // acquire lock and wait for data
     std::unique_lock<std::mutex> lock(mutex_);
+    cond_var_.wait(lock, [this] { return !queue_.empty() || is_finished_; });
 
     // return value
-    if (!queue_.empty()) {
-      data = queue_.front();
-      queue_.pop();
-      return true;
-    }
-    return false;
+    if (is_finished_ && queue_.empty()) return false;
+    data = queue_.front();
+    queue_.pop();
+    return true;
   };
 
   /**
@@ -88,6 +88,11 @@ class ConcurrentQueue {
   void clear() {
     queue_ = std::queue<T>();
   };
+
+  void NotifyComplete() {
+    is_finished_ = true;
+    cond_var_.notify_all();
+  }
 };
 
 }  // end namespace sturdr

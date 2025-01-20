@@ -324,7 +324,8 @@ int main() {
   sturdins::GaussNewton(x, P, sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
 
   Eigen::Vector3d xyz = x.segment(0, 3);
-  Eigen::Vector3d lla = navtools::ecef2lla(xyz).array() * navtools::LLA_RAD2DEG<double>.array();
+  Eigen::Vector3d lla =
+      navtools::ecef2lla<double>(xyz).array() * navtools::LLA_RAD2DEG<double>.array();
 
   console->info("lla: [{}]", lla.transpose());
   console->info("xyz: [{}]", x.segment(0, 3).transpose());

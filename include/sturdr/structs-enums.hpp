@@ -179,9 +179,17 @@ struct ChannelPacket {
 };
 
 /**
- * @brief Minimal packet of navigation data to be sent to the Navigator
+ * @brief Minimal packet of ephemeris data to be sent to the navigation controller
  */
-struct NavPacket {
+struct ChannelEphemPacket {
+  HeaderPacket Header;
+  satutils::KeplerElements<double> Eph;
+};
+
+/**
+ * @brief Minimal packet of navigation data to be sent to the navigation controller
+ */
+struct ChannelNavPacket {
   HeaderPacket Header;
   uint16_t Week{65535};
   double ToW{std::nan("1")};
@@ -192,14 +200,28 @@ struct NavPacket {
   double DllDisc{std::nan("1")};
   double PllDisc{std::nan("1")};
   double FllDisc{std::nan("1")};
+  double PsrStd{std::nan("1")};
+  double PsrdotStd{std::nan("1")};
 };
 
 /**
- * @brief Minimal packet of ephemeris data to be sent to the navigator
+ * @brief Data stored by navigation controller for each channel
  */
-struct EphemPacket {
-  HeaderPacket Header;
-  satutils::KeplerElements<double> Eph;
+struct ChannelNavData {
+  satutils::KeplerEphem<double> Sv;
+  uint16_t Week{65535};
+  double ToW{std::nan("1")};
+  double CNo{std::nan("1")};
+  double Doppler{std::nan("1")};
+  double CodePhase{std::nan("1")};
+  double CarrierPhase{std::nan("1")};
+  double DllDisc{std::nan("1")};
+  double PllDisc{std::nan("1")};
+  double FllDisc{std::nan("1")};
+  double PsrStd{std::nan("1")};
+  double PsrdotStd{std::nan("1")};
+  bool HasEphem{false};
+  bool HasData{true};
 };
 
 };  // end namespace sturdr
@@ -412,11 +434,11 @@ struct fmt::formatter<sturdr::ChannelPacket> : formatter<string_view> {
   };
 };
 
-// *=== NavPacket ===*
-std::ostream& operator<<(std::ostream& os, const sturdr::NavPacket& c);
+// *=== ChannelNavPacket ===*
+std::ostream& operator<<(std::ostream& os, const sturdr::ChannelNavPacket& c);
 template <>
-struct fmt::formatter<sturdr::NavPacket> : formatter<string_view> {
-  auto format(sturdr::NavPacket& c, format_context& ctx) const {
+struct fmt::formatter<sturdr::ChannelNavPacket> : formatter<string_view> {
+  auto format(sturdr::ChannelNavPacket& c, format_context& ctx) const {
     std::ostringstream oss;
     oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
         << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
@@ -427,11 +449,11 @@ struct fmt::formatter<sturdr::NavPacket> : formatter<string_view> {
   };
 };
 
-// *=== EphemPacket ===*
-std::ostream& operator<<(std::ostream& os, const sturdr::EphemPacket& c);
+// *=== ChannelEphemPacket ===*
+std::ostream& operator<<(std::ostream& os, const sturdr::ChannelEphemPacket& c);
 template <>
-struct fmt::formatter<sturdr::EphemPacket> : formatter<string_view> {
-  auto format(sturdr::EphemPacket& c, format_context& ctx) const {
+struct fmt::formatter<sturdr::ChannelEphemPacket> : formatter<string_view> {
+  auto format(sturdr::ChannelEphemPacket& c, format_context& ctx) const {
     std::ostringstream oss;
     oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
         << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
@@ -445,6 +467,20 @@ struct fmt::formatter<sturdr::EphemPacket> : formatter<string_view> {
     return formatter<string_view>::format(oss.str(), ctx);
   };
 };
-;
+
+// *=== KeplerElements ===*
+std::ostream& operator<<(std::ostream& os, const satutils::KeplerElements<double>& c);
+template <>
+struct fmt::formatter<satutils::KeplerElements<double>> : formatter<string_view> {
+  auto format(satutils::KeplerElements<double>& c, format_context& ctx) const {
+    std::ostringstream oss;
+    oss << std::setprecision(17) << c.iode << "," << c.iodc << "," << c.toe << "," << c.toc << ","
+        << c.tgd << "," << c.af2 << "," << c.af1 << "," << c.af0 << "," << c.e << "," << c.sqrtA
+        << "," << c.deltan << "," << c.m0 << "," << c.omega0 << "," << c.omega << "," << c.omegaDot
+        << "," << c.i0 << "," << c.iDot << "," << c.cuc << "," << c.cus << "," << c.cic << ","
+        << c.cis << "," << c.crc << "," << c.crs << "," << c.ura << "," << c.health;
+    return formatter<string_view>::format(oss.str(), ctx);
+  };
+};
 
 #endif

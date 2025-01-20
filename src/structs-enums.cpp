@@ -199,8 +199,8 @@ std::ostream& operator<<(std::ostream& os, const sturdr::ChannelPacket& c) {
   return os;
 }
 
-// *=== NavPacket ===*
-std::ostream& operator<<(std::ostream& os, const sturdr::NavPacket& c) {
+// *=== ChannelNavPacket ===*
+std::ostream& operator<<(std::ostream& os, const sturdr::ChannelNavPacket& c) {
   os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << (int)c.Week
@@ -209,8 +209,8 @@ std::ostream& operator<<(std::ostream& os, const sturdr::NavPacket& c) {
   return os;
 }
 
-// *=== EphemPacket ===*
-std::ostream& operator<<(std::ostream& os, const sturdr::EphemPacket& c) {
+// *=== ChannelEphemPacket ===*
+std::ostream& operator<<(std::ostream& os, const sturdr::ChannelEphemPacket& c) {
   os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << ""
@@ -220,5 +220,15 @@ std::ostream& operator<<(std::ostream& os, const sturdr::EphemPacket& c) {
      << c.Eph.omega << "," << c.Eph.omegaDot << "," << c.Eph.i0 << "," << c.Eph.iDot << ","
      << c.Eph.cuc << "," << c.Eph.cus << "," << c.Eph.cic << "," << c.Eph.cis << "," << c.Eph.crc
      << "," << c.Eph.crs << "," << c.Eph.ura << "," << c.Eph.health << "\n";
+  return os;
+}
+
+// *=== KeplerElements ===*
+std::ostream& operator<<(std::ostream& os, const satutils::KeplerElements<double>& c) {
+  os << std::setprecision(17) << c.iode << "," << c.iodc << "," << c.toe << "," << c.toc << ","
+     << c.tgd << "," << c.af2 << "," << c.af1 << "," << c.af0 << "," << c.e << "," << c.sqrtA << ","
+     << c.deltan << "," << c.m0 << "," << c.omega0 << "," << c.omega << "," << c.omegaDot << ","
+     << c.i0 << "," << c.iDot << "," << c.cuc << "," << c.cus << "," << c.cic << "," << c.cis << ","
+     << c.crc << "," << c.crs << "," << c.ura << "," << c.health << "\n";
   return os;
 }
