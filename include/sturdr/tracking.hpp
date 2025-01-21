@@ -141,15 +141,9 @@ class TrackingKF {
    * @param code_freq         Chipping rate of the true signal [chip/s]
    */
   void Init(
-      const double &init_w0d,
-      const double &init_w0p,
-      const double &init_w0f,
-      const double &init_k,
       const double &init_carr_phase,
       const double &init_carr_doppler,
       const double &init_code_phase,
-      const double &init_cno,
-      const double &init_T,
       const double &intmd_freq,
       const double &code_freq);
 
@@ -171,7 +165,7 @@ class TrackingKF {
    * @param cno Carrier-to-noise density ratio magnitude (not dB-Hz)
    * @param T   Integration time [s]
    */
-  void UpdateMeasurementsParam(const double &cno, const double &T);
+  void UpdateMeasurementsParam(const double &dll_var, const double &pll_var, const double &fll_var);
 
   /**
    * *=== Run ===*

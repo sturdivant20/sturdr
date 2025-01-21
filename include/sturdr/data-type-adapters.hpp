@@ -25,6 +25,22 @@ namespace sturdr {
 //   void (*IShortToIDouble)(std::complex<int8_t>[], std::complex<double>[]);
 // };
 
+// *=== TypeToDouble ===*
+template <typename T>
+void TypeToIDouble(const T in[], std::complex<double> out[], const int &len) {
+  for (int i = 0; i < len; i++) {
+    out[i] = static_cast<std::complex<double>>(in[i]);
+  }
+}
+
+// *=== ITypeToDouble ===*
+template <typename T>
+void ITypeToIDouble(const std::complex<T> in[], std::complex<double> out[], const int &len) {
+  for (int i = 0; i < len; i++) {
+    out[i] = static_cast<std::complex<double>>(in[i].real(), in[i].imag());
+  }
+}
+
 /**
  * *=== ByteToDouble ===*
  * @brief convert array of bytes (int8) to doubles

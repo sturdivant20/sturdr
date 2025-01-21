@@ -69,11 +69,11 @@ int main() {
   std::complex<double> P_prev{0.0, 0.0};
   double rem_carr_phase = 0.0;
   double rem_code_phase = 0.0;
-  double phase_err, freq_err, chip_err;
+  double phase_err, freq_err, chip_err, phase_var, freq_var, chip_var;
   bool code_lock, carr_lock;
   double T = 0.001, t = T / 2.0;
   sturdr::TrackingKF kf;
-  kf.Init(w0d, w0p, w0f, k, rem_carr_phase, doppler, rem_code_phase, cno, T, intmd_freq, code_freq);
+  kf.Init(rem_carr_phase, doppler, rem_code_phase, intmd_freq, code_freq);
 
   // run tracking
   spdlog::stopwatch sw;
@@ -121,6 +121,9 @@ int main() {
     phase_err = sturdr::PllCostas(P);
     freq_err = sturdr::FllAtan2(P1, P2, t);
     chip_err = sturdr::DllNneml2(E, L);
+    phase_var = sturdr::PllVariance(cno, T);
+    freq_var = sturdr::FllVariance(cno, T);
+    chip_var = sturdr::DllVariance(cno, T);
 
     // lock detectors
     sturdr::LockDetectors(code_lock, carr_lock, cno, NBD, NBP, PC, PN, P_prev, P, T);
@@ -128,7 +131,7 @@ int main() {
     // filter
     if (MODE) {
       kf.UpdateDynamicsParam(w0d, w0p, w0f, k, T);
-      kf.UpdateMeasurementsParam(cno, T);
+      kf.UpdateMeasurementsParam(chip_var, phase_var, freq_var);
       kf.Run(chip_err, phase_err, freq_err);
       rem_carr_phase = std::fmod(kf.x_(0), navtools::TWO_PI<double>);
       doppler = kf.x_(1);

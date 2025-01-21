@@ -4,7 +4,7 @@
  * =======  ========================================================================================
  * @file    sturdr/channel.hpp
  * @brief   Abstract class for GNSS channel definitions.
- * @date    December 2024
+ * @date    January 2025
  * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
  *             - Kaplan & Hegarty
  *          2. "A Software-Defined GPS and Galileo Receiver: A Single-Frequency Approach", 2007
@@ -19,67 +19,106 @@
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <Eigen/Dense>
-#include <chrono>
 #include <functional>
 #include <memory>
-#include <navtools/constants.hpp>
+#include <string>
 #include <thread>
 
-#include "sturdr/acquisition.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
 
 class Channel {
+ protected:
+  /**
+   * @brief channel config
+   */
+  Config conf_;
+  std::shared_ptr<bool> running_;
+  uint64_t samp_per_ms_;
+  uint8_t acq_fail_cnt_;
+  FftPlans fftw_plans_;
+  std::function<void(uint8_t &)> new_prn_func_;
+
+  /**
+   * @brief thread syncronization
+   */
+  std::shared_ptr<Eigen::VectorXcd> shm_;
+  uint64_t shm_ptr_;
+  uint64_t shm_writer_ptr_;
+  uint64_t shm_file_size_samp_;
+  uint64_t shm_read_size_samp_;
+  std::shared_ptr<ConcurrentBarrier> b_start_;
+  std::shared_ptr<ConcurrentBarrier> b_end_;
+  std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> q_eph_;
+  std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> q_nav_;
+  std::shared_ptr<std::thread> thread_;
+  ChannelEphemPacket eph_pkt_;
+  ChannelNavPacket nav_pkt_;
+
+  /**
+   * @brief spdlog loggers
+   */
+  ChannelPacket file_pkt_;
+  std::shared_ptr<spdlog::logger> log_;
+  std::shared_ptr<spdlog::logger> file_log_;
+
  public:
   /**
-   * *=== Channel ===*
    * @brief Constructor
-   * @param config        configuration from yaml file
-   * @param shm           shared memory array
-   * @param channel_queue thread safe queue for sharing channel status messages
-   * @param nav_queue     thread safe queue fir sharing navigation status messages
-   * @param start_barrier thread safe barrier for synchronizing the start of channel processing
-   * @param end_barrier   thread safe barrier for synchronizing the conclusion of channel processing
-   * @param channel_num   STURDR channel creation/identification number
+   * @param conf          SturDR yaml configuration
+   * @param n             Channel ID number
+   * @param running       Boolean for SturDR active state
+   * @param start_barrier Synchronization for when new data is available
+   * @param end_barrier   Synchronization for when current data has been processed
+   * @param eph_queue     Queue for sending parsed ephemerides
+   * @param nav_queue     Queue for sending navigation updates
+   * @param fftw_plans    Shared FFT plans for acquisition using fftw
+   * @param GetNewPrnFunc Function pointer for channel capability to switch PRNs
    */
   Channel(
-      const Config &config,
-      const AcquisitionSetup &acq_setup,
-      const std::shared_ptr<Eigen::VectorXcd> shm,
-      const std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      const std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
-      const std::shared_ptr<ConcurrentBarrier> start_barrier,
-      const std::shared_ptr<ConcurrentBarrier> end_barrier,
-      const int &channel_num,
-      const std::shared_ptr<bool> still_running,
-      std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc)
-      : conf_{config},
-        shm_{shm},
-        shm_read_ptr_{0},
-        shm_write_ptr_{0},
-        start_bar_{start_barrier},
-        end_bar_{end_barrier},
-        nav_queue_{nav_queue},
-        eph_queue_{eph_queue},
-        acq_fails_{0},
-        acq_setup_{acq_setup},
-        intmd_freq_rad_{navtools::TWO_PI<double> * config.rfsignal.intmd_freq},
-        still_running_{still_running},
-        timeout_{1000},
+      Config &conf,
+      uint8_t &n,
+      std::shared_ptr<bool> running,
+      std::shared_ptr<Eigen::VectorXcd> shared_array,
+      std::shared_ptr<ConcurrentBarrier> start_barrier,
+      std::shared_ptr<ConcurrentBarrier> end_barrier,
+      std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
+      std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+      FftPlans &fftw_plans,
+      std::function<void(uint8_t &)> &GetNewPrnFunc)
+      : conf_{conf},
+        running_{running},
+        samp_per_ms_{static_cast<uint64_t>(conf_.rfsignal.samp_freq) / 1000},
+        acq_fail_cnt_{0},
+        fftw_plans_{fftw_plans},
+        new_prn_func_{GetNewPrnFunc},
+        shm_{shared_array},
+        shm_ptr_{0},
+        shm_writer_ptr_{0},
+        shm_file_size_samp_{conf_.general.ms_chunk_size * samp_per_ms_},
+        shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
+        b_start_{start_barrier},
+        b_end_{end_barrier},
+        q_eph_{eph_queue},
+        q_nav_{nav_queue},
+        // thread_{std::make_shared<std::thread>(&Channel::Run, this)},
+        eph_pkt_{ChannelEphemPacket()},
+        nav_pkt_{ChannelNavPacket()},
+        file_pkt_{ChannelPacket()},
         log_{spdlog::get("sturdr-console")},
-        GetNewPrnFunc_{GetNewPrnFunc} {
-    channel_id_ = "Sturdr_Ch" + std::to_string(channel_num);
-    shm_samp_chunk_size_ = conf_.general.ms_chunk_size * conf_.rfsignal.samp_freq / 1000;
-    shm_samp_write_size_ = conf_.general.ms_read_size * conf_.rfsignal.samp_freq / 1000;
-
-    // initialize file logger
-    file_log_ = spdlog::basic_logger_st<spdlog::async_factory>(
-        channel_id_ + "_Logger",
-        conf_.general.out_folder + "/" + conf_.general.scenario + "/" + channel_id_ + "_Log.csv",
-        true);
+        file_log_{spdlog::basic_logger_st<spdlog::async_factory>(
+            "sturdr-ch" + std::to_string(n) + "-log",
+            conf.general.out_folder + "/" + conf.general.scenario + "/SturDR_Ch" +
+                std::to_string(n) + "_Log.csv",
+            true)} {
+    file_pkt_.ChannelStatus = ChannelState::ACQUIRING;
+    file_pkt_.Header.ChannelNum = n;
+    eph_pkt_.Header.ChannelNum = n;
+    nav_pkt_.Header.ChannelNum = n;
     file_log_->set_pattern("%v");
     file_log_->info(
         "ChannelNum,Constellation,Signal,SVID,ChannelStatus,TrackingStatus,Week,ToW,"
@@ -92,106 +131,86 @@ class Channel {
    * @brief Destructor
    */
   virtual ~Channel() {
-    join();
-  };
-
-  /**
-   * *=== start ===*
-   * @brief Places all the channel operations inside a separate thread
-   */
-  // // virtual void start() = 0;
-  void start() {
-    log_->debug("Channel::start starting thread!");
-    thread_ = std::make_shared<std::thread>(&Channel::run, this);
-  };
-
-  /**
-   * *=== join ===*
-   * @brief Kills the channel thread and joins back with the main process
-   */
-  // virtual void join() = 0;
-  void join() {
     if (thread_->joinable()) {
       thread_->join();
     }
   };
 
+  void Start() {
+    thread_ = std::make_shared<std::thread>(&Channel::Run, this);
+  }
+
+  void Join() {
+    if (thread_->joinable()) {
+      thread_->join();
+    }
+  }
+
   /**
    * *=== Run ===*
-   * @brief Run channel processing
+   * @brief Main channel thread
    */
-  virtual void run() {
-    // wait for shm_ to be initialized
-    start_bar_->Wait();
+  void Run() {
+    // wait for initial shm data to be added
+    b_start_->Wait();
+    UpdateShmWriterPtr();
 
-    while (*still_running_) {
-      // update shm_ writer buffer (necessary because writer is a different process)
-      UpdateShmWriterPtr();
-
-      // process data
-      switch (channel_msg_.ChannelStatus) {
-        case (ChannelState::TRACKING):
-          Track();
-          // nav_queue_->push(nav_msg_);
+    // continue processing data until SturDR ends
+    while (*running_) {
+      // process
+      switch (file_pkt_.ChannelStatus) {
+        case ChannelState::IDLE:
           break;
-        case (ChannelState::ACQUIRING):
+        case ChannelState::ACQUIRING:
           Acquire();
           break;
-        case (ChannelState::IDLE):
-          // GetNewPrnFunc_(channel_msg_.Header.SVID);
-          // SetSatellite(channel_msg_.Header.SVID);
+        case ChannelState::TRACKING:
+          Track();
           break;
       }
-      // file_log_->info("{}", channel_msg_);
 
-      // wait for all channels to finish
-      // end_bar_->WaitFor(timeout_);
-      end_bar_->Wait();
+      // send navigation parameters precise to current sample
+      q_nav_->push(nav_pkt_);
 
-      // wait for shm_ to be updated
-      // start_bar_->WaitFor(timeout_);
-      start_bar_->Wait();
+      // wait for new shm data
+      b_end_->Wait();
+      b_start_->Wait();
+      UpdateShmWriterPtr();
     }
   };
 
-  /**
-   * @brief abstract functions to be defined per specific channel specifications
-   */
-  virtual void SetSatellite(uint8_t sv_id) = 0;
-
  protected:
-  std::string channel_id_;
-  Config conf_;
-  ChannelPacket channel_msg_;
-  ChannelNavPacket nav_msg_;
-  std::shared_ptr<Eigen::VectorXcd> shm_;  // shared memory array
-  uint64_t shm_read_ptr_;                  // location of channel inside shm_ array
-  uint64_t shm_write_ptr_;                 // location of rfdata stream writer inside shm_ array
-  uint64_t shm_samp_chunk_size_;           // size of shm in samples
-  uint64_t shm_samp_write_size_;           // size of shm writer updates
-  std::shared_ptr<ConcurrentBarrier> start_bar_;  // barrier synchronizing shm_ memory
-  std::shared_ptr<ConcurrentBarrier> end_bar_;    // barrier synchronizing channel processing
-  std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue_;    // queue for navigation messages
-  std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue_;  // queue for ephemeris messages
-  std::shared_ptr<std::thread> thread_;
-  int acq_fails_;
-  AcquisitionSetup acq_setup_;  // bool to indicate processing is still being performed
-  double intmd_freq_rad_;
-  double nco_code_freq_;
-  double nco_carr_freq_;
-  std::shared_ptr<bool> still_running_;
-  std::chrono::milliseconds timeout_;
-  std::shared_ptr<spdlog::logger> log_;
-  std::shared_ptr<spdlog::logger> file_log_;
-  std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc_;
+  /**
+   * *=== Acquire ===*
+   * @brief Trys to acquire current satellite
+   */
+  virtual void Acquire() = 0;
+
+  /**
+   * *=== Track ===*
+   * @brief Trys to track current satellite
+   */
+  virtual void Track() = 0;
+
+  /**
+   * *=== NavDataSync ===*
+   * @brief Trys to synchronize to the data bit and extend the integration periods
+   */
+  virtual bool NavDataSync() = 0;
+
+  /**
+   * *=== Demodulate ===*
+   * @brief Trys to demodulate navigation data and parse ephemerides
+   */
+  virtual void Demodulate() = 0;
 
   /**
    * *=== UpdateShmWriterPtr ===*
-   * @brief Keeps track of where the shm_ writer is so channel does not pass the writer
+   * @brief Keeps track of where the shm_ writer is so channel does not read more than is written
    */
   void UpdateShmWriterPtr() {
-    shm_write_ptr_ += shm_samp_write_size_;
-    shm_write_ptr_ %= shm_samp_chunk_size_;
+    shm_writer_ptr_ += shm_read_size_samp_;
+    shm_writer_ptr_ %= shm_file_size_samp_;
   }
 
   /**
@@ -199,24 +218,14 @@ class Channel {
    * @brief Returns the difference between shm_write_ptr_ and shm_
    */
   uint64_t UnreadSampleCount() {
-    if (shm_read_ptr_ <= shm_write_ptr_) {
-      return shm_write_ptr_ - shm_read_ptr_;
+    if (shm_ptr_ <= shm_writer_ptr_) {
+      return shm_writer_ptr_ - shm_ptr_;
     } else {
-      return shm_samp_chunk_size_ - shm_read_ptr_ + shm_write_ptr_;
+      return shm_file_size_samp_ - shm_ptr_ + shm_writer_ptr_;
     }
   }
-
-  /**
-   * @brief abstract functions to be defined per specific channel specifications
-   */
-  virtual void Acquire() = 0;
-  virtual void Track() = 0;
-  virtual bool DataBitSync() = 0;
-  virtual void Demodulate() = 0;
 };
 
-// Channel::~Channel(){};
-
-}  // end namespace sturdr
+}  // namespace sturdr
 
 #endif

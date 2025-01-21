@@ -18,12 +18,12 @@
 
 namespace sturdr {
 
-// struct SturdrFftPlans {
-//   fftw_plan fft;
-//   fftw_plan ifft;
-//   fftw_plan fft_many;
-//   fftw_plan ifft_many;
-// };
+struct FftPlans {
+  fftw_plan fft;
+  fftw_plan ifft;
+  fftw_plan fft_many;
+  fftw_plan ifft_many;
+};
 
 //! === ThreadSafety ===
 /// @brief Ensures the creation of FFT planners does not conflict with other processes

@@ -3,8 +3,8 @@
  *
  * =======  ========================================================================================
  * @file    sturdr/sturdr.hpp
- * @brief   STURDR receiver implementation.
- * @date    December 2024
+ * @brief   SturDR receiver implementation.
+ * @date    January 2025
  * =======  ========================================================================================
  */
 
@@ -15,103 +15,113 @@
 
 #include <spdlog/spdlog.h>
 
-#include <array>
-#include <cstdint>
-#include <functional>
+#include <Eigen/Dense>
+#include <map>
 #include <memory>
-#include <mutex>
 #include <sturdio/binary-file.hpp>
+#include <sturdio/yaml-parser.hpp>
 #include <vector>
 
-#include "sturdr/acquisition.hpp"
 #include "sturdr/channel-gps-l1ca.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/navigator.hpp"
 #include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
 
-template <typename RfDataType>
 class SturDR {
- public:
-  /**
-   * *=== SturDR ===*
-   * @brief Constructor
-   * @param yaml_fname string containing signal file name
-   */
-  SturDR(const std::string yaml_fname);
-
-  /**
-   * *=== Run ===*
-   * @brief Run the receiver
-   */
-  void Run();
-
  private:
   /**
-   * @brief configuration parameters
+   * @brief configuration
    */
+  sturdio::YamlParser yp_;
   Config conf_;
-  std::shared_ptr<spdlog::logger> log_;
-  sturdio::BinaryFile fid_;
-  Eigen::Vector<RfDataType, Eigen::Dynamic> rf_stream_;
-  std::function<void(RfDataType[], std::complex<double>[], const int &)> DataTypeAdapterFunc_;
+  sturdio::BinaryFile bf_;
+  uint64_t samp_per_ms_;
+
+  /**
+   * @brief shared memory parameters
+   */
+  // std::function<void(T[], std::complex<double>[], const int &)> data_type_adapter_func_;
   uint64_t shm_ptr_;
-  uint64_t shm_chunk_size_samp_;
-  uint64_t shm_write_size_samp_;
+  uint64_t shm_file_size_samp_;
+  uint64_t shm_read_size_samp_;
   std::shared_ptr<Eigen::VectorXcd> shm_;
+
+  /**
+   * @brief channel parameters
+   * TODO: add more channel types, maybe abstractify?
+   */
+  std::shared_ptr<bool> running_;
+  uint64_t n_dopp_bins_;
+  FftPlans fftw_plans_;
+  uint8_t prn_ptr_;
+  std::map<uint8_t, bool> prns_in_use_;
+  std::mutex prn_mtx_;
+  std::vector<ChannelGpsL1ca> gps_channels_;
   std::shared_ptr<ConcurrentBarrier> start_barrier_;
   std::shared_ptr<ConcurrentBarrier> end_barrier_;
-  std::vector<GpsL1caChannel> gps_channels_;
-  std::shared_ptr<bool> running_;
+
+  /**
+   * @brief spdlog loggers
+   */
+  std::shared_ptr<spdlog::logger> log_;
 
   /**
    * @brief navigation parameters
    */
   std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue_;
   std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue_;
-  std::unique_ptr<Navigator> nav_;
+  std::unique_ptr<Navigator> navigator_;
+
+ public:
+  /**
+   * *=== SturDR ===*
+   * @brief constructor
+   * @param yaml_fname string containing signal file name
+   */
+  SturDR(const std::string yaml_fname);
 
   /**
-   * @brief acquisition parameters
+   * *=== ~SturDR ===*
+   * @brief destructor
    */
-  std::array<std::array<bool, 1023>, 32> codes_;
-  std::vector<uint8_t> prn_available_;
-  std::vector<uint8_t> prn_used_;
-  int prn_ptr_;
-  std::mutex prn_mtx_;
-  AcquisitionSetup acq_setup_;
+  ~SturDR();
 
   /**
-   * *=== Init ===*
-   * @brief Initialize SDR
+   * *=== Start ===*
+   * @brief initialized and begins running the receiver
    */
-  void Init(const std::string &yaml_fname);
+  void Start();
+
+ private:
+  /**
+   * *=== Run ===*
+   * @brief Runs the receiver using real input stream
+   */
+  template <typename T>
+  void Run();
+
+  /**
+   * *=== Run ===*
+   * @brief Runs the receiver using complex input stream
+   */
+  template <typename T>
+  void RunComplex();
 
   /**
    * @brief Thread safe function for a channel to request a new PRN
    * @param prn current channel prn
    */
-  void GetNewPrn(uint8_t &prn, std::array<bool, 1023> &code);
+  void GetNewPrn(uint8_t &prn);
 
   /**
-   * *=== NavigationThread ===*
-   * @brief Runs the thread controlling navigation inputs and outputs
+   * *=== InitChannels ===*
+   * @brief initializes channels to be used
    */
-  void NavigationThread();
-
-  /**
-   * *=== ChannelNavPacketListener ===*
-   * @brief Listens to the channels for navigation packet outputs
-   */
-  void ChannelNavPacketListener();
-
-  /**
-   * *=== ChannelEphemPacketListener ===*
-   * @brief Listens to the channels for ephemeris packet outputs
-   */
-  void ChannelEphemPacketListener();
+  void InitChannels();
 };
 
 }  // namespace sturdr

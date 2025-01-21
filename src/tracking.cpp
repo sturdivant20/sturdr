@@ -152,15 +152,9 @@ TrackingKF::TrackingKF()
 TrackingKF::~TrackingKF(){};
 
 void TrackingKF::Init(
-    const double &init_w0d,
-    const double &init_w0p,
-    const double &init_w0f,
-    const double &init_k,
     const double &init_carr_phase,
     const double &init_carr_doppler,
     const double &init_code_phase,
-    const double &init_cno,
-    const double &init_T,
     const double &intmd_freq,
     const double &code_freq) {
   // Initialize state and covariance
@@ -170,14 +164,14 @@ void TrackingKF::Init(
   P_.diagonal() << navtools::PI_SQU<double> / 3.0, navtools::PI_SQU<> * 2000.0, 100.0, 0.1, 10.0;
 
   // Initialize dynamic model
-  make_F(init_k, init_T);
-  make_G(init_T);
-  make_Q(init_w0d, init_w0p, init_w0f, init_k, init_T);
+  // make_F(init_k, init_T);
+  // make_G(init_T);
+  // make_Q(init_w0d, init_w0p, init_w0f, init_k, init_T);
   u_ << intmd_freq, code_freq;
 
   // Initialize measurement model
   make_H();
-  make_R(init_cno, init_T);
+  // make_R(init_cno, init_T);
 }
 
 // *=== UpdateDynamicsParam ===*
@@ -189,9 +183,11 @@ void TrackingKF::UpdateDynamicsParam(
 }
 
 // *=== UpdateMeasurementsParam ===*
-void TrackingKF::UpdateMeasurementsParam(const double &cno, const double &T) {
-  make_H();
-  make_R(cno, T);
+void TrackingKF::UpdateMeasurementsParam(
+    const double &dll_var, const double &pll_var, const double &fll_var) {
+  // make_H();
+  // make_R(cno, T);
+  R_.diagonal() << pll_var, fll_var, dll_var;
 }
 
 // *=== Run ===*

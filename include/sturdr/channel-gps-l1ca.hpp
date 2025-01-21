@@ -17,143 +17,130 @@
 #ifndef STURDR_CHANNEL_GPS_L1CA_HPP
 #define STURDR_CHANNEL_GPS_L1CA_HPP
 
-#include <spdlog/spdlog.h>
-
 #include <array>
 #include <complex>
-#include <functional>
 #include <satutils/gps-lnav.hpp>
 
-#include "sturdr/acquisition.hpp"
 #include "sturdr/channel.hpp"
-#include "sturdr/structs-enums.hpp"
 #include "sturdr/tracking.hpp"
 
 namespace sturdr {
 
-//! ------------------------------------------------------------------------------------------------
-
-class GpsL1caChannel : public Channel {
- public:
-  /**
-   * *=== GpsL1caChannel ===*
-   * @brief Constructor
-   * @param config        configuration from yaml file
-   * @param shm           shared memory array
-   * @param channel_queue thread safe queue for sharing channel status messages
-   * @param nav_queue     thread safe queue fir sharing navigation status messages
-   * @param start_barrier thread safe barrier for synchronizing the start of channel processing
-   * @param end_barrier   thread safe barrier for synchronizing the conclusion of channel processing
-   * @param channel_num   STURDR channel creation/identification number
-   */
-  GpsL1caChannel(
-      const Config &config,
-      const AcquisitionSetup &acq_setup,
-      const std::shared_ptr<Eigen::VectorXcd> shm,
-      const std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      const std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
-      const std::shared_ptr<ConcurrentBarrier> start_barrier,
-      const std::shared_ptr<ConcurrentBarrier> end_barrier,
-      const int &channel_num,
-      const std::shared_ptr<bool> still_running,
-      std::function<void(uint8_t &, std::array<bool, 1023> &)> GetNewPrnFunc);
-
-  /**
-   * *=== ~GpsL1caChannel ===*
-   * @brief Destructor
-   */
-  ~GpsL1caChannel();
-
-  /**
-   * *=== SetSatellite ===*
-   * @brief Set satellite tracked by channel to given prn
-   */
-  void SetSatellite(uint8_t sv_id);
-
- protected:
-  // /**
-  //  * *=== Run ===*
-  //  * @brief Run channel processing
-  //  */
-  // void run();
-
-  /**
-   * *=== Acquire ===*
-   * @brief Trys to acquire the set satellite
-   */
-  void Acquire();
-
-  /**
-   * *=== Track ===*
-   * @brief Runs the tracking correlation and loop filter updates!
-   */
-  void Track();
-
-  /**
-   * *=== DataBitSync ===*
-   * @brief Synchronize to the data bit and extend the integration periods
-   */
-  bool DataBitSync();
-
-  /**
-   * *=== Demodulate ===*
-   * @brief Demodulate the navigation data and parse ephemerides
-   */
-  void Demodulate();
-
+class ChannelGpsL1ca : public Channel {
  private:
-  // Code replica
+  /**
+   * @brief local replica properties and statistics
+   */
   std::array<bool, 1023> code_;
+  double intmd_freq_rad_;
   double rem_code_phase_;
   double code_doppler_;
-
-  // Carrier replica
   double rem_carr_phase_;
   double carr_doppler_;
   double carr_jitter_;
+  double cno_;
+  double nbd_;
+  double nbp_;
+  double pc_;
+  double pn_;
+  bool code_lock_;
+  bool carr_lock_;
+  double beta_sq_;
+  double lambda_sq_;
+  double lambda_;
+  double beta_;
 
-  // NCO
-  double T_;
-  int PDI_;
-  uint64_t total_samp_;
-  uint64_t half_samp_;
-  uint64_t samp_processed_;
-  uint64_t samp_remaining_;
-  uint64_t samp_per_chip_;
-  uint64_t samp_per_ms_;
-  uint64_t samp_per_20_ms_;  // this is used because navigation data can be updated every 20ms
-  uint64_t samp_remaining_in_20_ms_;
-
-  // Tracking
+  /**
+   * @brief Tracking loops
+   */
+  uint8_t track_mode_;
   double kappa_;
   double w0d_;
   double w0p_;
   double w0f_;
   double tap_space_;
+  TrackingKF kf_;
+
+  /**
+   * @brief Correlators
+   */
   std::complex<double> E_;
   std::complex<double> P_;
   std::complex<double> L_;
   std::complex<double> P1_;
   std::complex<double> P2_;
   std::complex<double> P_old_;
-  TrackingKF filt_;
-  uint8_t track_mode_;
 
-  // Lock detectors
-  double cno_mag_;
-  double nbd_mem_;
-  double nbp_mem_;
-  double pc_mem_;
-  double pn_mem_;
-  bool code_lock_;
-  bool carr_lock_;
-
-  // Telemetry
-  int cnt_;
+  /**
+   * @brief counters and telemetry
+   */
+  double T_;
+  double half_T_;
+  uint64_t T_ms_;
+  uint64_t int_per_cnt_;
+  uint64_t total_samp_;
+  uint64_t half_samp_;
+  uint64_t samp_remaining_;
   uint8_t bit_sync_hist_[20];
   satutils::GpsLnav<double> gps_lnav_;
+
+ public:
+  /**
+   * *=== ChannelGpsL1ca ===*
+   * @brief Implementation of channel for GPS L1CA signals
+   */
+  ChannelGpsL1ca(
+      Config &conf,
+      uint8_t &n,
+      std::shared_ptr<bool> running,
+      std::shared_ptr<Eigen::VectorXcd> shared_array,
+      std::shared_ptr<ConcurrentBarrier> start_barrier,
+      std::shared_ptr<ConcurrentBarrier> end_barrier,
+      std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
+      std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+      FftPlans &fftw_plans,
+      std::function<void(uint8_t &)> &GetNewPrnFunc);
+
+  /**
+   * *=== ~ChannelGpsL1ca ===*
+   * @brief Destructor
+   */
+  ~ChannelGpsL1ca();
+
+ private:
+  /**
+   * *=== NewCodePeriod ===*
+   * @brief begins a new code period
+   */
+  void NewCodePeriod();
+
+  /**
+   * *=== Acquire ===*
+   * @brief Trys to acquire current satellite
+   */
+  void Acquire();
+
+  /**
+   * *=== Track ===*
+   * @brief Trys to track current satellite
+   */
+  void Track();
+  void Integrate(const uint64_t &samp_to_read);
+  void Dump();
+
+  /**
+   * *=== NavDataSync ===*
+   * @brief Trys to synchronize to the data bit and extend the integration periods
+   */
+  bool NavDataSync();
+
+  /**
+   * *=== Demodulate ===*
+   * @brief Trys to demodulate navigation data and parse ephemerides
+   */
+  void Demodulate();
 };
 
-}  // end namespace sturdr
+}  // namespace sturdr
 
 #endif

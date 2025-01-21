@@ -6,6 +6,8 @@
 
 #include <Eigen/Dense>
 #include <complex>
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <numeric>
@@ -19,43 +21,35 @@
 #include "sturdr/channel-gps-l1ca.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
+#include "sturdr/data-type-adapters.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/structs-enums.hpp"
 
 using NavQueue = sturdr::ConcurrentQueue<sturdr::ChannelNavPacket>;
 using EphemQueue = sturdr::ConcurrentQueue<sturdr::ChannelEphemPacket>;
 using Barrier = sturdr::ConcurrentBarrier;
-std::mutex mtx;
+std::mutex prn_mtx;
 
 // prn ids in use
-std::vector<uint8_t> prns(32);
-std::vector<uint8_t> prns_in_use;
-int prn_idx = 0;
+std::map<uint8_t, bool> prns_in_use;
+int prn_ptr = 1;
 
-void GetNewPrn(uint8_t &prn, std::array<bool, 1023> &code) {
-  // spdlog::get("sturdr-console")->warn("prn a: {}, prn_idx: {}", prn, prn_idx);
-  std::unique_lock<std::mutex> lock(mtx);
+void GetNewPrn(uint8_t &prn) {
+  std::unique_lock<std::mutex> lock(prn_mtx);
 
   // remove prn from log
-  if (prns_in_use.size() > 0) {
-    auto i = std::find(prns_in_use.begin(), prns_in_use.end(), prn);
-    if (i != prns_in_use.end()) {
-      prns_in_use.erase(i);
-    }
-  }
+  prns_in_use[prn] = false;
 
   // search for next available prn
-  while (std::find(prns_in_use.begin(), prns_in_use.end(), prns[prn_idx]) != prns_in_use.end()) {
-    prn_idx += 1;
-    prn_idx %= 32;
+  while (prns_in_use[prn_ptr]) {
+    prn_ptr = prn_ptr % 32 + 1;
   }
 
   // log new prn
-  prn = prns[prn_idx];
-  // spdlog::get("sturdr-console")->warn("prn b: {}, prn_idx: {}", prn, prn_idx);
-  prns_in_use.push_back(prn);
-  // spdlog::get("sturdr-console")->warn("prns_in_use: {}", fmt::join(prns_in_use, ", "));
-  prn_idx += 1;
-  prn_idx %= 32;
+  prn = prn_ptr;
+  prns_in_use[prn_ptr] = true;
+  prn_ptr = prn_ptr % 32 + 1;
+  // std::cout << "prn_ptr_: " << (int)prn_ptr << "\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -187,70 +181,74 @@ int main(int argc, char *argv[]) {
 
   // initialize file reader
   sturdio::BinaryFile file(conf.general.in_file);
-  Eigen::Vector<int8_t, Eigen::Dynamic> in_stream(shm_samp_write_size);
+  // Eigen::Vector<int8_t, Eigen::Dynamic> in_stream(shm_samp_write_size);
+  std::vector<int8_t> in_stream(shm_samp_write_size);
   console->debug("RfDataFile created!");
 
   // initialize acquisition matrices
-  std::array<std::array<bool, 1023>, 32> codes;
-  for (int i = 0; i < 32; i++) {
-    satutils::CodeGenCA(codes[i], i + 1);
-  }
-  sturdr::AcquisitionSetup acq_setup = sturdr::InitAcquisitionMatrices(
-      codes,
-      conf.acquisition.doppler_range,
-      conf.acquisition.doppler_step,
-      conf.rfsignal.samp_freq,
-      satutils::GPS_CA_CODE_RATE<>,
-      conf.rfsignal.intmd_freq);
+  int samp_per_ms = conf.rfsignal.samp_freq / 1000;
+  int n_dopp_bins = static_cast<uint64_t>(
+      2.0 * conf.acquisition.doppler_range / conf.acquisition.doppler_step + 1.0);
+  sturdr::FftPlans fftw_plans{
+      sturdr::Create1dFftPlan(samp_per_ms, true),
+      sturdr::Create1dFftPlan(samp_per_ms, false),
+      sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, true),
+      sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, false)};
 
   // runtime boolean
   std::shared_ptr<bool> still_running = std::make_shared<bool>(true);
 
   // create channels
-  // uint8_t prn_to_use[8] = {1, 7, 13, 14, 17, 19, 21, 30};
-  std::iota(prns.begin(), prns.end(), 1);
-  std::vector<sturdr::GpsL1caChannel> chs;
+  for (uint8_t i = 1; i <= 32; i++) {
+    prns_in_use.insert({i, false});
+  }
+  std::vector<sturdr::ChannelGpsL1ca> chs;
   chs.reserve(conf.rfsignal.max_channels);
-  for (int channel_num = 0; channel_num < (int)conf.rfsignal.max_channels; channel_num++) {
-    // chs.push_back(sturdr::GpsL1caChannel(
-    //     conf, p, shm, channel_queue, nav_queue, start_barrier, end_barrier, channel_num));
-    // GetNewPrn(current_prn);
-    prns_in_use.push_back(channel_num + 1);
+  std::function<void(uint8_t &)> tmp = std::bind(&GetNewPrn, std::placeholders::_1);
+  for (uint8_t channel_num = 1; channel_num <= (uint8_t)conf.rfsignal.max_channels; channel_num++) {
     chs.emplace_back(
         conf,
-        acq_setup,
-        shm,
-        nav_queue,
-        eph_queue,
-        start_barrier,
-        end_barrier,
         channel_num,
         still_running,
-        &GetNewPrn);
-    chs[channel_num].SetSatellite(channel_num + 1);
-    console->info("Channel {} created and set to GPS{}!", channel_num, channel_num + 1);
-    chs[channel_num].start();
+        shm,
+        start_barrier,
+        end_barrier,
+        eph_queue,
+        nav_queue,
+        fftw_plans,
+        tmp);
+    chs[channel_num - 1].Start();
   }
+  std::cout << "here main 1\n";
 
   // initial read signal data
   file.fread(in_stream.data(), shm_samp_write_size);
-  for (uint64_t j = 0; j < shm_samp_write_size; j++) {
-    (*shm)((shm_ptr + j) % shm_samp_chunk_size) = static_cast<std::complex<double>>(in_stream(j));
-  }
+  std::cout << "here main 2\n";
+  // for (uint64_t j = 0; j < shm_samp_write_size; j++) {
+  //   (*shm)((shm_ptr + j) % shm_samp_chunk_size) =
+  //   static_cast<std::complex<double>>(in_stream[j]);
+  // }
+  sturdr::ByteToIDouble(
+      in_stream.data(), shm->segment(shm_ptr, shm_samp_write_size).data(), shm_samp_write_size);
   shm_ptr += shm_samp_write_size;
   shm_ptr %= shm_samp_chunk_size;
+  std::cout << "here main 3\n";
 
   // run channel
   spdlog::stopwatch sw;
   for (int i = 0; i < (int)conf.general.ms_to_process + 1; i += (int)conf.general.ms_read_size) {
     // ready to process data
+    // std::cout << "here main 4\n";
     start_barrier->Wait();
 
     // read signal data
     file.fread(in_stream.data(), shm_samp_write_size);
-    for (uint64_t j = 0; j < shm_samp_write_size; j++) {
-      (*shm)((shm_ptr + j) % shm_samp_chunk_size) = static_cast<std::complex<double>>(in_stream(j));
-    }
+    // for (uint64_t j = 0; j < shm_samp_write_size; j++) {
+    //   (*shm)((shm_ptr + j) % shm_samp_chunk_size) =
+    //   static_cast<std::complex<double>>(in_stream[j]);
+    // }
+    sturdr::ByteToIDouble(
+        in_stream.data(), shm->segment(shm_ptr, shm_samp_write_size).data(), shm_samp_write_size);
     shm_ptr += shm_samp_write_size;
     shm_ptr %= shm_samp_chunk_size;
 
@@ -267,7 +265,7 @@ int main(int argc, char *argv[]) {
 
   // join channels
   for (int channel_num = 0; channel_num < (int)conf.rfsignal.max_channels; channel_num++) {
-    chs[channel_num].join();
+    chs[channel_num].Join();
   }
 
   return 0;

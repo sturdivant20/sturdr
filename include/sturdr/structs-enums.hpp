@@ -106,7 +106,6 @@ struct AcquisitionConfig {
   uint16_t max_failed_attempts;
 };
 struct TrackingConfig {
-  uint16_t fll_pull_in_time_ms;
   uint16_t min_converg_time_ms;
   double tap_epl_wide;
   double tap_epl_standard;
@@ -194,14 +193,14 @@ struct ChannelNavPacket {
   uint16_t Week{65535};
   double ToW{std::nan("1")};
   double CNo{std::nan("1")};
-  double Doppler{std::nan("1")};
-  double CodePhase{std::nan("1")};
+  double Psrdot{std::nan("1")};
+  double CodePhaseSec{std::nan("1")};
   double CarrierPhase{std::nan("1")};
   double DllDisc{std::nan("1")};
   double PllDisc{std::nan("1")};
   double FllDisc{std::nan("1")};
-  double PsrStd{std::nan("1")};
-  double PsrdotStd{std::nan("1")};
+  double PsrVar{std::nan("1")};
+  double PsrdotVar{std::nan("1")};
 };
 
 /**
@@ -212,14 +211,14 @@ struct ChannelNavData {
   uint16_t Week{65535};
   double ToW{std::nan("1")};
   double CNo{std::nan("1")};
-  double Doppler{std::nan("1")};
-  double CodePhase{std::nan("1")};
+  double Psrdot{std::nan("1")};
+  double CodePhaseSec{std::nan("1")};
   double CarrierPhase{std::nan("1")};
   double DllDisc{std::nan("1")};
   double PllDisc{std::nan("1")};
   double FllDisc{std::nan("1")};
-  double PsrStd{std::nan("1")};
-  double PsrdotStd{std::nan("1")};
+  double PsrVar{std::nan("1")};
+  double PsrdotVar{std::nan("1")};
   bool HasEphem{false};
   bool HasData{true};
 };
@@ -443,7 +442,7 @@ struct fmt::formatter<sturdr::ChannelNavPacket> : formatter<string_view> {
     oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
         << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
         << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID
-        << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase
+        << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Psrdot << "," << c.CodePhaseSec
         << "," << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc;
     return formatter<string_view>::format(oss.str(), ctx);
   };

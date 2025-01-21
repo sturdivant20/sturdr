@@ -17,15 +17,15 @@
 #ifndef STURDR_NAVIGATOR_HPP
 #define STURDR_NAVIGATOR_HPP
 
-#include <spdlog/async_logger.h>
 #include <spdlog/spdlog.h>
 
 #include <Eigen/Dense>
 #include <condition_variable>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <sturdins/kns.hpp>
 #include <thread>
-#include <unordered_map>
 
 #include "sturdr/concurrent-queue.hpp"
 #include "sturdr/structs-enums.hpp"
@@ -33,30 +33,6 @@
 namespace sturdr {
 
 class Navigator {
- public:
-  /**
-   * *=== Navigator ===*
-   * @brief constructor
-   * @param conf  SturDR config
-   */
-  Navigator(
-      Config conf,
-      std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
-      std::shared_ptr<bool> running);
-
-  /**
-   * *=== ~Navigator ===*
-   * @brief destructor
-   */
-  ~Navigator();
-
-  /**
-   * *=== Execute ===*
-   * @brief Notifys the waiting navigation thread to block the queues and perform an update
-   */
-  void Execute();
-
  private:
   /**
    * @brief navigation parameters
@@ -67,11 +43,14 @@ class Navigator {
   Eigen::Vector3d nedv_;
   double cb_;
   double cd_;
-  std::unordered_map<uint8_t, ChannelNavData> channel_data_;
+  double T_;
+  bool is_initialized_;
+  sturdins::Kns kf_;
 
   /**
    * @brief thread scheduling
    */
+  std::map<uint8_t, ChannelNavData> channel_data_;
   std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue_;
   std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue_;
   std::condition_variable cv_;
@@ -87,6 +66,31 @@ class Navigator {
   std::shared_ptr<spdlog::logger> nav_log_;
   std::shared_ptr<spdlog::logger> eph_log_;
 
+ public:
+  /**
+   * *=== Navigator ===*
+   * @brief constructor
+   * @param conf  SturDR config
+   */
+  Navigator(
+      Config &conf,
+      std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> &nav_queue,
+      std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> &eph_queue,
+      std::shared_ptr<bool> &running);
+
+  /**
+   * *=== ~Navigator ===*
+   * @brief destructor
+   */
+  ~Navigator();
+
+  /**
+   * *=== Notify ===*
+   * @brief Notifys the waiting navigation thread to block the queues and perform an update
+   */
+  void Notify();
+
+ private:
   /**
    * *=== NavigationThread ===*
    * @brief Runs the thread controlling navigation inputs and outputs
@@ -104,6 +108,36 @@ class Navigator {
    * @brief Listens to the channels for ephemeris packet outputs
    */
   void ChannelEphemPacketListener();
+
+  /**
+   * *=== InitNavSolution ===*
+   * @brief initializes navigation with least squares
+   */
+  void InitNavSolution(
+      const Eigen::Ref<const Eigen::MatrixXd> &sv_pos,
+      const Eigen::Ref<const Eigen::MatrixXd> &sv_vel,
+      const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
+      const Eigen::Ref<const Eigen::VectorXd> &psrdot,
+      const Eigen::Ref<const Eigen::VectorXd> &psr_var,
+      const Eigen::Ref<const Eigen::VectorXd> &psrdot_var);
+
+  /**
+   * *=== ScalarNavSolution ===*
+   * @brief propagates navigation with 'scalar' navigation techniques
+   */
+  void ScalarNavSolution(
+      const Eigen::Ref<const Eigen::MatrixXd> &sv_pos,
+      const Eigen::Ref<const Eigen::MatrixXd> &sv_vel,
+      const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
+      const Eigen::Ref<const Eigen::VectorXd> &psrdot,
+      const Eigen::Ref<const Eigen::VectorXd> &psr_var,
+      const Eigen::Ref<const Eigen::VectorXd> &psrdot_var);
+
+  /**
+   * *=== VectorNavSolution ===*
+   * @brief propagates navigation with 'vector' navigation techniques
+   */
+  void VectorNavSolution();
 };
 
 }  // namespace sturdr

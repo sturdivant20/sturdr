@@ -21,7 +21,7 @@
 #include <Eigen/Dense>
 #include <array>
 
-#include "fftw3.h"
+#include "sturdr/fftw-wrapper.hpp"
 
 namespace sturdr {
 
@@ -82,17 +82,17 @@ Eigen::MatrixXd PcpsSearch(
     const uint8_t &nc_per,
     const uint8_t &prn,
     AcquisitionSetup &acq_setup);
-// Eigen::MatrixXd PcpsSearch(
-//     const SturdrFftPlans &p,
-//     const Eigen::VectorXcd &rfdata,
-//     const std::array<bool, 1023> &code,
-//     const double &d_range,
-//     const double &d_step,
-//     const double &samp_freq,
-//     const double &code_freq,
-//     const double &intmd_freq,
-//     const uint8_t &c_per,
-//     const uint8_t &nc_per);
+Eigen::MatrixXd PcpsSearch(
+    const FftPlans &p,
+    const Eigen::VectorXcd &rfdata,
+    const std::array<bool, 1023> &code,
+    const double &d_range,
+    const double &d_step,
+    const double &samp_freq,
+    const double &code_freq,
+    const double &intmd_freq,
+    const uint8_t &c_per,
+    const uint8_t &nc_per);
 
 //! === Peak2PeakTest ===
 

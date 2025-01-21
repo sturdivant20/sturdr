@@ -10,8 +10,8 @@ int main(int argc, char *argv[]) {
     yaml_filename = "config/gps_l1ca_rcvr.yaml";
   }
 
-  sturdr::SturDR<int8_t> rcvr(yaml_filename);
-  rcvr.Run();
+  sturdr::SturDR rcvr(yaml_filename);
+  rcvr.Start();
 
   return 0;
 }
