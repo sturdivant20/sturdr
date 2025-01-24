@@ -176,7 +176,6 @@ int main(int argc, char *argv[]) {
   // initialize thread syncronization barriers
   std::shared_ptr<Barrier> start_barrier =
       std::make_shared<Barrier>(conf.rfsignal.max_channels + 1);
-  std::shared_ptr<Barrier> end_barrier = std::make_shared<Barrier>(conf.rfsignal.max_channels + 1);
   console->debug("Barriers created!");
 
   // initialize file reader
@@ -192,8 +191,8 @@ int main(int argc, char *argv[]) {
   sturdr::FftPlans fftw_plans{
       sturdr::Create1dFftPlan(samp_per_ms, true),
       sturdr::Create1dFftPlan(samp_per_ms, false),
-      sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, true),
-      sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, false)};
+      sturdr::CreateManyFftPlanColWise(samp_per_ms, n_dopp_bins, true),
+      sturdr::CreateManyFftPlanColWise(samp_per_ms, n_dopp_bins, false)};
 
   // runtime boolean
   std::shared_ptr<bool> still_running = std::make_shared<bool>(true);
@@ -212,7 +211,6 @@ int main(int argc, char *argv[]) {
         still_running,
         shm,
         start_barrier,
-        end_barrier,
         eph_queue,
         nav_queue,
         fftw_plans,
@@ -256,12 +254,10 @@ int main(int argc, char *argv[]) {
     if (i % 1000 == 0) {
       console->info("File time: {:.3f} s ... Processing Time: {:.3f} s", (float)i / 1000.0, sw);
     }
-
-    // channels finished
-    end_barrier->Wait();
   }
   *still_running = false;
   console->info("test_channel.cpp still_running = {}", *still_running);
+  start_barrier->NotifyComplete();
 
   // join channels
   for (int channel_num = 0; channel_num < (int)conf.rfsignal.max_channels; channel_num++) {

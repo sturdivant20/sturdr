@@ -51,7 +51,8 @@ fftw_plan Create1dFftPlan(const int len, const bool make_fft = true);
 /// @param ncol length of fft
 /// @param make_fft boolean to decide whether to create FFT or IFFT plan
 /// @return fftw_plan for FFT
-fftw_plan CreateManyFftPlan(const int nrow, const int ncol, const bool make_fft = true);
+fftw_plan CreateManyFftPlanRowWise(const int nrow, const int ncol, const bool make_fft = true);
+fftw_plan CreateManyFftPlanColWise(const int nrow, const int ncol, const bool make_fft = true);
 // fftw_plan CreateManyFftPlan(
 //     Eigen::Ref<Eigen::MatrixXcd> in,
 //     Eigen::Ref<Eigen::MatrixXcd> out,

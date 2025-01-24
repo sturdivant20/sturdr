@@ -95,7 +95,6 @@ class ChannelGpsL1ca : public Channel {
       std::shared_ptr<bool> running,
       std::shared_ptr<Eigen::VectorXcd> shared_array,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
-      std::shared_ptr<ConcurrentBarrier> end_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
       FftPlans &fftw_plans,
@@ -127,6 +126,7 @@ class ChannelGpsL1ca : public Channel {
   void Track();
   void Integrate(const uint64_t &samp_to_read);
   void Dump();
+  void Status();
 
   /**
    * *=== NavDataSync ===*

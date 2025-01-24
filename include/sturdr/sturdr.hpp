@@ -61,8 +61,7 @@ class SturDR {
   std::map<uint8_t, bool> prns_in_use_;
   std::mutex prn_mtx_;
   std::vector<ChannelGpsL1ca> gps_channels_;
-  std::shared_ptr<ConcurrentBarrier> start_barrier_;
-  std::shared_ptr<ConcurrentBarrier> end_barrier_;
+  std::shared_ptr<ConcurrentBarrier> barrier_;
 
   /**
    * @brief spdlog loggers

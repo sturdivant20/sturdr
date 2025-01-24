@@ -38,6 +38,7 @@ class Navigator {
    * @brief navigation parameters
    */
   Config conf_;
+  uint16_t week_;
   double receive_time_;
   Eigen::Vector3d lla_;
   Eigen::Vector3d nedv_;
@@ -54,7 +55,7 @@ class Navigator {
   std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue_;
   std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue_;
   std::condition_variable cv_;
-  std::mutex mtx_;
+  std::mutex mtx_, event_mtx_;
   bool update_;
   std::shared_ptr<bool> running_;
   std::thread thread_;
@@ -63,8 +64,8 @@ class Navigator {
    * @brief spdlog loggers
    */
   std::shared_ptr<spdlog::logger> log_;
-  std::shared_ptr<spdlog::logger> nav_log_;
-  std::shared_ptr<spdlog::logger> eph_log_;
+  //   std::shared_ptr<spdlog::logger> nav_log_;
+  //   std::shared_ptr<spdlog::logger> eph_log_;
 
  public:
   /**

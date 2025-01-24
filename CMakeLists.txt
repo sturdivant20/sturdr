@@ -63,6 +63,7 @@ endif()
 
 set(STURDR_HDRS
     include/sturdr/acquisition.hpp
+    include/sturdr/beamsteer.hpp
     include/sturdr/channel.hpp
     include/sturdr/channel-gps-l1ca.hpp
     include/sturdr/concurrent-barrier.hpp
@@ -80,6 +81,7 @@ set(STURDR_HDRS
 
 set(STURDR_SRCS
     src/acquisition.cpp
+    src/beamsteer.cpp
     src/channel-gps-l1ca.cpp
     src/data-type-adapters.cpp
     src/discriminator.cpp

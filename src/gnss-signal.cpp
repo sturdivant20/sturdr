@@ -69,15 +69,18 @@ void AccumulateEPL(
     v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * sample;
 
     // early
-    v_code = code[static_cast<uint64_t>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
     E += (v_code * v_carr);
 
     // late
-    v_code = code[static_cast<uint64_t>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
     L += (v_code * v_carr);
 
     // prompt
-    v_code = code[static_cast<uint64_t>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
     if (samp_remaining > half_samp) {
       P1 += (v_code * v_carr);
     } else {
@@ -120,7 +123,7 @@ Eigen::VectorXcd CodeNCO(
 }
 Eigen::VectorXcd CodeNCO(
     const bool code[1023], const double &code_freq, const double &samp_freq, double &rem_phase) {
-  uint64_t n_samp = std::ceil((1023.0 - rem_phase) / code_freq * samp_freq);
+  uint64_t n_samp = static_cast<uint64_t>(std::ceil((1023.0 - rem_phase) / code_freq * samp_freq));
   return CodeNCO(code, code_freq, samp_freq, rem_phase, n_samp);
 }
 

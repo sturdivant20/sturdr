@@ -18,9 +18,11 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <navtools/constants.hpp>
 #include <satutils/code-gen.hpp>
 #include <satutils/gnss-constants.hpp>
+#include <string>
 
 #include "sturdr/acquisition.hpp"
 #include "sturdr/discriminator.hpp"
@@ -38,7 +40,6 @@ ChannelGpsL1ca::ChannelGpsL1ca(
     std::shared_ptr<bool> running,
     std::shared_ptr<Eigen::VectorXcd> shared_array,
     std::shared_ptr<ConcurrentBarrier> start_barrier,
-    std::shared_ptr<ConcurrentBarrier> end_barrier,
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
     FftPlans &fftw_plans,
@@ -49,7 +50,6 @@ ChannelGpsL1ca::ChannelGpsL1ca(
           running,
           shared_array,
           start_barrier,
-          end_barrier,
           eph_queue,
           nav_queue,
           fftw_plans,
@@ -98,7 +98,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
   log_->info(
       "SturDR Channel {} initialized to GPS{}", file_pkt_.Header.ChannelNum, file_pkt_.Header.SVID);
 
-  std::fill(std::begin(bit_sync_hist_), std::end(bit_sync_hist_), 0);
+  std::fill(std::begin(bit_sync_hist_), std::end(bit_sync_hist_), 1);
 
   beta_ = navtools::LIGHT_SPEED<> / satutils::GPS_CA_CODE_RATE<>;
   lambda_ = navtools::LIGHT_SPEED<> / (satutils::GPS_L1_FREQUENCY<> * navtools::TWO_PI<>);
@@ -145,7 +145,8 @@ void ChannelGpsL1ca::Acquire() {
   // test for success
   int max_peak_idx[2];
   double metric;
-  GlrtTest(corr_map, max_peak_idx, metric, shm_->segment(shm_ptr_, total_samp_));
+  // GlrtTest(corr_map, max_peak_idx, metric, shm_->segment(shm_ptr_, total_samp_));
+  Peak2NoiseFloorTest(corr_map, max_peak_idx, metric);
 
   if (metric < conf_.acquisition.threshold) {
     // --- FAILURE ---
@@ -176,18 +177,18 @@ void ChannelGpsL1ca::Acquire() {
     // --- SUCCESS ---
     file_pkt_.ChannelStatus = ChannelState::TRACKING;
     file_pkt_.Doppler =
-        -conf_.acquisition.doppler_range + max_peak_idx[0] * conf_.acquisition.doppler_step;
+        -conf_.acquisition.doppler_range + max_peak_idx[1] * conf_.acquisition.doppler_step;
     nav_pkt_.Psrdot = -lambda_ * carr_doppler_;
     log_->info(
         "{}: GPS{} acquired! Doppler (Hz) = {:.0f}, Code Phase (samp) = {:d}, metric = {:.1f}",
         file_pkt_.Header.ChannelNum,
         file_pkt_.Header.SVID,
         file_pkt_.Doppler,
-        max_peak_idx[1],
+        max_peak_idx[0],
         metric);
 
     // update file pointer
-    shm_ptr_ += (total_samp_ - samp_per_ms_ + static_cast<uint64_t>(max_peak_idx[1]));
+    shm_ptr_ += (total_samp_ - samp_per_ms_ + static_cast<uint64_t>(max_peak_idx[0]));
     shm_ptr_ %= shm_file_size_samp_;
 
     // initialize tracking
@@ -201,6 +202,12 @@ void ChannelGpsL1ca::Acquire() {
         satutils::GPS_CA_CODE_RATE<>);
     NewCodePeriod();
     file_pkt_.TrackingStatus |= TrackingFlags::ACQUIRED;
+
+    // std::string fname = "Channel_" + std::to_string(file_pkt_.Header.ChannelNum) + "_GPS" +
+    //                     std::to_string(file_pkt_.Header.SVID);
+    // std::ofstream file(fname, std::ios::binary);
+    // file.write(reinterpret_cast<char *>(corr_map.data()), corr_map.size() * sizeof(double));
+    // file.close();
 
     // begin tracking
     Track();
@@ -260,7 +267,7 @@ void ChannelGpsL1ca::Integrate(const uint64_t &samp_to_read) {
       P1_,
       P2_,
       L_);
-  P_ += (P1_ + P2_);
+  // P_ += (P1_ + P2_);
 
   // move forward in buffer
   shm_ptr_ += samp_to_read;
@@ -269,6 +276,9 @@ void ChannelGpsL1ca::Integrate(const uint64_t &samp_to_read) {
 
 // *=== Dump ===*
 void ChannelGpsL1ca::Dump() {
+  // combine prompt sections
+  P_ = P1_ + P2_;
+
   // check if navigation data needs to be parsed
   if (!(file_pkt_.TrackingStatus & TrackingFlags::EPH_DECODED)) {
     // ephemeris is not decoded
@@ -277,12 +287,14 @@ void ChannelGpsL1ca::Dump() {
       Demodulate();
     } else {
       // attempt to synchronize to data bits
-      if (NavDataSync()) return;
+      if (NavDataSync()) {
+        return;
+      }
     }
   }
 
   // lock detectors
-  LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_);
+  LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
 
   // discriminators
   double chip_err = DllNneml2(E_, L_);            // [chips]
@@ -338,6 +350,7 @@ void ChannelGpsL1ca::Dump() {
   // begin next nco period
   int_per_cnt_ += T_ms_;
   NewCodePeriod();
+  Status();
 
   // reset correlators to zero
   P_old_ = P_;
@@ -346,6 +359,62 @@ void ChannelGpsL1ca::Dump() {
   L_ = 0.0;
   P1_ = 0.0;
   P2_ = 0.0;
+}
+
+// *=== Status ===*
+void ChannelGpsL1ca::Status() {
+  // update tracking status
+  if (code_lock_) {
+    file_pkt_.TrackingStatus |= TrackingFlags::CODE_LOCK;
+  } else {
+    file_pkt_.TrackingStatus &= ~TrackingFlags::CODE_LOCK;
+  }
+  if (carr_lock_) {
+    file_pkt_.TrackingStatus |= TrackingFlags::CARRIER_LOCK;
+  } else {
+    file_pkt_.TrackingStatus &= ~TrackingFlags::CARRIER_LOCK;
+  }
+
+  // mode 0: wide tracking - only check code lock and increment stage by 1
+  if (track_mode_ == 0) {
+    if (code_lock_) {
+      track_mode_ = 1;
+      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_standard, 2);
+      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_standard, 3);
+      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_standard, 2);
+      tap_space_ = conf_.tracking.tap_epl_standard;
+    }
+  }
+
+  // mode 1: normal tracking
+  if (track_mode_ == 1) {
+    if (code_lock_ & carr_lock_) {
+      track_mode_ = 2;
+      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_narrow, 2);
+      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_narrow, 3);
+      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_narrow, 2);
+      tap_space_ = conf_.tracking.tap_epl_narrow;
+      file_pkt_.TrackingStatus |= TrackingFlags::FINE_LOCK;
+    } else if (!code_lock_) {
+      track_mode_ = 0;
+      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_wide, 2);
+      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_wide, 3);
+      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_wide, 2);
+      tap_space_ = conf_.tracking.tap_epl_wide;
+    }
+  }
+
+  // mode 2: narrow tracking
+  if (track_mode_ == 2) {
+    if (!(code_lock_ & carr_lock_)) {
+      track_mode_ = 1;
+      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_standard, 2);
+      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_standard, 3);
+      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_standard, 2);
+      tap_space_ = conf_.tracking.tap_epl_standard;
+      file_pkt_.TrackingStatus &= ~TrackingFlags::FINE_LOCK;
+    }
+  }
 }
 
 // *=== NavDataSync ===*
@@ -360,8 +429,8 @@ bool ChannelGpsL1ca::NavDataSync() {
 
     if (int_per_cnt_ > (uint64_t)conf_.tracking.min_converg_time_ms) {
       // check for data lock
-      if (sorted_bit_sync_hist[19] > (4 * sorted_bit_sync_hist[18])) {
-        log_->info(
+      if (sorted_bit_sync_hist[19] >= (4 * sorted_bit_sync_hist[18])) {
+        log_->debug(
             "SturDR Channel {}: GPS{} data bit sync! cnt_ = {}",
             file_pkt_.Header.ChannelNum,
             file_pkt_.Header.SVID,
@@ -372,15 +441,23 @@ bool ChannelGpsL1ca::NavDataSync() {
         T_ms_ = 20;
         P1_ += P2_;
         P2_ = 0.0;
-        NewCodePeriod();
+        // NewCodePeriod();
+        uint64_t tmp_samp = total_samp_;
+        double code_phase_step =
+            (satutils::GPS_CA_CODE_RATE<> + code_doppler_) / conf_.rfsignal.samp_freq;
+        total_samp_ = static_cast<uint64_t>(std::ceil(
+            (static_cast<double>(T_ms_ * satutils::GPS_CA_CODE_LENGTH) - file_pkt_.CodePhase) /
+            code_phase_step));
+        half_samp_ = static_cast<uint64_t>(std::round(0.5 * static_cast<double>(total_samp_)));
+        samp_remaining_ = total_samp_ - tmp_samp;
         file_pkt_.TrackingStatus |= TrackingFlags::BIT_SYNC;
-
-        // TODO: make this dynamically happen
-        tap_space_ = conf_.tracking.tap_epl_narrow;
-        w0d_ = NaturalFrequency(conf_.tracking.dll_bw_narrow, 2);
-        w0p_ = NaturalFrequency(conf_.tracking.pll_bw_narrow, 3);
-        w0f_ = NaturalFrequency(conf_.tracking.fll_bw_narrow, 2);
         return true;
+
+      } else if (std::any_of(std::begin(bit_sync_hist_), std::end(bit_sync_hist_), [](int num) {
+                   return num > 5;
+                 })) {
+        // reset occasionally to make it plausible for the bit sync to succeed
+        std::fill(std::begin(bit_sync_hist_), std::end(bit_sync_hist_), 1);
       }
     }
   }
@@ -398,6 +475,11 @@ void ChannelGpsL1ca::Demodulate() {
     nav_pkt_.Week = file_pkt_.Week;
     nav_pkt_.ToW = file_pkt_.ToW;
     file_pkt_.TrackingStatus |= TrackingFlags::TOW_DECODED;
+    file_pkt_.TrackingStatus |= TrackingFlags::SUBFRAME_SYNC;
+    // log_->info(
+    //     "SturDR Channel {}: GPS{} parsed a subframe!",
+    //     eph_pkt_.Header.ChannelNum,
+    //     eph_pkt_.Header.SVID);
   }
 
   // check if all subframes have been parsed

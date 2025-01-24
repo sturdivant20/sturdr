@@ -15,10 +15,13 @@
 
 #include "sturdr/acquisition.hpp"
 
+#include <Eigen/src/Core/GlobalFunctions.h>
+#include <Eigen/src/Core/Matrix.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
 #include <exception>
+#include <iostream>
 #include <navtools/constants.hpp>
 
 #include "sturdr/fftw-wrapper.hpp"
@@ -41,9 +44,9 @@ AcquisitionSetup InitAcquisitionMatrices(
   // create fft plans (shared across all threads)
   // acq_setup.fft = sturdr::Create1dFftPlan(samp_per_ms, true);
   // acq_setup.ifft = sturdr::Create1dFftPlan(samp_per_ms, false);
-  acq_setup.fft = sturdr::CreateManyFftPlan(32, samp_per_ms, true);
-  acq_setup.fft_many = sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, true);
-  acq_setup.ifft_many = sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, false);
+  acq_setup.fft = sturdr::CreateManyFftPlanRowWise(32, samp_per_ms, true);
+  acq_setup.fft_many = sturdr::CreateManyFftPlanRowWise(n_dopp_bins, samp_per_ms, true);
+  acq_setup.ifft_many = sturdr::CreateManyFftPlanRowWise(n_dopp_bins, samp_per_ms, false);
 
   // Doppler bins
   Eigen::VectorXd dopp_bins =
@@ -107,10 +110,11 @@ Eigen::MatrixXd PcpsSearch(
     }
 
     // sum normalized power noncoherently
-    corr_map += (coh_sum / samp_per_code).cwiseAbs2();
+    corr_map += (coh_sum / (samp_per_code * c_per)).cwiseAbs2();
   }
   return corr_map;
 }
+
 Eigen::MatrixXd PcpsSearch(
     const FftPlans &p,
     const Eigen::VectorXcd &rfdata,
@@ -124,55 +128,58 @@ Eigen::MatrixXd PcpsSearch(
     const uint8_t &nc_per) {
   try {
     // Doppler bins
-    uint64_t n_dopp_bins = static_cast<uint64_t>(2.0 * d_range / d_step + 1.0);
+    uint64_t n_bins = 2 * static_cast<uint64_t>(d_range / d_step) + 1;
     Eigen::VectorXd dopp_bins =
-        Eigen::VectorXd::LinSpaced(n_dopp_bins, -d_range, d_range).array() + intmd_freq;
+        Eigen::VectorXd::LinSpaced(n_bins, -d_range, d_range).array() + intmd_freq;
 
     // Initialize code replica
+    uint64_t n_samp = static_cast<uint64_t>(samp_freq) / 1000;
     double rem_phase = 0.0;
-    Eigen::VectorXcd code_up = CodeNCO(code.data(), code_freq, samp_freq, rem_phase);
-    uint64_t samp_per_code = code_up.size();
+    Eigen::VectorXcd code_up = CodeNCO(code.data(), code_freq, samp_freq, rem_phase, n_samp);
+    ExecuteFftPlan(p.fft, code_up, code_up);
+    code_up = code_up.conjugate() / static_cast<double>(n_samp);
 
     // initialize carrier replica
-    Eigen::VectorXd carr_phase_pts =
-        Eigen::VectorXd::LinSpaced(samp_per_code, 0.0, static_cast<double>(samp_per_code - 1)) *
-        (navtools::TWO_PI<double> / samp_freq);
-    Eigen::MatrixXcd carr_up =
-        -navtools::COMPLEX_I<double> * (dopp_bins * carr_phase_pts.transpose());
+    Eigen::VectorXd phases =
+        Eigen::VectorXd::LinSpaced(n_samp, 0.0, static_cast<double>(n_samp - 1)) *
+        (navtools::TWO_PI<> / samp_freq);
+    // Eigen::MatrixXcd carr_up = -navtools::COMPLEX_I<> * (dopp_bins * phases.transpose());
+    Eigen::MatrixXcd carr_up = -navtools::COMPLEX_I<> * (phases * dopp_bins.transpose());
     carr_up = carr_up.array().exp();
 
     // Allocate correlation results map
-    Eigen::MatrixXd corr_map = Eigen::MatrixXd::Zero(n_dopp_bins, samp_per_code);
-    Eigen::MatrixXcd coh_sum = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
-    Eigen::MatrixXcd x_carr = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
-
-    // Perform code FFT ahead of time (conjugate result)
-    ExecuteFftPlan(p.fft, code_up, code_up);
-    code_up = code_up.conjugate() / samp_per_code;
+    // Eigen::MatrixXd corr_map = Eigen::MatrixXd::Zero(n_bins, n_samp);
+    // Eigen::MatrixXcd coh_sum = Eigen::MatrixXcd::Zero(n_bins, n_samp);
+    // Eigen::MatrixXcd x_carr = Eigen::MatrixXcd::Zero(n_bins, n_samp);
+    Eigen::MatrixXd corr_map = Eigen::MatrixXd::Zero(n_samp, n_bins);
+    Eigen::MatrixXcd coh_sum = Eigen::MatrixXcd::Zero(n_samp, n_bins);
+    Eigen::MatrixXcd x_carr = Eigen::MatrixXcd::Zero(n_samp, n_bins);
 
     // Loop through each non-coherent period
     uint64_t i_sig = 0;
     for (uint8_t i_nc = 0; i_nc < nc_per; i_nc++) {
-      coh_sum = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
+      // coh_sum = Eigen::MatrixXcd::Zero(n_bins, n_samp);
+      coh_sum = Eigen::MatrixXcd::Zero(n_samp, n_bins);
 
       // Loop through each coherent period
       for (uint8_t j_c = 0; j_c < c_per; j_c++) {
         // Wiped carrier FFT
-        x_carr =
-            carr_up.array().rowwise() * rfdata.segment(i_sig, samp_per_code).array().transpose();
+        // x_carr = carr_up.array().rowwise() * rfdata.segment(i_sig, n_samp).array().transpose();
+        x_carr = carr_up.array().colwise() * rfdata.segment(i_sig, n_samp).array();
         ExecuteManyFftPlan(p.fft_many, x_carr, x_carr);
 
         // Combined Code-Wiped Carrier IFFT
-        x_carr = x_carr.array().rowwise() * code_up.array().transpose();
+        // x_carr = x_carr.array().rowwise() * code_up.array().transpose();
+        x_carr = x_carr.array().colwise() * code_up.array();
         ExecuteManyFftPlan(p.ifft_many, x_carr, x_carr);
 
         // coherent sum
         coh_sum += x_carr;  // x_carr.array() / n ??
-        i_sig += samp_per_code;
+        i_sig += n_samp;
       }
 
       // sum power noncoherently
-      corr_map += (coh_sum / samp_per_code).cwiseAbs2();
+      corr_map += (coh_sum / n_samp).cwiseAbs2();
     }
     return corr_map;
   } catch (std::exception &e) {
@@ -193,7 +200,7 @@ void Peak2NoiseFloorTest(const Eigen::MatrixXd &corr_map, int peak_idx[2], doubl
     double mu = corr_map.mean();
     double sigma = std::sqrt((corr_map.array() - mu).square().sum() / (corr_map.size() - 1));
 
-    // // One pass approximation
+    // One pass approximation
     // double peak = 0.0;
     // double s = 0.0;
     // double s2 = 0.0;
@@ -228,7 +235,7 @@ void GlrtTest(
     int peak_idx[2],
     double &metric,
     const Eigen::VectorXcd &rfdata) {
-  double K = corr_map.cols();
+  double K = corr_map.rows();
 
   // find the highest correlation peak
   double S = corr_map.maxCoeff(&peak_idx[0], &peak_idx[1]);
@@ -237,7 +244,7 @@ void GlrtTest(
   // double Phat = corr_map.mean();
   double Phat = rfdata.cwiseAbs2().mean();
 
-  metric = 2.0 * K * S / Phat;
+  metric = 2.0 * S * K / Phat;
 }
 
 }  // end namespace sturdr

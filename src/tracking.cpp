@@ -161,7 +161,8 @@ void TrackingKF::Init(
   x_ << init_carr_phase, init_carr_doppler, 0.0, init_code_phase, 0.0;
   // P_.diagonal() << navtools::PI_SQU<double> / 3.0, navtools::PI_SQU<> * 125e3, 1000.0, 1.0,
   // 100.0;
-  P_.diagonal() << navtools::PI_SQU<double> / 3.0, navtools::PI_SQU<> * 2000.0, 100.0, 0.1, 10.0;
+  P_.diagonal() << navtools::PI_SQU<double> / 3.0, navtools::PI_SQU<> * 62.5e3,
+      navtools::PI_SQU<> * 1e3, 5e-1, 5e2;
 
   // Initialize dynamic model
   // make_F(init_k, init_T);

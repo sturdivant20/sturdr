@@ -10,6 +10,7 @@
 
 #include "sturdr/sturdr.hpp"
 
+#include <fftw3.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/stopwatch.h>
@@ -78,16 +79,17 @@ SturDR::SturDR(const std::string yaml_fname)
       shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
       shm_{std::make_shared<Eigen::VectorXcd>(Eigen::VectorXcd::Zero(shm_file_size_samp_))},
       running_{std::make_shared<bool>(true)},
-      n_dopp_bins_{static_cast<uint64_t>(
-          2.0 * conf_.acquisition.doppler_range / conf_.acquisition.doppler_step + 1.0)},
+      n_dopp_bins_{
+          2 * static_cast<uint64_t>(
+                  conf_.acquisition.doppler_range / conf_.acquisition.doppler_step) +
+          1},
       fftw_plans_{
           Create1dFftPlan(samp_per_ms_, true),
           Create1dFftPlan(samp_per_ms_, false),
-          CreateManyFftPlan(n_dopp_bins_, samp_per_ms_, true),
-          CreateManyFftPlan(n_dopp_bins_, samp_per_ms_, false)},
+          CreateManyFftPlanColWise(samp_per_ms_, n_dopp_bins_, true),
+          CreateManyFftPlanColWise(samp_per_ms_, n_dopp_bins_, false)},
       prn_ptr_{1},
-      start_barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
-      end_barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
+      barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
       log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
       nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
       eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()},
@@ -143,6 +145,10 @@ SturDR::SturDR(const std::string yaml_fname)
 
 // *=== ~SturDR ===*
 SturDR::~SturDR() {
+  fftw_destroy_plan(fftw_plans_.fft);
+  fftw_destroy_plan(fftw_plans_.ifft);
+  fftw_destroy_plan(fftw_plans_.fft_many);
+  fftw_destroy_plan(fftw_plans_.ifft_many);
 }
 
 // *=== Start ===*
@@ -209,16 +215,7 @@ void SturDR::InitChannels() {
   gps_channels_.reserve(conf_.rfsignal.max_channels);
   for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
     gps_channels_.emplace_back(
-        conf_,
-        i,
-        running_,
-        shm_,
-        start_barrier_,
-        end_barrier_,
-        eph_queue_,
-        nav_queue_,
-        fftw_plans_,
-        get_new_prn_func);
+        conf_, i, running_, shm_, barrier_, eph_queue_, nav_queue_, fftw_plans_, get_new_prn_func);
     gps_channels_[i - 1].Start();
   }
 }
@@ -229,11 +226,13 @@ void SturDR::InitChannels() {
 template <typename T>
 void SturDR::Run() {
   spdlog::stopwatch sw;
-  log_->info("Starting SturDR");
+  log_->info("Starting SturDR with real input");
 
   // initialize rf data stream
   std::vector<T> rf_stream(shm_read_size_samp_);
-  bf_.fread<T>(rf_stream.data(), (int)shm_read_size_samp_);
+  for (int i = 0; i < 1; i++) {
+    bf_.fread<T>(rf_stream.data(), (int)shm_read_size_samp_);
+  }
   TypeToIDouble<T>(
       rf_stream.data(), shm_->segment(shm_ptr_, shm_read_size_samp_).data(), shm_read_size_samp_);
   shm_ptr_ += shm_read_size_samp_;
@@ -259,24 +258,20 @@ void SturDR::Run() {
     // check if time for new data to be parsed
     if (!(i % read_freq_ms)) {
       // ready to process data
-      start_barrier_->Wait();
+      barrier_->Wait();
 
       // read next signal data while channels are processing
-      bf_.fread(rf_stream.data(), shm_read_size_samp_);
+      bf_.fread<T>(rf_stream.data(), shm_read_size_samp_);
       TypeToIDouble<T>(
           rf_stream.data(),
           shm_->segment(shm_ptr_, shm_read_size_samp_).data(),
           shm_read_size_samp_);
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
-
-      // channels finished
-      end_barrier_->Wait();
     }
   }
   *running_ = false;
-  start_barrier_->NotifyComplete();
-  end_barrier_->NotifyComplete();
+  barrier_->NotifyComplete();
   nav_queue_->NotifyComplete();
   eph_queue_->NotifyComplete();
   for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
@@ -289,10 +284,14 @@ void SturDR::Run() {
 template <typename T>
 void SturDR::RunComplex() {
   spdlog::stopwatch sw;
+  log_->info("Starting SturDR with complex input");
 
   // initialize rf data stream
-  Eigen::Vector<std::complex<T>, Eigen::Dynamic> rf_stream(shm_read_size_samp_);
-  bf_.fread(rf_stream.data(), shm_read_size_samp_);
+  std::vector<std::complex<T>> rf_stream(shm_read_size_samp_);
+  for (int i = 0; i < 2; i++) {
+    bf_.freadc<T>(rf_stream.data(), (int)shm_read_size_samp_);
+  }
+
   ITypeToIDouble<T>(
       rf_stream.data(), shm_->segment(shm_ptr_, shm_read_size_samp_).data(), shm_read_size_samp_);
   shm_ptr_ += shm_read_size_samp_;
@@ -318,29 +317,26 @@ void SturDR::RunComplex() {
     // check if time for new data to be parsed
     if (!(i % read_freq_ms)) {
       // ready to process data
-      start_barrier_->Wait();
+      barrier_->Wait();
 
       // read next signal data while channels are processing
-      bf_.fread(rf_stream.data(), shm_read_size_samp_);
+      bf_.freadc<T>(rf_stream.data(), shm_read_size_samp_);
       ITypeToIDouble<T>(
           rf_stream.data(),
           shm_->segment(shm_ptr_, shm_read_size_samp_).data(),
           shm_read_size_samp_);
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
-
-      // channels finished
-      end_barrier_->Wait();
     }
   }
   *running_ = false;
-  start_barrier_->NotifyComplete();
-  end_barrier_->NotifyComplete();
+  barrier_->NotifyComplete();
   nav_queue_->NotifyComplete();
   eph_queue_->NotifyComplete();
   for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
     gps_channels_[i].Join();
   }
+  navigator_->Notify();
 }
 
 // Explicit instantiation of SturDR::Run

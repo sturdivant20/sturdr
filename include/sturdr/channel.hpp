@@ -51,8 +51,7 @@ class Channel {
   uint64_t shm_writer_ptr_;
   uint64_t shm_file_size_samp_;
   uint64_t shm_read_size_samp_;
-  std::shared_ptr<ConcurrentBarrier> b_start_;
-  std::shared_ptr<ConcurrentBarrier> b_end_;
+  std::shared_ptr<ConcurrentBarrier> bar_;
   std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> q_eph_;
   std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> q_nav_;
   std::shared_ptr<std::thread> thread_;
@@ -73,7 +72,6 @@ class Channel {
    * @param n             Channel ID number
    * @param running       Boolean for SturDR active state
    * @param start_barrier Synchronization for when new data is available
-   * @param end_barrier   Synchronization for when current data has been processed
    * @param eph_queue     Queue for sending parsed ephemerides
    * @param nav_queue     Queue for sending navigation updates
    * @param fftw_plans    Shared FFT plans for acquisition using fftw
@@ -85,7 +83,6 @@ class Channel {
       std::shared_ptr<bool> running,
       std::shared_ptr<Eigen::VectorXcd> shared_array,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
-      std::shared_ptr<ConcurrentBarrier> end_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
       FftPlans &fftw_plans,
@@ -101,8 +98,7 @@ class Channel {
         shm_writer_ptr_{0},
         shm_file_size_samp_{conf_.general.ms_chunk_size * samp_per_ms_},
         shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
-        b_start_{start_barrier},
-        b_end_{end_barrier},
+        bar_{start_barrier},
         q_eph_{eph_queue},
         q_nav_{nav_queue},
         // thread_{std::make_shared<std::thread>(&Channel::Run, this)},
@@ -152,7 +148,7 @@ class Channel {
    */
   void Run() {
     // wait for initial shm data to be added
-    b_start_->Wait();
+    bar_->Wait();
     UpdateShmWriterPtr();
 
     // continue processing data until SturDR ends
@@ -173,8 +169,7 @@ class Channel {
       q_nav_->push(nav_pkt_);
 
       // wait for new shm data
-      b_end_->Wait();
-      b_start_->Wait();
+      bar_->Wait();
       UpdateShmWriterPtr();
     }
   };

@@ -285,7 +285,6 @@ int main() {
   // Transmit time
   Eigen::Vector<double, 7> transmit_times =
       ToW.array() + (CodePhase.array() / satutils::GPS_CA_CODE_RATE<>);
-  console->info("transmit_times: [{}]\n", transmit_times.transpose());
 
   // 1. Calculate satellite positions
   Eigen::Matrix<double, 3, 7> sv_pos = Eigen::Matrix<double, 3, 7>::Zero();
@@ -303,6 +302,15 @@ int main() {
     psr_var(i) = BETA * BETA * sturdr::DllVariance(cno(i), T);
     psrdot_var(i) = LAMBDA * LAMBDA * sturdr::FllVariance(cno(i), T);
   }
+  console->info(
+      "transmit_times: [{:.9f}, {:.9f}, {:.9f}, {:.9f}, {:.9f}, {:.9f}, {:.9f}]\n",
+      transmit_times(0),
+      transmit_times(1),
+      transmit_times(2),
+      transmit_times(3),
+      transmit_times(4),
+      transmit_times(5),
+      transmit_times(6));
   console->info("sv_pos: [\n{}\n]", sv_pos);
   console->info("sv_vel: [\n{}\n]", sv_vel);
   console->info("sv_clk: [\n{}\n]\n", sv_clk);
@@ -315,7 +323,15 @@ int main() {
   Eigen::Vector<double, 7> psrdot =
       -LAMBDA * Doppler.array() + navtools::LIGHT_SPEED<double> * sv_clk.row(1).transpose().array();
 
-  console->info("psr: [{}]", psr.transpose());
+  console->info(
+      "psr: [{:.9f}, {:.9f}, {:.9f}, {:.9f}, {:.9f}, {:.9f}, {:.9f}]\n",
+      psr(0),
+      psr(1),
+      psr(2),
+      psr(3),
+      psr(4),
+      psr(5),
+      psr(6));
   console->info("psrdot: [{}]\n", psrdot.transpose());
 
   // 3. Least squares position estimation

@@ -37,7 +37,8 @@ void TypeToIDouble(const T in[], std::complex<double> out[], const int &len) {
 template <typename T>
 void ITypeToIDouble(const std::complex<T> in[], std::complex<double> out[], const int &len) {
   for (int i = 0; i < len; i++) {
-    out[i] = static_cast<std::complex<double>>(in[i].real(), in[i].imag());
+    out[i] =
+        std::complex<double>(static_cast<double>(in[i].real()), static_cast<double>(in[i].imag()));
   }
 }
 
