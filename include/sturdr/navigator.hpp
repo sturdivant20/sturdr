@@ -38,13 +38,14 @@ class Navigator {
    * @brief navigation parameters
    */
   Config conf_;
+  uint64_t file_ptr_;
+  uint64_t file_size_;
   uint16_t week_;
   double receive_time_;
   Eigen::Vector3d lla_;
   Eigen::Vector3d nedv_;
   double cb_;
   double cd_;
-  double T_;
   bool is_initialized_;
   sturdins::Kns kf_;
 
@@ -59,6 +60,8 @@ class Navigator {
   bool update_;
   std::shared_ptr<bool> running_;
   std::thread thread_;
+  std::vector<std::pair<std::shared_ptr<std::condition_variable>, std::shared_ptr<bool>>>
+      channel_cv_;
 
   /**
    * @brief spdlog loggers
@@ -132,13 +135,26 @@ class Navigator {
       const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
       const Eigen::Ref<const Eigen::VectorXd> &psrdot,
       const Eigen::Ref<const Eigen::VectorXd> &psr_var,
-      const Eigen::Ref<const Eigen::VectorXd> &psrdot_var);
+      const Eigen::Ref<const Eigen::VectorXd> &psrdot_var,
+      const uint64_t &d_samp);
 
   /**
    * *=== VectorNavSolution ===*
    * @brief propagates navigation with 'vector' navigation techniques
    */
   void VectorNavSolution();
+
+  /**
+   * *=== UpdateShmWriterPtr ===*
+   * @brief Keeps track of where the shm_ writer is so channel does not read more than is written
+   */
+  void UpdateFilePtr(const uint64_t &d_samp);
+
+  /**
+   * *=== UnreadSampleCount ===*
+   * @brief Returns the difference between shm_write_ptr_ and shm_
+   */
+  uint64_t GetDeltaSamples(const uint64_t &new_file_ptr);
 };
 
 }  // namespace sturdr

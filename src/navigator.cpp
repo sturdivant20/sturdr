@@ -39,12 +39,14 @@ Navigator::Navigator(
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> &eph_queue,
     std::shared_ptr<bool> &running)
     : conf_{conf},
+      file_ptr_{0},
+      file_size_{
+          conf_.general.ms_chunk_size * static_cast<uint64_t>(conf_.rfsignal.samp_freq) / 1000},
       receive_time_{0.0},
       lla_{Eigen::Vector3d::Zero()},
       nedv_{Eigen::Vector3d::Zero()},
       cb_{0.0},
       cd_{0.0},
-      T_{1.0 / static_cast<double>(conf_.navigation.meas_freq)},
       is_initialized_{false},
       nav_queue_{nav_queue},
       eph_queue_{eph_queue},
@@ -52,25 +54,6 @@ Navigator::Navigator(
       running_{running},
       thread_{std::thread(&Navigator::NavigationThread, this)},
       log_{spdlog::get("sturdr-console")} {
-  // nav_log_{spdlog::basic_logger_st(
-  //     "sturdr-navigation-log",
-  //     conf_.general.out_folder + "/" + conf_.general.scenario + "/Navigation_Log.csv",
-  //     true)},
-  // eph_log_{spdlog::basic_logger_st(
-  //     "sturdr-ephemeris-log",
-  //     conf_.general.out_folder + "/" + conf_.general.scenario + "/Ephemeris_Log.csv",
-  //     true)} {
-  // // initialize navigation results logger
-  // nav_log_->set_pattern("%v");
-  // nav_log_->info(
-  //     "Week,ToW [s],Lat [deg],Lon [deg],Alt [m],vN [m/s],vE [m/s],vD [m/s],b [m],bdot [m/s]");
-
-  // // initialize ephemeris logger
-  // eph_log_->set_pattern("%v");
-  // eph_log_->info(
-  //     "SVID,iode,iodc,toe,toc,tgd,af2,af1,af0,e,sqrtA,deltan,m0,omega0,omega,omegaDot,i0,iDot,"
-  //     "cuc,cus,cic,cis,crc,crs,ura,health");
-
   // set known parameters for kalman filter
   sturdins::NavigationClock clk = sturdins::GetNavClock(conf_.navigation.clock_model);
   kf_.SetClockSpec(clk.h0, clk.h1, clk.h2);
@@ -88,8 +71,10 @@ Navigator::~Navigator() {
 
 // *=== Execute ===*
 void Navigator::Notify() {
-  std::unique_lock<std::mutex> event_lock(event_mtx_);
-  update_ = true;
+  {
+    std::unique_lock<std::mutex> event_lock(event_mtx_);
+    update_ = true;
+  }
   cv_.notify_one();
 }
 
@@ -113,70 +98,83 @@ void Navigator::NavigationThread() {
     // TODO: figure out how to 'safely' wait for current queue items to process
     //  - meaning only the items from before the navigation update was requested
     while (nav_queue_->size() > 0);
-    std::unique_lock<std::mutex> lock(mtx_);
+    {
+      std::unique_lock<std::mutex> lock(mtx_);
 
-    // make sure enough satellites have provided ephemeris
-    std::vector<uint8_t> good_sv;
-    uint8_t num_sv = 0;
-    for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : channel_data_) {
-      if (it.second.HasData && it.second.HasEphem) {
-        good_sv.push_back(it.first);
-        num_sv++;
-      }
-    }
-
-    if (num_sv > 3) {
-      // perform navigation update
-      Eigen::MatrixXd sv_pos(3, num_sv);
-      Eigen::MatrixXd sv_vel(3, num_sv);
-      Eigen::Vector3d sv_acc;
-      Eigen::Vector3d sv_clk;
-      Eigen::VectorXd psr(num_sv);
-      Eigen::VectorXd psrdot(num_sv);
-      Eigen::VectorXd psr_var(num_sv);
-      Eigen::VectorXd psrdot_var(num_sv);
-      Eigen::VectorXd transmit_time(num_sv);
-
-      // get satellite position information
-      for (uint8_t i = 0; i < num_sv; i++) {
-        uint8_t it = good_sv[i];
-        transmit_time(i) = channel_data_[it].ToW + channel_data_[it].CodePhaseSec;
-        channel_data_[it].Sv.CalcNavStates<false>(
-            sv_clk, sv_pos.col(i), sv_vel.col(i), sv_acc, transmit_time(i));
-
-        // correct transmit times/drifts for satellite biases
-        transmit_time(i) += (channel_data_[it].Sv.tgd - sv_clk(0));
-        psrdot(i) = channel_data_[it].Psrdot + navtools::LIGHT_SPEED<> * sv_clk(1);
-
-        // reported variances from tracking loops
-        psr_var(i) = channel_data_[it].PsrVar;
-        psrdot_var(i) = channel_data_[it].PsrdotVar;
+      // make sure enough satellites have provided ephemeris
+      std::vector<uint8_t> good_sv;
+      uint8_t num_sv = 0;
+      for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : channel_data_) {
+        if (it.second.HasData && it.second.HasEphem) {
+          good_sv.push_back(it.first);
+          num_sv++;
+        }
       }
 
-      // run correct navigation update
-      if (is_initialized_) {
-        ScalarNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var);
-      } else {
-        InitNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var);
-        week_ = channel_data_[good_sv[0]].Week;
-      }
+      if (num_sv > 3) {
+        // perform navigation update
+        Eigen::MatrixXd sv_pos(3, num_sv);
+        Eigen::MatrixXd sv_vel(3, num_sv);
+        Eigen::Vector3d sv_acc;
+        Eigen::Vector3d sv_clk;
+        Eigen::VectorXd psr(num_sv);
+        Eigen::VectorXd psrdot(num_sv);
+        Eigen::VectorXd psr_var(num_sv);
+        Eigen::VectorXd psrdot_var(num_sv);
+        Eigen::VectorXd transmit_time(num_sv);
+        Eigen::VectorXd file_ptrs(num_sv);
 
-      // log results
-      log_->info("\tLLA:\t{:.8f}, {:.8f}, {:.1f}", lla_(0), lla_(1), lla_(2));
-      log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
-      log_->info("\tCLK:\t{:.1f}, {:.3f}", cb_, cd_);
-      nav_log->info(
-          "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
-          week_,
-          receive_time_,
-          lla_(0),
-          lla_(1),
-          lla_(2),
-          nedv_(0),
-          nedv_(1),
-          nedv_(2),
-          cb_,
-          cd_);
+        // get satellite position information
+        for (uint8_t i = 0; i < num_sv; i++) {
+          uint8_t it = good_sv[i];
+          file_ptrs(i) = channel_data_[it].FilePtr;
+
+          transmit_time(i) = channel_data_[it].ToW +
+                             channel_data_[it].CodePhase / channel_data_[it].ChipRate +
+                             channel_data_[it].Sv.tgd;  //! FOR GPS L1CA
+          channel_data_[it].Sv.CalcNavStates<false>(
+              sv_clk, sv_pos.col(i), sv_vel.col(i), sv_acc, transmit_time(i));
+
+          // correct transmit times/drifts for satellite biases (FOR GPS L1CA)
+          transmit_time(i) -= sv_clk(0);
+          psrdot(i) = -channel_data_[it].Lambda * channel_data_[it].Doppler +
+                      navtools::LIGHT_SPEED<> * sv_clk(1);
+
+          // reported variances from tracking loops
+          psr_var(i) = channel_data_[it].PsrVar;
+          psrdot_var(i) = channel_data_[it].PsrdotVar;
+        }
+
+        // run correct navigation update
+        if (is_initialized_) {
+          uint64_t d_samp = GetDeltaSamples(file_ptrs.minCoeff());
+          std::cout << "d_samp: " << d_samp << "\n";
+          ScalarNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var, d_samp);
+          UpdateFilePtr(d_samp);
+        } else {
+          InitNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var);
+          week_ = channel_data_[good_sv[0]].Week;
+          file_ptr_ = file_ptrs.minCoeff();
+        }
+        std::cout << "file_ptr_: " << file_ptr_ << "\n";
+
+        // log results
+        log_->info("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
+        log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
+        log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
+        nav_log->info(
+            "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
+            week_,
+            receive_time_,
+            lla_(0),
+            lla_(1),
+            lla_(2),
+            nedv_(0),
+            nedv_(1),
+            nedv_(2),
+            cb_,
+            cd_);
+      }
     }
 
     // wait for navigation update
@@ -185,49 +183,74 @@ void Navigator::NavigationThread() {
     cv_.wait(event_lock, [this] { return update_ || !*running_; });
   }
 
+  // kill listener threads
   nav_packet_t.join();
   eph_packet_t.join();
+
+  // make sure no channels get stuck waiting for vector updates
+  for (std::pair<std::shared_ptr<std::condition_variable>, std::shared_ptr<bool>> &it :
+       channel_cv_) {
+    *it.second = true;
+    it.first->notify_all();
+  }
 }
 
 // *=== ChannelNavPacketListener ===*
 void Navigator::ChannelNavPacketListener() {
   ChannelNavPacket packet;
   while (nav_queue_->pop(packet) && *running_) {
-    std::unique_lock<std::mutex> lock(mtx_);
-    if (channel_data_.find(packet.Header.ChannelNum) != channel_data_.end()) {
-      // update map data
-      channel_data_[packet.Header.ChannelNum].Week = packet.Week;
-      channel_data_[packet.Header.ChannelNum].ToW = packet.ToW;
-      channel_data_[packet.Header.ChannelNum].CNo = packet.CNo;
-      channel_data_[packet.Header.ChannelNum].Psrdot = packet.Psrdot;
-      channel_data_[packet.Header.ChannelNum].CodePhaseSec = packet.CodePhaseSec;
-      channel_data_[packet.Header.ChannelNum].CarrierPhase = packet.CarrierPhase;
-      channel_data_[packet.Header.ChannelNum].DllDisc = packet.DllDisc;
-      channel_data_[packet.Header.ChannelNum].PllDisc = packet.PllDisc;
-      channel_data_[packet.Header.ChannelNum].FllDisc = packet.FllDisc;
-      channel_data_[packet.Header.ChannelNum].PsrVar = packet.PsrVar;
-      channel_data_[packet.Header.ChannelNum].PsrdotVar = packet.PsrdotVar;
-      channel_data_[packet.Header.ChannelNum].HasData = true;
-    } else {
-      // add new item to map
-      channel_data_.insert(
-          {packet.Header.ChannelNum,
-           ChannelNavData{
-               satutils::KeplerEphem<double>(),
-               packet.Week,
-               packet.ToW,
-               packet.CNo,
-               packet.Psrdot,
-               packet.CodePhaseSec,
-               packet.CarrierPhase,
-               packet.DllDisc,
-               packet.PllDisc,
-               packet.FllDisc,
-               packet.PsrVar,
-               packet.PsrdotVar,
-               false,
-               true}});
+    {
+      std::unique_lock<std::mutex> lock(mtx_);
+      std::unique_lock<std::mutex> channel_lock(*packet.mtx);
+      if (channel_data_.find(packet.Header.ChannelNum) != channel_data_.end()) {
+        // update map data
+        channel_data_[packet.Header.ChannelNum].FilePtr = packet.FilePtr;
+        channel_data_[packet.Header.ChannelNum].Week = packet.Week;
+        channel_data_[packet.Header.ChannelNum].ToW = packet.ToW;
+        channel_data_[packet.Header.ChannelNum].Doppler = packet.Doppler;
+        channel_data_[packet.Header.ChannelNum].CodePhase = packet.CodePhase;
+        channel_data_[packet.Header.ChannelNum].CarrierPhase = packet.CarrierPhase;
+        channel_data_[packet.Header.ChannelNum].DllDisc = packet.DllDisc;
+        channel_data_[packet.Header.ChannelNum].PllDisc = packet.PllDisc;
+        channel_data_[packet.Header.ChannelNum].FllDisc = packet.FllDisc;
+        channel_data_[packet.Header.ChannelNum].PsrVar = packet.PsrVar;
+        channel_data_[packet.Header.ChannelNum].PsrdotVar = packet.PsrdotVar;
+        channel_data_[packet.Header.ChannelNum].Beta = packet.Beta;
+        channel_data_[packet.Header.ChannelNum].Lambda = packet.Lambda;
+        channel_data_[packet.Header.ChannelNum].ChipRate = packet.ChipRate;
+        channel_data_[packet.Header.ChannelNum].CarrierFreq = packet.CarrierFreq;
+        channel_data_[packet.Header.ChannelNum].HasData = true;
+      } else {
+        // add new item to map
+        channel_data_.insert(
+            {packet.Header.ChannelNum,
+             ChannelNavData{
+                 packet.FilePtr,
+                 satutils::KeplerEphem<double>(),
+                 packet.Week,
+                 packet.ToW,
+                 packet.Doppler,
+                 packet.CodePhase,
+                 packet.CarrierPhase,
+                 packet.DllDisc,
+                 packet.PllDisc,
+                 packet.FllDisc,
+                 packet.PsrVar,
+                 packet.PsrdotVar,
+                 packet.Beta,
+                 packet.Lambda,
+                 packet.ChipRate,
+                 packet.CarrierFreq,
+                 false,
+                 true}});
+        channel_cv_.push_back({packet.cv, packet.update_complete});
+      }
+
+      // notify channel to continue
+      *packet.update_complete = true;
     }
+    // notify channel to continue
+    packet.cv->notify_one();
   }
 }
 
@@ -255,8 +278,14 @@ void Navigator::ChannelEphemPacketListener() {
       channel_data_.insert(
           {packet.Header.ChannelNum,
            ChannelNavData{
+               0,
                satutils::KeplerEphem<double>(packet.Eph),
                0,
+               0.0,
+               0.0,
+               0.0,
+               0.0,
+               0.0,
                0.0,
                0.0,
                0.0,
@@ -283,7 +312,7 @@ void Navigator::InitNavSolution(
     const Eigen::Ref<const Eigen::VectorXd> &psr_var,
     const Eigen::Ref<const Eigen::VectorXd> &psrdot_var) {
   // initial receive time guess
-  receive_time_ = transmit_time.maxCoeff() + conf_.navigation.nominal_transit_time;
+  receive_time_ = transmit_time.minCoeff() + conf_.navigation.nominal_transit_time;
   Eigen::VectorXd psr = (receive_time_ - transmit_time.array()) * navtools::LIGHT_SPEED<>;
 
   // std::cout << "transmit time: [ " << std::setprecision(17);
@@ -313,7 +342,7 @@ void Navigator::InitNavSolution(
   cd_ = x(7);
 
   // correct clock bias in receive time
-  receive_time_ -= cb_ / navtools::LIGHT_SPEED<>;
+  receive_time_ -= (cb_ / navtools::LIGHT_SPEED<>);
   cb_ = 0.0;
 
   // initialize kalman filter
@@ -332,9 +361,11 @@ void Navigator::ScalarNavSolution(
     const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
     const Eigen::Ref<const Eigen::VectorXd> &psrdot,
     const Eigen::Ref<const Eigen::VectorXd> &psr_var,
-    const Eigen::Ref<const Eigen::VectorXd> &psrdot_var) {
+    const Eigen::Ref<const Eigen::VectorXd> &psrdot_var,
+    const uint64_t &d_samp) {
   // propagate pseudoranges and rates
-  receive_time_ += T_;
+  double dt = (static_cast<double>(d_samp) / conf_.rfsignal.samp_freq);
+  receive_time_ += dt;
   Eigen::VectorXd psr = (receive_time_ - transmit_time.array()) * navtools::LIGHT_SPEED<>;
 
   // std::cout << "transmit time: [ " << std::setprecision(17);
@@ -355,27 +386,31 @@ void Navigator::ScalarNavSolution(
   // }
 
   // propagate navigation filter
-  kf_.Propagate(T_);
+  kf_.Propagate(dt);
   kf_.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
   lla_ << navtools::RAD2DEG<> * kf_.phi_, navtools::RAD2DEG<> * kf_.lam_, kf_.h_;
   nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
   cb_ = kf_.cb_;
   cd_ = kf_.cd_;
-
-  // // least squares
-  // Eigen::VectorXd x{Eigen::Vector<double, 8>::Zero()};
-  // Eigen::MatrixXd P{Eigen::Matrix<double, 8, 8>::Zero()};
-  // sturdins::GaussNewton(x, P, sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
-  // navtools::ecef2lla<double>(lla_, x.segment(0, 3));
-  // navtools::ecef2nedv<double>(nedv_, x.segment(3, 3), lla_);
-  // lla_(0) *= navtools::RAD2DEG<>;
-  // lla_(1) *= navtools::RAD2DEG<>;
-  // cb_ = x(6);
-  // cd_ = x(7);
 }
 
 // *=== VectorNavSolution ===*
 void Navigator::VectorNavSolution() {
+}
+
+// *=== UpdateFilePtr ===*
+void Navigator::UpdateFilePtr(const uint64_t &d_samp) {
+  file_ptr_ += d_samp;
+  file_ptr_ %= file_size_;
+}
+
+// *=== GetDeltaSamples ===*
+uint64_t Navigator::GetDeltaSamples(const uint64_t &new_file_ptr) {
+  if (file_ptr_ <= new_file_ptr) {
+    return new_file_ptr - file_ptr_;
+  } else {
+    return file_size_ - file_ptr_ + new_file_ptr;
+  }
 }
 
 }  // namespace sturdr

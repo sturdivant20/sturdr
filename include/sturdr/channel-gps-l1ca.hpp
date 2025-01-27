@@ -47,8 +47,6 @@ class ChannelGpsL1ca : public Channel {
   bool carr_lock_;
   double beta_sq_;
   double lambda_sq_;
-  double lambda_;
-  double beta_;
 
   /**
    * @brief Tracking loops

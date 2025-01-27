@@ -204,8 +204,8 @@ std::ostream& operator<<(std::ostream& os, const sturdr::ChannelNavPacket& c) {
   os << std::setprecision(17) << (int)c.Header.ChannelNum << ","
      << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
      << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID << (int)c.Week
-     << "," << c.ToW << "," << c.CNo << "," << c.Psrdot << "," << c.CodePhaseSec << ","
-     << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "\n";
+     << "," << c.ToW << "," << c.Doppler << "," << c.CodePhase << "," << c.CarrierPhase << c.DllDisc
+     << "," << c.PllDisc << "," << c.FllDisc << "\n";
   return os;
 }
 

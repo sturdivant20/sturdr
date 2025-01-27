@@ -32,6 +32,7 @@ SturDR::SturDR(const std::string yaml_fname)
            yp_.GetVar<std::string>("in_file"),
            yp_.GetVar<std::string>("out_folder"),
            spdlog::level::from_str(yp_.GetVar<std::string>("log_level")),
+           yp_.GetVar<uint64_t>("ms_to_skip"),
            yp_.GetVar<uint64_t>("ms_to_process"),
            yp_.GetVar<uint16_t>("ms_chunk_size"),
            yp_.GetVar<uint16_t>("ms_read_size"),
@@ -230,9 +231,8 @@ void SturDR::Run() {
 
   // initialize rf data stream
   std::vector<T> rf_stream(shm_read_size_samp_);
-  for (int i = 0; i < 1; i++) {
-    bf_.fread<T>(rf_stream.data(), (int)shm_read_size_samp_);
-  }
+  bf_.fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+  bf_.fread<T>(rf_stream.data(), shm_read_size_samp_);
   TypeToIDouble<T>(
       rf_stream.data(), shm_->segment(shm_ptr_, shm_read_size_samp_).data(), shm_read_size_samp_);
   shm_ptr_ += shm_read_size_samp_;
@@ -288,9 +288,8 @@ void SturDR::RunComplex() {
 
   // initialize rf data stream
   std::vector<std::complex<T>> rf_stream(shm_read_size_samp_);
-  for (int i = 0; i < 2; i++) {
-    bf_.freadc<T>(rf_stream.data(), (int)shm_read_size_samp_);
-  }
+  bf_.fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+  bf_.freadc<T>(rf_stream.data(), shm_read_size_samp_);
 
   ITypeToIDouble<T>(
       rf_stream.data(), shm_->segment(shm_ptr_, shm_read_size_samp_).data(), shm_read_size_samp_);

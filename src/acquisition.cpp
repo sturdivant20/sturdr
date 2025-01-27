@@ -144,8 +144,8 @@ Eigen::MatrixXd PcpsSearch(
         Eigen::VectorXd::LinSpaced(n_samp, 0.0, static_cast<double>(n_samp - 1)) *
         (navtools::TWO_PI<> / samp_freq);
     // Eigen::MatrixXcd carr_up = -navtools::COMPLEX_I<> * (dopp_bins * phases.transpose());
-    Eigen::MatrixXcd carr_up = -navtools::COMPLEX_I<> * (phases * dopp_bins.transpose());
-    carr_up = carr_up.array().exp();
+    Eigen::MatrixXcd carr_up =
+        (-navtools::COMPLEX_I<> * (phases * dopp_bins.transpose())).array().exp();
 
     // Allocate correlation results map
     // Eigen::MatrixXd corr_map = Eigen::MatrixXd::Zero(n_bins, n_samp);

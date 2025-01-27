@@ -77,6 +77,7 @@ set(STURDR_HDRS
     include/sturdr/structs-enums.hpp
     include/sturdr/sturdr.hpp
     include/sturdr/tracking.hpp
+    include/sturdr/vector-tracking.hpp
 )
 
 set(STURDR_SRCS
@@ -92,6 +93,7 @@ set(STURDR_SRCS
     src/structs-enums.cpp
     src/sturdr.cpp
     src/tracking.cpp
+    src/vector-tracking.cpp
 )
 
 # --- Create the C++ Library ---

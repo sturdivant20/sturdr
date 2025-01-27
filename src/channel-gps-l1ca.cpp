@@ -100,10 +100,12 @@ ChannelGpsL1ca::ChannelGpsL1ca(
 
   std::fill(std::begin(bit_sync_hist_), std::end(bit_sync_hist_), 1);
 
-  beta_ = navtools::LIGHT_SPEED<> / satutils::GPS_CA_CODE_RATE<>;
-  lambda_ = navtools::LIGHT_SPEED<> / (satutils::GPS_L1_FREQUENCY<> * navtools::TWO_PI<>);
-  beta_sq_ = beta_ * beta_;
-  lambda_sq_ = lambda_ * lambda_;
+  nav_pkt_.ChipRate = satutils::GPS_CA_CODE_RATE<>;
+  nav_pkt_.CarrierFreq = satutils::GPS_L1_FREQUENCY<> * navtools::TWO_PI<>;
+  nav_pkt_.Beta = navtools::LIGHT_SPEED<> / nav_pkt_.ChipRate;
+  nav_pkt_.Lambda = navtools::LIGHT_SPEED<> / nav_pkt_.CarrierFreq;
+  beta_sq_ = nav_pkt_.Beta * nav_pkt_.Beta;
+  lambda_sq_ = nav_pkt_.Lambda * nav_pkt_.Lambda;
 }
 
 // *=== ~ChannelGpsL1ca ===*
@@ -178,7 +180,7 @@ void ChannelGpsL1ca::Acquire() {
     file_pkt_.ChannelStatus = ChannelState::TRACKING;
     file_pkt_.Doppler =
         -conf_.acquisition.doppler_range + max_peak_idx[1] * conf_.acquisition.doppler_step;
-    nav_pkt_.Psrdot = -lambda_ * carr_doppler_;
+    nav_pkt_.Doppler = carr_doppler_;
     log_->info(
         "{}: GPS{} acquired! Doppler (Hz) = {:.0f}, Code Phase (samp) = {:d}, metric = {:.1f}",
         file_pkt_.Header.ChannelNum,
@@ -239,8 +241,8 @@ void ChannelGpsL1ca::Track() {
   }
 
   // save intermediate remainder phases for precise navigation
-  nav_pkt_.CodePhaseSec = rem_code_phase_ / satutils::GPS_CA_CODE_RATE<>;
-  nav_pkt_.Psrdot = -lambda_ * carr_doppler_;
+  nav_pkt_.CodePhase = rem_code_phase_;
+  nav_pkt_.Doppler = carr_doppler_;
   nav_pkt_.CarrierPhase = rem_carr_phase_;
 }
 
@@ -340,7 +342,6 @@ void ChannelGpsL1ca::Dump() {
 
   // update nav packet
   nav_pkt_.ToW = file_pkt_.ToW;
-  nav_pkt_.CNo = cno_;
   nav_pkt_.DllDisc = file_pkt_.DllDisc;
   nav_pkt_.PllDisc = file_pkt_.PllDisc;
   nav_pkt_.FllDisc = file_pkt_.FllDisc;

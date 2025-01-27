@@ -7,6 +7,8 @@
  * @date    January 2025
  * @ref     1. "Error Analysis of Carrier Phase Positioning Using Controlled Reception Pattern
  *              Antenna Arrays" (Master's thesis, Auburn University) - Josh Starling
+ *          2. "A Multi-Antenna Vector Tracking Beamsteering GPS Receiver for Robust Positioning"
+ *              (Master's Thesis, Auburn University) - Scott Burchfield
  * =======  ========================================================================================
  */
 

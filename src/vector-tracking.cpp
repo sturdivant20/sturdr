@@ -1,0 +1,102 @@
+/**
+ * *vector-tracking.cpp*
+ *
+ * =======  ========================================================================================
+ * @file    sturdr/vector-tracking.cpp
+ * @brief   Handles key vector tracking functionality
+ * @date    January 2025
+ * @ref     1. "GPS Carrier Phase Tracking in Difficult Environments Using Vector Tracking For
+ *              Precise Positioning and Vehicle Attitude Estimation" (Ph.D. Dissertation, Auburn
+ *              University) - Scott Martin
+ *          2. "Modeling and Performance Analysis of GPS Vector Tracking Algorithms" (Ph.D
+ *              Dissertation, Auburn University) - Matthew Lashley
+ *          3. "A GPS and GLONASS L1 Vector Tracking Software-Defined Receiver" (Masters Thesis,
+ *              Auburn University) - Tanner Watts
+ *          4. "A GPS L5 Software Defined Vector Tracking Receiver" (Masters Thesis, Auburn
+ *              University) - C. Anderson Givhan
+ * =======  ========================================================================================
+ */
+
+#include "sturdr/vector-tracking.hpp"
+
+#include <Eigen/src/Core/Matrix.h>
+
+#include <Eigen/Dense>
+#include <navtools/constants.hpp>
+#include <sturdins/least-squares.hpp>
+
+namespace sturdr {
+
+// *=== VectorDllNco ===*
+double VectorDllNco(double &chip_rate, double &T, double &theta, double &tR, double &tR_pred) {
+  return (chip_rate * T - theta) / (tR_pred - tR);
+}
+
+// *=== VectorFllNco ===*
+double VectorFllNco(double &intmd_freq, double &lambda, double &psrdot) {
+  return intmd_freq - (psrdot / lambda);
+}
+
+// *=== RunVDFllUpdate ===*
+VectorNcoUpdate RunVDFllUpdate(
+    uint64_t &d_samp,
+    double &samp_freq,
+    double &intmd_freq,
+    ChannelNavData &data,
+    double &tR,
+    double &T,
+    sturdins::Kns &filt) {
+  VectorNcoUpdate result;
+
+  // 1. Estimate satellite position, velocity, and clock from transmit time
+  Eigen::Vector3d sv_pos, sv_vel, sv_clk, sv_acc;
+  double tT = data.ToW + data.CodePhase / data.ChipRate + data.Sv.tgd;  //! FOR GPS L1CA
+  data.Sv.CalcNavStates<false>(sv_clk, sv_pos, sv_vel, sv_acc, tT);
+
+  // 2. Propage receive time by number of samples accumulated since last vector update
+  double dt = (static_cast<double>(d_samp) / samp_freq);
+  tR += dt;
+
+  // 3. Estimate scalar-tracking based measurements
+  tT -= sv_clk(0);
+  Eigen::VectorXd psr(1);
+  psr << (tR - tT) * navtools::LIGHT_SPEED<>;
+  Eigen::VectorXd psrdot(1);
+  psrdot << -data.Lambda * data.Doppler + navtools::LIGHT_SPEED<> * sv_clk(1);
+  Eigen::VectorXd psr_var(1);
+  psr_var << data.PsrVar;
+  Eigen::VectorXd psrdot_var(1);
+  psrdot_var << data.PsrdotVar;
+
+  // 4. Combine vector and scaler measurements
+  psr(0) += data.Beta * data.DllDisc;
+  psrdot(0) -= data.Lambda * data.FllDisc;
+
+  // 4. Run kalman filter (save predicted nav-state)
+  filt.Propagate(dt);
+  filt.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+
+  // 5. predict state at end of next code period (correct satellite pos/tR)
+  Eigen::Vector3d pos_pred, vel_pred;
+  double cb_pred, cd_pred;
+  filt.FalsePropagateState(pos_pred, vel_pred, cb_pred, cd_pred, T);
+  double tT_pred = data.ToW + T + data.Sv.tgd;  //! FOR GPS L1CA
+
+  // 6. Predict measurements
+  Eigen::Vector3d u, udot;
+  double psr_pred, psrdot_pred;
+  data.Sv.CalcNavStates<false>(sv_clk, sv_pos, sv_vel, sv_acc, tT_pred);
+  sturdins::RangeAndRate(
+      pos_pred, vel_pred, cb_pred, cd_pred, sv_pos, sv_vel, u, udot, psr_pred, psrdot_pred);
+  double tR_pred = tT_pred - sv_clk(0) + (psr_pred / navtools::LIGHT_SPEED<>);
+
+  // 7. Vector FLL update
+  result.FllNcoFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);
+
+  // 8. Vector DLL update
+  result.DllNcoFreq = VectorDllNco(data.ChipRate, T, data.CodePhase, tR, tR_pred);
+
+  return result;
+}
+
+}  // namespace sturdr

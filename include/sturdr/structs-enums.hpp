@@ -15,8 +15,11 @@
 #include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <satutils/ephemeris.hpp>
 #include <string>
 
@@ -82,6 +85,7 @@ struct GeneralConfig {
   std::string in_file;
   std::string out_folder;
   spdlog::level::level_enum log_level;
+  uint64_t ms_to_skip;
   uint64_t ms_to_process;
   uint16_t ms_chunk_size;
   uint16_t ms_read_size;
@@ -190,35 +194,46 @@ struct ChannelEphemPacket {
  */
 struct ChannelNavPacket {
   HeaderPacket Header;
+  uint64_t FilePtr{0};
   uint16_t Week{65535};
   double ToW{std::nan("1")};
-  double CNo{std::nan("1")};
-  double Psrdot{std::nan("1")};
-  double CodePhaseSec{std::nan("1")};
+  double Doppler{std::nan("1")};
+  double CodePhase{std::nan("1")};
   double CarrierPhase{std::nan("1")};
   double DllDisc{std::nan("1")};
   double PllDisc{std::nan("1")};
   double FllDisc{std::nan("1")};
   double PsrVar{std::nan("1")};
   double PsrdotVar{std::nan("1")};
+  double Beta{std::nan("1")};
+  double Lambda{std::nan("1")};
+  double ChipRate{std::nan("1")};
+  double CarrierFreq{std::nan("1")};
+  std::shared_ptr<std::mutex> mtx = std::make_shared<std::mutex>();
+  std::shared_ptr<std::condition_variable> cv = std::make_shared<std::condition_variable>();
+  std::shared_ptr<bool> update_complete = std::make_shared<bool>(false);
 };
 
 /**
  * @brief Data stored by navigation controller for each channel
  */
 struct ChannelNavData {
+  uint64_t FilePtr{0};
   satutils::KeplerEphem<double> Sv;
   uint16_t Week{65535};
   double ToW{std::nan("1")};
-  double CNo{std::nan("1")};
-  double Psrdot{std::nan("1")};
-  double CodePhaseSec{std::nan("1")};
+  double Doppler{std::nan("1")};
+  double CodePhase{std::nan("1")};
   double CarrierPhase{std::nan("1")};
   double DllDisc{std::nan("1")};
   double PllDisc{std::nan("1")};
   double FllDisc{std::nan("1")};
   double PsrVar{std::nan("1")};
   double PsrdotVar{std::nan("1")};
+  double Beta{std::nan("1")};
+  double Lambda{std::nan("1")};
+  double ChipRate{std::nan("1")};
+  double CarrierFreq{std::nan("1")};
   bool HasEphem{false};
   bool HasData{true};
 };
@@ -442,8 +457,8 @@ struct fmt::formatter<sturdr::ChannelNavPacket> : formatter<string_view> {
     oss << std::setprecision(17) << (int)c.Header.ChannelNum << ","
         << (sturdr::GnssSystem::GnssSystem)c.Header.Constellation << ","
         << (sturdr::GnssSignal::GnssSignal)c.Header.Signal << "," << (int)c.Header.SVID
-        << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Psrdot << "," << c.CodePhaseSec
-        << "," << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc;
+        << (int)c.Week << "," << c.ToW << "," << c.Doppler << "," << c.CodePhase << ","
+        << c.CarrierPhase << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc;
     return formatter<string_view>::format(oss.str(), ctx);
   };
 };
