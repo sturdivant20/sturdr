@@ -79,7 +79,7 @@ void RunVDFllUpdate(
   //         data.Beta * data.DllDisc,
   //         -data.Lambda * data.FllDisc);
   psr(0) -= data.Beta * data.DllDisc;  //! I DONT KNOW WHY THIS NEED TO BE SUBTRACTED
-  // psrdot(0) -= data.Lambda * data.FllDisc;
+  psrdot(0) -= data.Lambda * data.FllDisc;
 
   // 4. Run kalman filter (save predicted nav-state)
   filt.Propagate(dt);
@@ -110,15 +110,12 @@ void RunVDFllUpdate(
       pos_pred, vel_pred, cb_pred, cd_pred, sv_pos, sv_vel, u, udot, psr_pred, psrdot_pred);
   double tR_pred = tT_pred - sv_clk(0) + (psr_pred / navtools::LIGHT_SPEED<>);
   psrdot_pred -= navtools::LIGHT_SPEED<> * sv_clk(1);
-  spdlog::get("sturdr-console")
-      ->warn(
-          "psr: {:.1f}, psrdot: {:.3f}, Dll: {:.3f}, Fll: {:.3f}, psr_p: {:.1f}, psrdot_p: {:.3f}",
-          psr(0),
-          psrdot(0),
-          data.Beta * data.DllDisc,
-          -data.Lambda * data.FllDisc,
-          psr_pred,
-          psrdot_pred);
+  // spdlog::get("sturdr-console")
+  //     ->warn(
+  //         "psr: {:.1f}, psrdot: {:.3f}, Dll: {:.3f}, Fll: {:.3f}, psr_p: {:.1f}, psrdot_p:
+  //         {:.3f}", psr(0), psrdot(0), data.Beta * data.DllDisc, -data.Lambda * data.FllDisc,
+  //         psr_pred,
+  //         psrdot_pred);
   // spdlog::get("sturdr-console")->warn("pred - psr: {}, psrdot: {}", psr_pred, psrdot_pred);
 
   // 7. Vector FLL update
