@@ -20,8 +20,10 @@
 #include "sturdr/vector-tracking.hpp"
 
 #include <Eigen/src/Core/Matrix.h>
+#include <spdlog/spdlog.h>
 
 #include <Eigen/Dense>
+#include <iomanip>
 #include <navtools/constants.hpp>
 #include <sturdins/least-squares.hpp>
 
@@ -30,6 +32,7 @@ namespace sturdr {
 // *=== VectorDllNco ===*
 double VectorDllNco(double &chip_rate, double &T, double &theta, double &tR, double &tR_pred) {
   return (chip_rate * T - theta) / (tR_pred - tR);
+  // return (chip_rate * T) / (tR_pred - tR);
 }
 
 // *=== VectorFllNco ===*
@@ -38,7 +41,7 @@ double VectorFllNco(double &intmd_freq, double &lambda, double &psrdot) {
 }
 
 // *=== RunVDFllUpdate ===*
-VectorNcoUpdate RunVDFllUpdate(
+void RunVDFllUpdate(
     uint64_t &d_samp,
     double &samp_freq,
     double &intmd_freq,
@@ -46,8 +49,6 @@ VectorNcoUpdate RunVDFllUpdate(
     double &tR,
     double &T,
     sturdins::Kns &filt) {
-  VectorNcoUpdate result;
-
   // 1. Estimate satellite position, velocity, and clock from transmit time
   Eigen::Vector3d sv_pos, sv_vel, sv_clk, sv_acc;
   double tT = data.ToW + data.CodePhase / data.ChipRate + data.Sv.tgd;  //! FOR GPS L1CA
@@ -66,11 +67,19 @@ VectorNcoUpdate RunVDFllUpdate(
   Eigen::VectorXd psr_var(1);
   psr_var << data.PsrVar;
   Eigen::VectorXd psrdot_var(1);
-  psrdot_var << data.PsrdotVar;
+  psrdot_var << 1000.0 * data.PsrdotVar;
 
   // 4. Combine vector and scaler measurements
-  psr(0) += data.Beta * data.DllDisc;
-  psrdot(0) -= data.Lambda * data.FllDisc;
+  // spdlog::get("sturdr-console")
+  //     ->warn(
+  //         "tR: {}, psr: {:.1f}, psrdot: {:.3f}, Dll: {:.3f}, Fll: {:.3f}",
+  //         tR,
+  //         psr(0),
+  //         psrdot(0),
+  //         data.Beta * data.DllDisc,
+  //         -data.Lambda * data.FllDisc);
+  psr(0) -= data.Beta * data.DllDisc;  //! I DONT KNOW WHY THIS NEED TO BE SUBTRACTED
+  // psrdot(0) -= data.Lambda * data.FllDisc;
 
   // 4. Run kalman filter (save predicted nav-state)
   filt.Propagate(dt);
@@ -81,6 +90,17 @@ VectorNcoUpdate RunVDFllUpdate(
   double cb_pred, cd_pred;
   filt.FalsePropagateState(pos_pred, vel_pred, cb_pred, cd_pred, T);
   double tT_pred = data.ToW + T + data.Sv.tgd;  //! FOR GPS L1CA
+  // spdlog::get("sturdr-console")
+  //     ->info(
+  //         "x_pred - {:.2f}, {:.2f}, {:.2f}, {:.4f}, {:.4f}, {:.4f}, {:.2f}, {:.4f}",
+  //         pos_pred(0),
+  //         pos_pred(1),
+  //         pos_pred(2),
+  //         vel_pred(0),
+  //         vel_pred(1),
+  //         vel_pred(3),
+  //         cb_pred,
+  //         cd_pred);
 
   // 6. Predict measurements
   Eigen::Vector3d u, udot;
@@ -89,14 +109,31 @@ VectorNcoUpdate RunVDFllUpdate(
   sturdins::RangeAndRate(
       pos_pred, vel_pred, cb_pred, cd_pred, sv_pos, sv_vel, u, udot, psr_pred, psrdot_pred);
   double tR_pred = tT_pred - sv_clk(0) + (psr_pred / navtools::LIGHT_SPEED<>);
+  psrdot_pred -= navtools::LIGHT_SPEED<> * sv_clk(1);
+  spdlog::get("sturdr-console")
+      ->warn(
+          "psr: {:.1f}, psrdot: {:.3f}, Dll: {:.3f}, Fll: {:.3f}, psr_p: {:.1f}, psrdot_p: {:.3f}",
+          psr(0),
+          psrdot(0),
+          data.Beta * data.DllDisc,
+          -data.Lambda * data.FllDisc,
+          psr_pred,
+          psrdot_pred);
+  // spdlog::get("sturdr-console")->warn("pred - psr: {}, psrdot: {}", psr_pred, psrdot_pred);
 
   // 7. Vector FLL update
-  result.FllNcoFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);
+  *data.VTCarrierFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);
+  // *data.VTCarrierFreq = (psrdot(0) - psrdot_pred) / data.Lambda;
 
   // 8. Vector DLL update
-  result.DllNcoFreq = VectorDllNco(data.ChipRate, T, data.CodePhase, tR, tR_pred);
-
-  return result;
+  // spdlog::get("sturdr-console")
+  //     ->info(
+  //         "chip_rate: {}, theta: {}, T: {}, dtR: {}",
+  //         data.ChipRate,
+  //         data.CodePhase,
+  //         T,
+  //         tR_pred - tR);
+  *data.VTCodeRate = VectorDllNco(data.ChipRate, T, data.CodePhase, tR, tR_pred);
 }
 
 }  // namespace sturdr

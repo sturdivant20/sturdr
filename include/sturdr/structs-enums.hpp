@@ -209,9 +209,12 @@ struct ChannelNavPacket {
   double Lambda{std::nan("1")};
   double ChipRate{std::nan("1")};
   double CarrierFreq{std::nan("1")};
-  std::shared_ptr<std::mutex> mtx = std::make_shared<std::mutex>();
-  std::shared_ptr<std::condition_variable> cv = std::make_shared<std::condition_variable>();
-  std::shared_ptr<bool> update_complete = std::make_shared<bool>(false);
+  std::shared_ptr<std::mutex> mtx{std::make_shared<std::mutex>()};
+  std::shared_ptr<std::condition_variable> cv{std::make_shared<std::condition_variable>()};
+  std::shared_ptr<bool> update_complete{std::make_shared<bool>(false)};
+  std::shared_ptr<double> VTCodeRate{std::make_shared<double>(std::nan("1"))};
+  std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
+  std::shared_ptr<bool> is_vector{std::make_shared<bool>(false)};
 };
 
 /**
@@ -235,7 +238,10 @@ struct ChannelNavData {
   double ChipRate{std::nan("1")};
   double CarrierFreq{std::nan("1")};
   bool HasEphem{false};
-  bool HasData{true};
+  bool HasData{false};
+  bool ReadyForVT{false};
+  std::shared_ptr<double> VTCodeRate{std::make_shared<double>(std::nan("1"))};
+  std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
 };
 
 };  // end namespace sturdr

@@ -18,17 +18,25 @@
 
 #include "sturdr/navigator.hpp"
 
+#include <fmt/ranges.h>
+#include <spdlog/async.h>
+#include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <cmath>
+#include <cstdio>
+#include <memory>
 #include <mutex>
 #include <navtools/frames.hpp>
 #include <satutils/gnss-constants.hpp>
 #include <sturdins/least-squares.hpp>
 #include <sturdins/nav-clock.hpp>
+#include <vector>
 
 #include "navtools/constants.hpp"
 #include "satutils/ephemeris.hpp"
+#include "sturdr/structs-enums.hpp"
+#include "sturdr/vector-tracking.hpp"
 
 namespace sturdr {
 
@@ -48,6 +56,7 @@ Navigator::Navigator(
       cb_{0.0},
       cd_{0.0},
       is_initialized_{false},
+      is_vector_{false},
       nav_queue_{nav_queue},
       eph_queue_{eph_queue},
       update_{false},
@@ -85,95 +94,40 @@ void Navigator::NavigationThread() {
   std::thread eph_packet_t(&Navigator::ChannelEphemPacketListener, this);
 
   // initialize navigation logger
-  std::shared_ptr<spdlog::logger> nav_log = spdlog::basic_logger_st(
+  nav_log_ = spdlog::basic_logger_mt<spdlog::async_factory>(
       "sturdr-navigation-log",
       conf_.general.out_folder + "/" + conf_.general.scenario + "/Navigation_Log.csv",
       true);
-  nav_log->set_pattern("%v");
-  nav_log->info(
+  nav_log_->set_pattern("%v");
+  nav_log_->info(
       "Week,ToW [s],Lat [deg],Lon [deg],Alt [m],vN [m/s],vE [m/s],vD [m/s],b [m],bdot [m/s]");
 
   // do actual navigation work here
   while (*running_) {
     // TODO: figure out how to 'safely' wait for current queue items to process
     //  - meaning only the items from before the navigation update was requested
-    while (nav_queue_->size() > 0);
-    {
-      std::unique_lock<std::mutex> lock(mtx_);
-
-      // make sure enough satellites have provided ephemeris
-      std::vector<uint8_t> good_sv;
-      uint8_t num_sv = 0;
-      for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : channel_data_) {
-        if (it.second.HasData && it.second.HasEphem) {
-          good_sv.push_back(it.first);
-          num_sv++;
+    if (!is_vector_) {
+      while (nav_queue_->size() > 0) continue;
+      {
+        std::unique_lock<std::mutex> lock(mtx_);
+        if (NavigationUpdate()) {
+          // log results
+          log_->info("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
+          // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
+          // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
+          nav_log_->info(
+              "{},{},{},{},{},{},{},{},{},{}",
+              week_,
+              receive_time_,
+              lla_(0),
+              lla_(1),
+              lla_(2),
+              nedv_(0),
+              nedv_(1),
+              nedv_(2),
+              cb_,
+              cd_);
         }
-      }
-
-      if (num_sv > 3) {
-        // perform navigation update
-        Eigen::MatrixXd sv_pos(3, num_sv);
-        Eigen::MatrixXd sv_vel(3, num_sv);
-        Eigen::Vector3d sv_acc;
-        Eigen::Vector3d sv_clk;
-        Eigen::VectorXd psr(num_sv);
-        Eigen::VectorXd psrdot(num_sv);
-        Eigen::VectorXd psr_var(num_sv);
-        Eigen::VectorXd psrdot_var(num_sv);
-        Eigen::VectorXd transmit_time(num_sv);
-        Eigen::VectorXd file_ptrs(num_sv);
-
-        // get satellite position information
-        for (uint8_t i = 0; i < num_sv; i++) {
-          uint8_t it = good_sv[i];
-          file_ptrs(i) = channel_data_[it].FilePtr;
-
-          transmit_time(i) = channel_data_[it].ToW +
-                             channel_data_[it].CodePhase / channel_data_[it].ChipRate +
-                             channel_data_[it].Sv.tgd;  //! FOR GPS L1CA
-          channel_data_[it].Sv.CalcNavStates<false>(
-              sv_clk, sv_pos.col(i), sv_vel.col(i), sv_acc, transmit_time(i));
-
-          // correct transmit times/drifts for satellite biases (FOR GPS L1CA)
-          transmit_time(i) -= sv_clk(0);
-          psrdot(i) = -channel_data_[it].Lambda * channel_data_[it].Doppler +
-                      navtools::LIGHT_SPEED<> * sv_clk(1);
-
-          // reported variances from tracking loops
-          psr_var(i) = channel_data_[it].PsrVar;
-          psrdot_var(i) = channel_data_[it].PsrdotVar;
-        }
-
-        // run correct navigation update
-        if (is_initialized_) {
-          uint64_t d_samp = GetDeltaSamples(file_ptrs.minCoeff());
-          std::cout << "d_samp: " << d_samp << "\n";
-          ScalarNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var, d_samp);
-          UpdateFilePtr(d_samp);
-        } else {
-          InitNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var);
-          week_ = channel_data_[good_sv[0]].Week;
-          file_ptr_ = file_ptrs.minCoeff();
-        }
-        std::cout << "file_ptr_: " << file_ptr_ << "\n";
-
-        // log results
-        log_->info("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
-        log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
-        log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
-        nav_log->info(
-            "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
-            week_,
-            receive_time_,
-            lla_(0),
-            lla_(1),
-            lla_(2),
-            nedv_(0),
-            nedv_(1),
-            nedv_(2),
-            cb_,
-            cd_);
       }
     }
 
@@ -188,10 +142,9 @@ void Navigator::NavigationThread() {
   eph_packet_t.join();
 
   // make sure no channels get stuck waiting for vector updates
-  for (std::pair<std::shared_ptr<std::condition_variable>, std::shared_ptr<bool>> &it :
-       channel_cv_) {
-    *it.second = true;
-    it.first->notify_all();
+  for (ChannelSyncData &it : channel_sync_) {
+    *it.update_complete = true;
+    it.cv->notify_all();
   }
 }
 
@@ -199,70 +152,98 @@ void Navigator::NavigationThread() {
 void Navigator::ChannelNavPacketListener() {
   ChannelNavPacket packet;
   while (nav_queue_->pop(packet) && *running_) {
-    {
-      std::unique_lock<std::mutex> lock(mtx_);
-      std::unique_lock<std::mutex> channel_lock(*packet.mtx);
-      if (channel_data_.find(packet.Header.ChannelNum) != channel_data_.end()) {
-        // update map data
-        channel_data_[packet.Header.ChannelNum].FilePtr = packet.FilePtr;
-        channel_data_[packet.Header.ChannelNum].Week = packet.Week;
-        channel_data_[packet.Header.ChannelNum].ToW = packet.ToW;
-        channel_data_[packet.Header.ChannelNum].Doppler = packet.Doppler;
-        channel_data_[packet.Header.ChannelNum].CodePhase = packet.CodePhase;
-        channel_data_[packet.Header.ChannelNum].CarrierPhase = packet.CarrierPhase;
-        channel_data_[packet.Header.ChannelNum].DllDisc = packet.DllDisc;
-        channel_data_[packet.Header.ChannelNum].PllDisc = packet.PllDisc;
-        channel_data_[packet.Header.ChannelNum].FllDisc = packet.FllDisc;
-        channel_data_[packet.Header.ChannelNum].PsrVar = packet.PsrVar;
-        channel_data_[packet.Header.ChannelNum].PsrdotVar = packet.PsrdotVar;
-        channel_data_[packet.Header.ChannelNum].Beta = packet.Beta;
-        channel_data_[packet.Header.ChannelNum].Lambda = packet.Lambda;
-        channel_data_[packet.Header.ChannelNum].ChipRate = packet.ChipRate;
-        channel_data_[packet.Header.ChannelNum].CarrierFreq = packet.CarrierFreq;
-        channel_data_[packet.Header.ChannelNum].HasData = true;
-      } else {
-        // add new item to map
-        channel_data_.insert(
-            {packet.Header.ChannelNum,
-             ChannelNavData{
-                 packet.FilePtr,
-                 satutils::KeplerEphem<double>(),
-                 packet.Week,
-                 packet.ToW,
-                 packet.Doppler,
-                 packet.CodePhase,
-                 packet.CarrierPhase,
-                 packet.DllDisc,
-                 packet.PllDisc,
-                 packet.FllDisc,
-                 packet.PsrVar,
-                 packet.PsrdotVar,
-                 packet.Beta,
-                 packet.Lambda,
-                 packet.ChipRate,
-                 packet.CarrierFreq,
-                 false,
-                 true}});
-        channel_cv_.push_back({packet.cv, packet.update_complete});
-      }
+    std::unique_lock<std::mutex> lock(mtx_);
+    std::unique_lock<std::mutex> channel_lock(*packet.mtx);
+    if (channel_data_.find(packet.Header.ChannelNum) != channel_data_.end()) {
+      // update map data
+      channel_data_[packet.Header.ChannelNum].FilePtr = packet.FilePtr;
+      channel_data_[packet.Header.ChannelNum].Week = packet.Week;
+      channel_data_[packet.Header.ChannelNum].ToW = packet.ToW;
+      channel_data_[packet.Header.ChannelNum].Doppler = packet.Doppler;
+      channel_data_[packet.Header.ChannelNum].CodePhase = packet.CodePhase;
+      channel_data_[packet.Header.ChannelNum].CarrierPhase = packet.CarrierPhase;
+      channel_data_[packet.Header.ChannelNum].DllDisc = packet.DllDisc;
+      channel_data_[packet.Header.ChannelNum].PllDisc = packet.PllDisc;
+      channel_data_[packet.Header.ChannelNum].FllDisc = packet.FllDisc;
+      channel_data_[packet.Header.ChannelNum].PsrVar = packet.PsrVar;
+      channel_data_[packet.Header.ChannelNum].PsrdotVar = packet.PsrdotVar;
+      channel_data_[packet.Header.ChannelNum].Beta = packet.Beta;
+      channel_data_[packet.Header.ChannelNum].Lambda = packet.Lambda;
+      channel_data_[packet.Header.ChannelNum].ChipRate = packet.ChipRate;
+      channel_data_[packet.Header.ChannelNum].CarrierFreq = packet.CarrierFreq;
+      channel_data_[packet.Header.ChannelNum].HasData = true;
+      channel_data_[packet.Header.ChannelNum].VTCodeRate = packet.VTCodeRate;
+      channel_data_[packet.Header.ChannelNum].VTCarrierFreq = packet.VTCarrierFreq;
+      channel_data_[packet.Header.ChannelNum].ReadyForVT = false;
+      // channel_sync_[packet.Header.ChannelNum].cv = packet.cv;
+      // channel_sync_[packet.Header.ChannelNum].update_complete = packet.update_complete;
+      // channel_sync_[packet.Header.ChannelNum].is_vector = packet.is_vector;
+    } else {
+      // add new item to map
+      channel_data_.insert(
+          {packet.Header.ChannelNum,
+           ChannelNavData{
+               packet.FilePtr,
+               satutils::KeplerEphem<double>(),
+               packet.Week,
+               packet.ToW,
+               packet.Doppler,
+               packet.CodePhase,
+               packet.CarrierPhase,
+               packet.DllDisc,
+               packet.PllDisc,
+               packet.FllDisc,
+               packet.PsrVar,
+               packet.PsrdotVar,
+               packet.Beta,
+               packet.Lambda,
+               packet.ChipRate,
+               packet.CarrierFreq,
+               false,
+               true,
+               false,
+               packet.VTCodeRate,
+               packet.VTCarrierFreq}});
+      channel_sync_.push_back({packet.cv, packet.update_complete, packet.is_vector, false});
+    }
 
+    // run vector tracking updates
+    if (is_vector_) {
+      // log_->warn(
+      //     "Channel {} - GPS{:02d} requesting vector update (fd: {:.3f}, fd,ca: {:.3f}, ptr: {},"
+      //     "size: {}, Ready4VT: {})",
+      //     packet.Header.ChannelNum,
+      //     packet.Header.SVID,
+      //     packet.Doppler / navtools::TWO_PI<>,
+      //     *packet.VTCodeRate - satutils::GPS_CA_CODE_RATE<>,
+      //     packet.FilePtr,
+      //     file_size_,
+      //     channel_data_[packet.Header.ChannelNum].ReadyForVT);
+      channel_data_[packet.Header.ChannelNum].ReadyForVT = true;
+      // std::cout << "Ready4VT: [ ";
+      // for (auto &it : channel_data_) {
+      //   std::cout << it.second.ReadyForVT << " ";
+      // }
+      // std::cout << "]\n";
+      VectorNavSolution();
+
+    } else {
       // notify channel to continue
       *packet.update_complete = true;
+      packet.cv->notify_one();
     }
-    // notify channel to continue
-    packet.cv->notify_one();
   }
 }
 
 // *=== ChannelEphemPacketListener ===*
 void Navigator::ChannelEphemPacketListener() {
   // initialize ephemeris logger
-  std::shared_ptr<spdlog::logger> eph_log = spdlog::basic_logger_st(
+  eph_log_ = spdlog::basic_logger_st(
       "sturdr-ephemeris-log",
       conf_.general.out_folder + "/" + conf_.general.scenario + "/Ephemeris_Log.csv",
       true);
-  eph_log->set_pattern("%v");
-  eph_log->info(
+  eph_log_->set_pattern("%v");
+  eph_log_->info(
       "SVID,iode,iodc,toe,toc,tgd,af2,af1,af0,e,sqrtA,deltan,m0,omega0,omega,omegaDot,i0,iDot,"
       "cuc,cus,cic,cis,crc,crs,ura,health");
 
@@ -295,12 +276,86 @@ void Navigator::ChannelEphemPacketListener() {
                0.0,
                0.0,
                true,
-               false}});
+               false,
+               false,
+               std::make_shared<double>(0.0),
+               std::make_shared<double>(0.0)}});
     }
 
     // log ephemeris
-    eph_log->info("GPS{},{}", packet.Header.SVID, packet.Eph);
+    eph_log_->info("GPS{},{}", packet.Header.SVID, packet.Eph);
   }
+}
+
+// *=== NavigationUpdate ===
+bool Navigator::NavigationUpdate() {
+  // make sure enough satellites have provided ephemeris
+  std::vector<uint8_t> good_sv;
+  uint8_t num_sv = 0;
+  for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : channel_data_) {
+    if (it.second.HasData && it.second.HasEphem) {
+      good_sv.push_back(it.first);
+      num_sv++;
+    }
+  }
+
+  if (num_sv > 3) {
+    // perform navigation update
+    Eigen::MatrixXd sv_pos(3, num_sv);
+    Eigen::MatrixXd sv_vel(3, num_sv);
+    Eigen::Vector3d sv_acc;
+    Eigen::Vector3d sv_clk;
+    Eigen::VectorXd psr(num_sv);
+    Eigen::VectorXd psrdot(num_sv);
+    Eigen::VectorXd psr_var(num_sv);
+    Eigen::VectorXd psrdot_var(num_sv);
+    Eigen::VectorXd transmit_time(num_sv);
+    Eigen::VectorXd file_ptrs(num_sv);
+
+    // get satellite position information
+    for (uint8_t i = 0; i < num_sv; i++) {
+      uint8_t it = good_sv[i];
+      file_ptrs(i) = channel_data_[it].FilePtr;
+
+      transmit_time(i) = channel_data_[it].ToW +
+                         channel_data_[it].CodePhase / channel_data_[it].ChipRate +
+                         channel_data_[it].Sv.tgd;  //! FOR GPS L1CA
+      channel_data_[it].Sv.CalcNavStates<false>(
+          sv_clk, sv_pos.col(i), sv_vel.col(i), sv_acc, transmit_time(i));
+
+      // correct transmit times/drifts for satellite biases (FOR GPS L1CA)
+      transmit_time(i) -= sv_clk(0);
+      psrdot(i) = -channel_data_[it].Lambda * channel_data_[it].Doppler +
+                  navtools::LIGHT_SPEED<> * sv_clk(1);
+
+      // reported variances from tracking loops
+      psr_var(i) = channel_data_[it].PsrVar;
+      psrdot_var(i) = channel_data_[it].PsrdotVar;
+    }
+
+    // run correct navigation update
+    if (is_initialized_) {
+      uint64_t d_samp = GetDeltaSamples(file_ptrs.minCoeff());
+      // log_->warn(
+      //     "d_samp = {} ({})", d_samp, static_cast<double>(d_samp) / conf_.rfsignal.samp_freq);
+      ScalarNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var, d_samp);
+      UpdateFilePtr(d_samp);
+    } else {
+      InitNavSolution(sv_pos, sv_vel, transmit_time, psrdot, psr_var, psrdot_var);
+      week_ = channel_data_[good_sv[0]].Week;
+      file_ptr_ = file_ptrs.minCoeff();
+
+      if (conf_.navigation.do_vt) {
+        for (ChannelSyncData &it : channel_sync_) {
+          *it.is_vector = true;
+        }
+        is_vector_ = true;
+        log_->info("Channels will now begin vector tracking!");
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 // *=== InitNavSolution ===*
@@ -396,6 +451,81 @@ void Navigator::ScalarNavSolution(
 
 // *=== VectorNavSolution ===*
 void Navigator::VectorNavSolution() {
+  // 1. Check and make sure all channels have requested an update
+  // log_->info("VectorNavSolution called!");
+  std::vector<std::pair<uint64_t, uint8_t>> sample_ptrs;
+  for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : channel_data_) {
+    if (!it.second.ReadyForVT) return;
+    sample_ptrs.push_back({(it.second.FilePtr + file_ptr_) % file_size_, it.first});
+    // sample_ptrs.push_back({it.second.FilePtr, it.first});
+  }
+
+  // log_->error("Vector update starting!");
+  double intmd_freq_rad = navtools::TWO_PI<> * conf_.rfsignal.intmd_freq;
+  double T = 0.02;
+
+  // 2. Order updates based on the number of samples they wish to progress
+  std::sort(sample_ptrs.begin(), sample_ptrs.end());
+  std::vector<int> tmp;
+  for (auto &it : channel_data_) {
+    tmp.push_back(static_cast<int>(it.second.FilePtr));
+  }
+  // log_->error("sample_ptrs: {}, current_file_ptr: {}", tmp, file_ptr_);
+  // std::cout << "sample_ptrs: [ ";
+  // std::copy(tmp.begin(), tmp.end(), std::ostream_iterator<int>(std::cout, " "));
+  // std::cout << "], file_ptr: " << file_ptr_ << "\n";
+
+  uint64_t d_samp;
+  for (std::pair<uint64_t, uint8_t> &p : sample_ptrs) {
+    // 3. make sure samples are 'delta' from the last update
+    d_samp = GetDeltaSamples(channel_data_[p.second].FilePtr);
+
+    // 4. Run all vector updates and log to file
+    if (d_samp > 0) {
+      RunVDFllUpdate(
+          d_samp,
+          conf_.rfsignal.samp_freq,
+          intmd_freq_rad,
+          channel_data_[p.second],
+          receive_time_,
+          T,
+          kf_);
+
+      // 5. Update file pointer
+      UpdateFilePtr(d_samp);
+
+      // 6. Log solution
+      lla_ << navtools::RAD2DEG<> * kf_.phi_, navtools::RAD2DEG<> * kf_.lam_, kf_.h_;
+      nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
+      cb_ = kf_.cb_;
+      cd_ = kf_.cd_;
+      log_->info(
+          "\ttR: {} | \tLLA:\t{:.8f}, {:.8f}, {:.2f}", receive_time_, lla_(0), lla_(1), lla_(2));
+      // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
+      // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
+      nav_log_->info(
+          "{},{},{},{},{},{},{},{},{},{}",
+          week_,
+          receive_time_,
+          lla_(0),
+          lla_(1),
+          lla_(2),
+          nedv_(0),
+          nedv_(1),
+          nedv_(2),
+          cb_,
+          cd_);
+    }
+  }
+
+  // 6. Tell channels to continue working hard
+  for (auto &it : channel_data_) {
+    it.second.ReadyForVT = false;
+  }
+  for (ChannelSyncData &it : channel_sync_) {
+    *it.update_complete = true;
+    it.cv->notify_one();
+  }
 }
 
 // *=== UpdateFilePtr ===*

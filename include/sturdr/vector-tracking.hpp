@@ -29,14 +29,6 @@
 namespace sturdr {
 
 /**
- * @brief Contains results from Vector Delay-Frequency Lock Loop update
- */
-struct VectorNcoUpdate {
-  double DllNcoFreq;
-  double FllNcoFreq;
-};
-
-/**
  * *=== VectorDllNco *===
  * @brief NCO frequency update for the DLL of a channel
  * @param chip_rate Nominal chipping rate of the signal [chips/s]
@@ -88,7 +80,7 @@ double VectorFllNco(double &intmd_freq, double &lambda, double &psrdot);
 //     double &theta,
 //     double &lambda,
 //     double &beta);
-VectorNcoUpdate RunVDFllUpdate(
+void RunVDFllUpdate(
     uint64_t &d_samp,
     double &samp_freq,
     double &intmd_freq,

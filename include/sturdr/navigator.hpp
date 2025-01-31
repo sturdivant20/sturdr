@@ -32,6 +32,13 @@
 
 namespace sturdr {
 
+struct ChannelSyncData {
+  std::shared_ptr<std::condition_variable> cv;
+  std::shared_ptr<bool> update_complete;
+  std::shared_ptr<bool> is_vector;
+  bool is_initialized{false};
+};
+
 class Navigator {
  private:
   /**
@@ -47,6 +54,7 @@ class Navigator {
   double cb_;
   double cd_;
   bool is_initialized_;
+  bool is_vector_;
   sturdins::Kns kf_;
 
   /**
@@ -60,15 +68,14 @@ class Navigator {
   bool update_;
   std::shared_ptr<bool> running_;
   std::thread thread_;
-  std::vector<std::pair<std::shared_ptr<std::condition_variable>, std::shared_ptr<bool>>>
-      channel_cv_;
+  std::vector<ChannelSyncData> channel_sync_;
 
   /**
    * @brief spdlog loggers
    */
   std::shared_ptr<spdlog::logger> log_;
-  //   std::shared_ptr<spdlog::logger> nav_log_;
-  //   std::shared_ptr<spdlog::logger> eph_log_;
+  std::shared_ptr<spdlog::logger> nav_log_;
+  std::shared_ptr<spdlog::logger> eph_log_;
 
  public:
   /**
@@ -100,6 +107,7 @@ class Navigator {
    * @brief Runs the thread controlling navigation inputs and outputs
    */
   void NavigationThread();
+  bool NavigationUpdate();
 
   /**
    * *=== ChannelNavPacketListener ===*

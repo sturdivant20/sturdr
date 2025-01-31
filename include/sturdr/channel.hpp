@@ -166,17 +166,22 @@ class Channel {
           break;
       }
 
-      // send navigation parameters precise to current sample
-      nav_pkt_.FilePtr = shm_ptr_;
-      q_nav_->push(nav_pkt_);
-      {
-        std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
-        nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
-        // nav_pkt_.cv->wait(channel_lock);
-        *nav_pkt_.update_complete = false;
-      }
+      // // send navigation parameters precise to current sample
+      // nav_pkt_.FilePtr = shm_ptr_;
+      // q_nav_->push(nav_pkt_);
+      // {
+      //   std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
+      //   nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_;
+      //   });
+      //   // nav_pkt_.cv->wait(channel_lock);
+      //   *nav_pkt_.update_complete = false;
+      // }
 
       // wait for new shm data
+      // log_->info(
+      //     "Channel {} - GPS{} waiting at barrier",
+      //     file_pkt_.Header.ChannelNum,
+      //     file_pkt_.Header.SVID);
       bar_->Wait();
       UpdateShmWriterPtr();
     }
