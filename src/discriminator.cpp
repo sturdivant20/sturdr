@@ -23,6 +23,7 @@
 
 #include <cmath>
 #include <exception>
+#include <navtools/constants.hpp>
 
 namespace sturdr {
 
@@ -99,7 +100,7 @@ double DllNcdp(const double &IE, const double &IP, const double &IL) {
 double DllVariance(const double &cno, const double &T) {
   try {
     double tmp = 1.0 / (cno * T);
-    return (tmp * (0.25 + 0.5 * tmp));
+    return (0.5 * tmp * (0.5 + tmp));
   } catch (std::exception &e) {
     spdlog::get("sturdr-console")
         ->error("discriminator.cpp DllVariance failed! Error -> {}", e.what());
@@ -186,7 +187,7 @@ double FllAtan2(const std::complex<double> &P1, const std::complex<double> &P2, 
   try {
     double x = P1.real() * P2.imag() - P2.real() * P1.imag();
     double d = P1.real() * P2.real() + P1.imag() * P2.imag();
-    return (std::atan2(x, d) / T);
+    return (std::atan2(x, d) / (0.5 * T));
   } catch (std::exception &e) {
     spdlog::get("sturdr-console")
         ->error("discriminator.cpp FllAtan2 failed! Error -> {}", e.what());
@@ -245,7 +246,8 @@ double FllNddcp(
 double FllVariance(const double &cno, const double &T) {
   try {
     double tmp = 1.0 / (cno * T);
-    return (8.0 * tmp * (1.0 + tmp) / (T * T));
+    return 8.0 / (T * T) * tmp * (tmp + 1.0);
+    // return (8.0 * tmp * (1.0 + tmp) / (T * T));
   } catch (std::exception &e) {
     spdlog::get("sturdr-console")
         ->error("discriminator.cpp FllVariance failed! Error -> {}", e.what());

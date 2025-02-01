@@ -81,7 +81,6 @@ ChannelGpsL1ca::ChannelGpsL1ca(
       P2_{std::complex<double>(0.0, 0.0)},
       P_old_{std::complex<double>(0.0, 0.0)},
       T_{0.001},
-      half_T_{0.5 * T_},
       T_ms_{1},
       int_per_cnt_{0},
       total_samp_{conf_.acquisition.num_coh_per * conf_.acquisition.num_noncoh_per * samp_per_ms_},
@@ -309,9 +308,9 @@ void ChannelGpsL1ca::Dump() {
   LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
 
   // discriminators
-  double chip_err = DllNneml2(E_, L_);            // [chips]
-  double phase_err = PllCostas(P_);               // [rad]
-  double freq_err = FllAtan2(P1_, P2_, half_T_);  // [rad/s]
+  double chip_err = DllNneml2(E_, L_);       // [chips]
+  double phase_err = PllCostas(P_);          // [rad]
+  double freq_err = FllAtan2(P1_, P2_, T_);  // [rad/s]
   double chip_var = DllVariance(cno_, T_);
   double phase_var = PllVariance(cno_, T_);
   double freq_var = FllVariance(cno_, T_);
@@ -352,43 +351,13 @@ void ChannelGpsL1ca::Dump() {
     nav_pkt_.CarrierPhase = rem_carr_phase_;
     q_nav_->push(nav_pkt_);
     {
-      // log_->info(
-      //     "Channel {} - GPS{:02d} waiting...", file_pkt_.Header.ChannelNum,
-      //     file_pkt_.Header.SVID);
-      // std::cout << "Channel " << (int)file_pkt_.Header.ChannelNum << " GPS"
-      //           << (int)file_pkt_.Header.SVID << " waiting...\n";
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
-      // nav_pkt_.cv->wait(channel_lock);
       *nav_pkt_.update_complete = false;
     }
-    // std::cout << "Channel " << (int)file_pkt_.Header.ChannelNum << " GPS"
-    //           << (int)file_pkt_.Header.SVID << " continuing...\n";
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
-
-    // double t = static_cast<double>(total_samp_) / conf_.rfsignal.samp_freq;
-    // kf_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
-    // kf_.UpdateMeasurementsParam(chip_var, phase_var, freq_var);
-    // // kf_.Run(chip_err, phase_err, *nav_pkt_.VTCarrierFreq);
-    // kf_.Run(chip_err, phase_err, freq_err);
-    // rem_carr_phase_ = std::fmod(kf_.x_(0), navtools::TWO_PI<>);
-    // carr_doppler_ = kf_.x_(1);
-    // carr_jitter_ = kf_.x_(2);
-    // kf_.x_(1) = carr_doppler_;
-    // kf_.x_(2) = carr_jitter_;
-    // // rem_code_phase_ = kf_.x_(3) - static_cast<double>(T_ms_ * satutils::GPS_CA_CODE_LENGTH);
-    // // code_doppler_ = kf_.x_(4) + kappa_ * (carr_doppler_ + carr_jitter_ * t);
-    // kf_.SetRemCarrierPhase(rem_carr_phase_);
-    // kf_.SetRemCodePhase(rem_code_phase_);
-
-    // log_->info(
-    //     "Channel {} - GPS{} Received VT update: doppler = {}, code doppler = {}",
-    //     file_pkt_.Header.ChannelNum,
-    //     file_pkt_.Header.SVID,
-    //     carr_doppler_ / navtools::TWO_PI<>,
-    //     code_doppler_);
   }
 
   // update file packet

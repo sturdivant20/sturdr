@@ -19,82 +19,129 @@
 
 namespace sturdr {
 
-class Beamsteer {
- private:
-  /**
-   * @brief antenna configuration parameters
-   */
-  int n_ant_;
-  double wavelength_;
-  Eigen::MatrixXd ant_xyz_body_;
+/**
+ * *=== DeterministicBeam ===*
+ * @brief Accumulates 'n_samp' samples of the current integration period and beamsteers toward
+ *        provided uint vector
+ * @param ant_xyz         Known antenna positions in the body frame [in cycles (2*pi/lambda*xyz_m)]
+ * @param u               Desired unit vector in the body frame
+ * @param rfdata          Recorded signal data
+ * @param code            Local code to upsample
+ * @param rem_code_phase  Initial fractional phase of the code
+ * @param code_freq       GNSS signal code frequency [Hz]
+ * @param rem_carr_phase  Initial fractional phase of the carrier [rad]
+ * @param carr_freq       Current carrier frequency (including intermediate frequency) [rad/s]
+ * @param carr_jit        Current carrier frequency jitter [rad/s^2]
+ * @param samp_freq       GNSS receiver front end sampling frequency [Hz]
+ * @param half_samp       Number of samples in half the TOTAL accumulation period
+ * @param samp_remaining  Number of samples remaining to be accumulated inside TOTAL period
+ * @param t_space         Spacing between correlator taps
+ * @param E               Early correlator
+ * @param P1              Prompt first-half correlator
+ * @param P2              Prompt second-half correlator
+ * @param L               Late correlator
+ */
+void DeterministicBeam(
+    const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
+    const Eigen::Ref<const Eigen::Vector3d> &u,
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L);
 
-  /**
-   * @brief deterministic beam/null stearing parameters
-   */
-  double null_factor_;
-  Eigen::VectorXcd w_beam_;
-  Eigen::VectorXcd w_null_;
+/**
+ * *=== DeterministicBeam ===*
+ * @brief Accumulates 'n_samp' samples of the current integration period and nullsteers toward
+ *        provided uint vector
+ * @param ant_xyz         Known antenna positions in the body frame [in cycles (2*pi/lambda*xyz_m)]
+ * @param u               Desired unit vector in the body frame
+ * @param rfdata          Recorded signal data
+ * @param code            Local code to upsample
+ * @param rem_code_phase  Initial fractional phase of the code
+ * @param code_freq       GNSS signal code frequency [Hz]
+ * @param rem_carr_phase  Initial fractional phase of the carrier [rad]
+ * @param carr_freq       Current carrier frequency (including intermediate frequency) [rad/s]
+ * @param carr_jit        Current carrier frequency jitter [rad/s^2]
+ * @param samp_freq       GNSS receiver front end sampling frequency [Hz]
+ * @param half_samp       Number of samples in half the TOTAL accumulation period
+ * @param samp_remaining  Number of samples remaining to be accumulated inside TOTAL period
+ * @param t_space         Spacing between correlator taps
+ * @param E               Early correlator
+ * @param P1              Prompt first-half correlator
+ * @param P2              Prompt second-half correlator
+ * @param L               Late correlator
+ */
+void DeterministicNull(
+    const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
+    const Eigen::Ref<const Eigen::Vector3d> &u,
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L);
 
-  /**
-   * @brief Least mean squares parameters
-   */
-  double mu_;
-  Eigen::RowVectorXcd W_;
-
- public:
-  /**
-   * *=== Beamsteer ===*
-   * @brief Constructor
-   * @param ant_xyz 3xM antenna relative locations in the body frame
-   * @param
-   */
-  Beamsteer(Eigen::MatrixXd &ant_xyz, bool is_beam = true);
-
-  /**
-   * *=== ~Beamsteer ===*
-   * @brief Destructor
-   */
-  ~Beamsteer();
-
-  /**
-   * *=== DeterministicBeam ===*
-   * @brief Deterministic beamsteering where desired unit vector is provided
-   * @param ant_sig signals recorded by each antenna (each column is an antenna)
-   * @param u       unit vector in the body frame
-   * @return Single combined signal steered in direction of 'u'
-   */
-  Eigen::VectorXcd DeterministicBeam(
-      const Eigen::Ref<const Eigen::MatrixXcd> &ant_sig,
-      const Eigen::Ref<const Eigen::Vector3d> &u);
-
-  /**
-   * *=== DeterministicNull ===*
-   * @brief Deterministic nulling where desired unit vector is provided
-   * @param ant_sig signals recorded by each antenna (each column is an antenna)
-   * @param u       unit vector in the body frame
-   * @return Single combined signal nulled in direction of 'u'
-   */
-  Eigen::VectorXcd DeterministicNull(
-      const Eigen::Ref<const Eigen::MatrixXcd> &ant_sig,
-      const Eigen::Ref<const Eigen::Vector3d> &u);
-
-  /**
-   * *=== LmsSteer ===*
-   * @brief Least-mean-squares beamsteering where optimal unit vector is derived
-   * @param X   signals recorded by each antenna (each column is an antenna)
-   * @param d   desired signal replica (from tracking loop)
-   */
-  Eigen::VectorXcd LmsSteer(
-      const Eigen::Ref<const Eigen::MatrixXcd> &X, const Eigen::Ref<const Eigen::VectorXcd> &d);
-
-  /**
-   * *=== LmsNull ===*
-   * @brief Least-mean-squares nulling where optimal unit vector is derived
-   *          - this implies the desired replica is 0
-   * @param X   signals recorded by each antenna (each column is an antenna)
-   */
-  Eigen::VectorXcd LmsNull(const Eigen::Ref<const Eigen::MatrixXcd> &X);
-};
+/**
+ * *=== LmsBeam ===*
+ * @brief Accumulates 'n_samp' samples of the current integration period and beamsteers using the
+ *        Least Mean Squares Algorithm
+ * @param mu              Damping
+ * @param W               Previously estimated beamsteering weights
+ * @param u               Desired unit vector in the body frame
+ * @param rfdata          Recorded signal data
+ * @param code            Local code to upsample
+ * @param rem_code_phase  Initial fractional phase of the code
+ * @param code_freq       GNSS signal code frequency [Hz]
+ * @param rem_carr_phase  Initial fractional phase of the carrier [rad]
+ * @param carr_freq       Current carrier frequency (including intermediate frequency) [rad/s]
+ * @param carr_jit        Current carrier frequency jitter [rad/s^2]
+ * @param samp_freq       GNSS receiver front end sampling frequency [Hz]
+ * @param half_samp       Number of samples in half the TOTAL accumulation period
+ * @param samp_remaining  Number of samples remaining to be accumulated inside TOTAL period
+ * @param t_space         Spacing between correlator taps
+ * @param E               Early correlator
+ * @param P1              Prompt first-half correlator
+ * @param P2              Prompt second-half correlator
+ * @param L               Late correlator
+ */
+void LmsBeam(
+    const double &mu,
+    Eigen::Ref<Eigen::RowVectorXcd> W,
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L);
 
 }  // namespace sturdr
 

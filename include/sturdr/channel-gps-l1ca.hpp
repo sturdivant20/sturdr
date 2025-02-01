@@ -73,7 +73,6 @@ class ChannelGpsL1ca : public Channel {
    * @brief counters and telemetry
    */
   double T_;
-  double half_T_;
   uint64_t T_ms_;
   uint64_t int_per_cnt_;
   uint64_t total_samp_;

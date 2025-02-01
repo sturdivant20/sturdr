@@ -67,17 +67,9 @@ void RunVDFllUpdate(
   Eigen::VectorXd psr_var(1);
   psr_var << data.PsrVar;
   Eigen::VectorXd psrdot_var(1);
-  psrdot_var << 1000.0 * data.PsrdotVar;
+  psrdot_var << data.PsrdotVar;
 
   // 4. Combine vector and scaler measurements
-  // spdlog::get("sturdr-console")
-  //     ->warn(
-  //         "tR: {}, psr: {:.1f}, psrdot: {:.3f}, Dll: {:.3f}, Fll: {:.3f}",
-  //         tR,
-  //         psr(0),
-  //         psrdot(0),
-  //         data.Beta * data.DllDisc,
-  //         -data.Lambda * data.FllDisc);
   psr(0) -= data.Beta * data.DllDisc;  //! I DONT KNOW WHY THIS NEED TO BE SUBTRACTED
   psrdot(0) -= data.Lambda * data.FllDisc;
 
@@ -90,17 +82,6 @@ void RunVDFllUpdate(
   double cb_pred, cd_pred;
   filt.FalsePropagateState(pos_pred, vel_pred, cb_pred, cd_pred, T);
   double tT_pred = data.ToW + T + data.Sv.tgd;  //! FOR GPS L1CA
-  // spdlog::get("sturdr-console")
-  //     ->info(
-  //         "x_pred - {:.2f}, {:.2f}, {:.2f}, {:.4f}, {:.4f}, {:.4f}, {:.2f}, {:.4f}",
-  //         pos_pred(0),
-  //         pos_pred(1),
-  //         pos_pred(2),
-  //         vel_pred(0),
-  //         vel_pred(1),
-  //         vel_pred(3),
-  //         cb_pred,
-  //         cd_pred);
 
   // 6. Predict measurements
   Eigen::Vector3d u, udot;
@@ -110,26 +91,14 @@ void RunVDFllUpdate(
       pos_pred, vel_pred, cb_pred, cd_pred, sv_pos, sv_vel, u, udot, psr_pred, psrdot_pred);
   double tR_pred = tT_pred - sv_clk(0) + (psr_pred / navtools::LIGHT_SPEED<>);
   psrdot_pred -= navtools::LIGHT_SPEED<> * sv_clk(1);
-  // spdlog::get("sturdr-console")
-  //     ->warn(
-  //         "psr: {:.1f}, psrdot: {:.3f}, Dll: {:.3f}, Fll: {:.3f}, psr_p: {:.1f}, psrdot_p:
-  //         {:.3f}", psr(0), psrdot(0), data.Beta * data.DllDisc, -data.Lambda * data.FllDisc,
-  //         psr_pred,
-  //         psrdot_pred);
-  // spdlog::get("sturdr-console")->warn("pred - psr: {}, psrdot: {}", psr_pred, psrdot_pred);
 
   // 7. Vector FLL update
   *data.VTCarrierFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);
+
+  // this is for appending a PLL after VFLL
   // *data.VTCarrierFreq = (psrdot(0) - psrdot_pred) / data.Lambda;
 
   // 8. Vector DLL update
-  // spdlog::get("sturdr-console")
-  //     ->info(
-  //         "chip_rate: {}, theta: {}, T: {}, dtR: {}",
-  //         data.ChipRate,
-  //         data.CodePhase,
-  //         T,
-  //         tR_pred - tR);
   *data.VTCodeRate = VectorDllNco(data.ChipRate, T, data.CodePhase, tR, tR_pred);
 }
 

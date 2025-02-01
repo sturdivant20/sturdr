@@ -14,6 +14,8 @@
 
 #include "sturdr/beamsteer.hpp"
 
+#include <Eigen/src/Core/Matrix.h>
+
 #include <cmath>
 #include <complex>
 #include <navtools/constants.hpp>
@@ -21,59 +23,224 @@
 namespace sturdr {
 
 // *=== DeterministicBeam ===*
-Eigen::VectorXcd Beamsteer::DeterministicBeam(
-    const Eigen::Ref<const Eigen::MatrixXcd> &ant_sig, const Eigen::Ref<const Eigen::Vector3d> &u) {
-  for (int i = 0; i < n_ant_; i++) {
-    // calculate spatial phase based weights
-    w_beam_(i) = std::exp(
-        -navtools::COMPLEX_I<> * navtools::TWO_PI<> / wavelength_ * u.dot(ant_xyz_body_.col(i)));
+void DeterministicBeam(
+    const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
+    const Eigen::Ref<const Eigen::Vector3d> &u,
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L) {
+  // init phase increments
+  double d_code = code_freq / samp_freq;
+  double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
+
+  // calculate spatial phase based weights
+  int n_ant = ant_xyz.cols();
+  Eigen::VectorXcd W(n_ant);
+  for (int i = 0; i < n_ant; i++) {
+    W(i) = std::exp(-navtools::COMPLEX_I<> * u.dot(ant_xyz.col(i)));
   }
-  return ant_sig * w_beam_;
+
+  // loop through number of samples
+  int n_samp = rfdata.cols();
+  std::complex<double> v_carr;
+  std::complex<double> sample;
+  double v_code;
+  for (int i = 0; i < n_samp; i++) {
+    // combine 'n_ant' signals together with deterministic weights
+    sample = rfdata.row(i) * W;
+
+    // carrier replica value
+    v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * sample;
+
+    // early
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
+    E += (v_code * v_carr);
+
+    // late
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
+    L += (v_code * v_carr);
+
+    // prompt
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    if (samp_remaining > half_samp) {
+      P1 += (v_code * v_carr);
+    } else {
+      P2 += (v_code * v_carr);
+    }
+
+    // increment
+    rem_code_phase += d_code;
+    rem_carr_phase += d_carr;
+    samp_remaining--;
+  }
 }
 
 // *=== DeterministicNull ===*
-Eigen::VectorXcd Beamsteer::DeterministicNull(
-    const Eigen::Ref<const Eigen::MatrixXcd> &ant_sig, const Eigen::Ref<const Eigen::Vector3d> &u) {
-  for (int i = 0; i < n_ant_; i++) {
+void DeterministicNull(
+    const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
+    const Eigen::Ref<const Eigen::Vector3d> &u,
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L) {
+  // init phase increments
+  double d_code = code_freq / samp_freq;
+  double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
+
+  // calculate spatial phase based weights
+  int n_ant = ant_xyz.cols();
+  double null_factor = 1.0 / static_cast<double>(n_ant - 1);
+  Eigen::VectorXcd W(n_ant);
+  for (int i = 0; i < n_ant; i++) {
     // calculate spatial phase based weights
-    w_null_(i) = std::exp(
-        -navtools::COMPLEX_I<> * navtools::TWO_PI<> / wavelength_ * u.dot(ant_xyz_body_.col(i)));
+    W(i) = std::exp(-navtools::COMPLEX_I<> * u.dot(ant_xyz.col(i)));
 
     // for nulling - the sum of the N-1 secondary antennas should equal the power of the primary
     if (i > 0) {
-      w_null_(i) *= null_factor_;
+      W(i) *= null_factor;
     }
   }
-  return ant_sig * w_null_;
+
+  // loop through number of samples
+  int n_samp = rfdata.cols();
+  std::complex<double> v_carr;
+  std::complex<double> sample;
+  double v_code;
+  for (int i = 0; i < n_samp; i++) {
+    // combine 'n_ant' signals together with deterministic weights
+    sample = rfdata.row(i) * W;
+
+    // carrier replica value
+    v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * sample;
+
+    // early
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
+    E += (v_code * v_carr);
+
+    // late
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
+    L += (v_code * v_carr);
+
+    // prompt
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    if (samp_remaining > half_samp) {
+      P1 += (v_code * v_carr);
+    } else {
+      P2 += (v_code * v_carr);
+    }
+
+    // increment
+    rem_code_phase += d_code;
+    rem_carr_phase += d_carr;
+    samp_remaining--;
+  }
 }
 
-// *=== LmsSteer ===*
-Eigen::VectorXcd Beamsteer::LmsSteer(
-    const Eigen::Ref<const Eigen::MatrixXcd> &X, const Eigen::Ref<const Eigen::VectorXcd> &d) {
-  Eigen::VectorXcd y(Eigen::VectorXcd::Zero(X.cols()));
+// *=== LmsBeam ===*
+void LmsBeam(
+    const double &mu,
+    Eigen::Ref<Eigen::RowVectorXcd> W,
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L) {
+  // init phase increments
+  double d_code = code_freq / samp_freq;
+  double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
 
-  // calculate current best estimate of signal
-  y = X * W_.transpose();
+  //! W  is 1 x N
+  //! X  is S x N
+  //! y  is S x 1
+  //! d  is S x 1 (if nulling d = 0)
+  //! mu is 1 x 1
 
-  // update weights for better estimate next iteration
-  W_ += 2.0 * mu_ * (d - y).transpose() * X;
-  W_ /= W_.norm();
+  //! y = X * W.transpose()
+  //! W = W + 2 * mu * (d - y).transpose() * X
 
-  return y;
-}
+  // loop through number of samples
+  int n_samp = rfdata.cols();
+  Eigen::RowVectorXcd X(W.size());
+  std::complex<double> y, d, v_carr;
+  double v_code;
+  for (int i = 0; i < n_samp; i++) {
+    // combine 'n_ant' signals together with deterministic weights
+    X = rfdata.row(i);
+    y = X * W.transpose();
 
-// *=== LmsNull ===*
-Eigen::VectorXcd Beamsteer::LmsNull(const Eigen::Ref<const Eigen::MatrixXcd> &X) {
-  Eigen::VectorXcd y(Eigen::VectorXcd::Zero(X.cols()));
+    // desired signals replica values
+    v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase);
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    d = v_carr * v_code;
 
-  // calculate current best estimate of signal
-  y = X * W_.transpose();
+    // wipe the signal from the carrier replica
+    v_carr *= y;
 
-  // update weights for better estimate next iteration
-  W_ -= 2.0 * mu_ * y.transpose() * X;
-  W_ /= W_.norm();
+    // prompt
+    if (samp_remaining > half_samp) {
+      P1 += d * y;
+    } else {
+      P2 += d * y;
+    }
 
-  return y;
+    // early
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
+    E += (v_code * v_carr);
+
+    // late
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
+    L += (v_code * v_carr);
+
+    // accumulate weighting error
+    W += (2.0 * mu * (d - y) * X);
+
+    // increment
+    rem_code_phase += d_code;
+    rem_carr_phase += d_carr;
+    samp_remaining--;
+  }
 }
 
 }  // namespace sturdr

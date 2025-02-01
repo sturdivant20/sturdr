@@ -56,7 +56,7 @@ void AccumulateEPL(
     double &code_freq,
     double &rem_carr_phase,
     double &carr_freq,
-    double &car_jit,
+    double &carr_jit,
     double &samp_freq,
     uint64_t &half_samp,
     uint64_t &samp_remaining,
