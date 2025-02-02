@@ -47,7 +47,7 @@ class Channel {
   /**
    * @brief thread syncronization
    */
-  std::shared_ptr<Eigen::VectorXcd> shm_;
+  std::shared_ptr<Eigen::MatrixXcd> shm_;
   uint64_t shm_ptr_;
   uint64_t shm_writer_ptr_;
   uint64_t shm_file_size_samp_;
@@ -82,7 +82,7 @@ class Channel {
       Config &conf,
       uint8_t &n,
       std::shared_ptr<bool> running,
-      std::shared_ptr<Eigen::VectorXcd> shared_array,
+      std::shared_ptr<Eigen::MatrixXcd> shared_array,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
@@ -166,22 +166,7 @@ class Channel {
           break;
       }
 
-      // // send navigation parameters precise to current sample
-      // nav_pkt_.FilePtr = shm_ptr_;
-      // q_nav_->push(nav_pkt_);
-      // {
-      //   std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
-      //   nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_;
-      //   });
-      //   // nav_pkt_.cv->wait(channel_lock);
-      //   *nav_pkt_.update_complete = false;
-      // }
-
       // wait for new shm data
-      // log_->info(
-      //     "Channel {} - GPS{} waiting at barrier",
-      //     file_pkt_.Header.ChannelNum,
-      //     file_pkt_.Header.SVID);
       bar_->Wait();
       UpdateShmWriterPtr();
     }
@@ -199,6 +184,8 @@ class Channel {
    * @brief Trys to track current satellite
    */
   virtual void Track() = 0;
+  virtual void Integrate(const uint64_t &samp_to_read) = 0;
+  virtual void Dump() = 0;
 
   /**
    * *=== NavDataSync ===*

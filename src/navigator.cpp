@@ -112,11 +112,11 @@ void Navigator::NavigationThread() {
         std::unique_lock<std::mutex> lock(mtx_);
         if (NavigationUpdate()) {
           // log results
-          log_->info("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
+          log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
           // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
           // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
           nav_log_->info(
-              "{},{},{},{},{},{},{},{},{},{}",
+              "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.15f}",
               week_,
               receive_time_,
               lla_(0),
@@ -499,12 +499,11 @@ void Navigator::VectorNavSolution() {
       nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
       cb_ = kf_.cb_;
       cd_ = kf_.cd_;
-      log_->info(
-          "\ttR: {} | \tLLA:\t{:.8f}, {:.8f}, {:.2f}", receive_time_, lla_(0), lla_(1), lla_(2));
+      log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
       // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
       // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
       nav_log_->info(
-          "{},{},{},{},{},{},{},{},{},{}",
+          "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.15f}",
           week_,
           receive_time_,
           lla_(0),

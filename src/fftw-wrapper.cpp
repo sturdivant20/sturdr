@@ -4,7 +4,7 @@ fftw-wrapper.cpp
 ========= ==========================================================================================
   @file   sturdr/fftw-wrapper.cpp
   @brief  Small functions for using complex-1d FFTW3 methods specific to STURDR.
-  @date   December 2024
+  @date   January 2025
   @author Daniel Sturdivant <sturdivant20@gmail.com>
 ========= ==========================================================================================
 */

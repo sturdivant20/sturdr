@@ -126,7 +126,8 @@ void DeterministicNull(
  */
 void LmsBeam(
     const double &mu,
-    Eigen::Ref<Eigen::RowVectorXcd> W,
+    Eigen::Ref<Eigen::VectorXcd> W,
+    Eigen::Ref<Eigen::VectorXcd> delta_W,
     const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
     const bool code[1023],
     double &rem_code_phase,
@@ -142,6 +143,8 @@ void LmsBeam(
     std::complex<double> &P1,
     std::complex<double> &P2,
     std::complex<double> &L);
+
+void LmsNormalize(Eigen::Ref<Eigen::VectorXcd> W);
 
 }  // namespace sturdr
 

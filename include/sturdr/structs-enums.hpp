@@ -100,6 +100,8 @@ struct RfSignalConfig {
   uint8_t bit_depth;
   std::string signals;
   uint8_t max_channels;
+  bool is_multi_antenna;
+  uint8_t n_ant;
 };
 struct AcquisitionConfig {
   double threshold;

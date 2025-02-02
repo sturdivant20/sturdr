@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <complex>
+#include <iostream>
 #include <navtools/constants.hpp>
 
 namespace sturdr {
@@ -53,7 +54,7 @@ void DeterministicBeam(
   }
 
   // loop through number of samples
-  int n_samp = rfdata.cols();
+  int n_samp = rfdata.rows();
   std::complex<double> v_carr;
   std::complex<double> sample;
   double v_code;
@@ -128,7 +129,7 @@ void DeterministicNull(
   }
 
   // loop through number of samples
-  int n_samp = rfdata.cols();
+  int n_samp = rfdata.rows();
   std::complex<double> v_carr;
   std::complex<double> sample;
   double v_code;
@@ -168,7 +169,8 @@ void DeterministicNull(
 // *=== LmsBeam ===*
 void LmsBeam(
     const double &mu,
-    Eigen::Ref<Eigen::RowVectorXcd> W,
+    Eigen::Ref<Eigen::VectorXcd> W,
+    Eigen::Ref<Eigen::VectorXcd> delta_W,
     const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
     const bool code[1023],
     double &rem_code_phase,
@@ -196,51 +198,66 @@ void LmsBeam(
 
   //! y = X * W.transpose()
   //! W = W + 2 * mu * (d - y).transpose() * X
+  std::cout << "W: " << W(0) << ", " << W(1) << ", " << W(2) << ", " << W(3) << "\n";
 
   // loop through number of samples
-  int n_samp = rfdata.cols();
-  Eigen::RowVectorXcd X(W.size());
-  std::complex<double> y, d, v_carr;
+  int n_samp = rfdata.rows();
+  Eigen::VectorXcd X(W.size()), S(W.size());
+  Eigen::MatrixXcd Phi(W.size(), W.size());
+  std::complex<double> v_carr, y, P;
   double v_code;
   for (int i = 0; i < n_samp; i++) {
-    // combine 'n_ant' signals together with deterministic weights
-    X = rfdata.row(i);
-    y = X * W.transpose();
-
-    // desired signals replica values
+    // carrier replica
     v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase);
-    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
-    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
-    d = v_carr * v_code;
 
-    // wipe the signal from the carrier replica
-    v_carr *= y;
+    // sample vector
+    X = rfdata.row(i) * v_carr;
+    y = X.sum();
+
+    // sample covariance
+    Phi = X.conjugate() * X.transpose();
 
     // prompt
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    P = v_code * y;
     if (samp_remaining > half_samp) {
-      P1 += d * y;
+      P1 += P;
     } else {
-      P2 += d * y;
+      P2 += P;
     }
+
+    // reference correlation vector
+    if (P.real() < 0.0) {
+      S = X.conjugate() * v_code;  // + data bit (r = +1 * nco_code_replica)
+    } else {
+      S = X.conjugate() * -v_code;  // - data bit (r = -1 * nco_code_replica)
+    }
+
+    // propagate weights
+    W += mu * (S - Phi * W);
+    // W *= std::conj(W(0)) / std::abs(W(0));  // enforce phase alignment
 
     // early
     // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
     v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
-    E += (v_code * v_carr);
+    E += (v_code * y);
 
     // late
     // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
     v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
-    L += (v_code * v_carr);
-
-    // accumulate weighting error
-    W += (2.0 * mu * (d - y) * X);
+    L += (v_code * y);
 
     // increment
     rem_code_phase += d_code;
     rem_carr_phase += d_carr;
     samp_remaining--;
   }
+}
+
+void LmsNormalize(Eigen::Ref<Eigen::VectorXcd> W) {
+  W *= std::conj(W(0)) / std::abs(W(0));
+  // W /= std::abs(W(0));
 }
 
 }  // namespace sturdr

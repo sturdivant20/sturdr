@@ -66,6 +66,7 @@ set(STURDR_HDRS
     include/sturdr/beamsteer.hpp
     include/sturdr/channel.hpp
     include/sturdr/channel-gps-l1ca.hpp
+    include/sturdr/channel-gps-l1ca-array.hpp
     include/sturdr/concurrent-barrier.hpp
     include/sturdr/concurrent-queue.hpp
     include/sturdr/data-type-adapters.hpp
@@ -84,6 +85,7 @@ set(STURDR_SRCS
     src/acquisition.cpp
     src/beamsteer.cpp
     src/channel-gps-l1ca.cpp
+    src/channel-gps-l1ca-array.cpp
     src/data-type-adapters.cpp
     src/discriminator.cpp
     src/fftw-wrapper.cpp

@@ -4,7 +4,7 @@
  * =======  ========================================================================================
  * @file    sturdr/channel-gps-l1ca.hpp
  * @brief   Implementation of channel for GPS L1 C/A signals.
- * @date    December 2024
+ * @date    January 2025
  * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
  *            - Kaplan & Hegarty
  *          2. "Global Positioning System: Signals, Measurements, and Performance", 2nd Edition,
@@ -27,7 +27,7 @@
 namespace sturdr {
 
 class ChannelGpsL1ca : public Channel {
- private:
+ protected:
   /**
    * @brief local replica properties and statistics
    */
@@ -90,7 +90,7 @@ class ChannelGpsL1ca : public Channel {
       Config &conf,
       uint8_t &n,
       std::shared_ptr<bool> running,
-      std::shared_ptr<Eigen::VectorXcd> shared_array,
+      std::shared_ptr<Eigen::MatrixXcd> shared_array,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
@@ -103,7 +103,7 @@ class ChannelGpsL1ca : public Channel {
    */
   ~ChannelGpsL1ca();
 
- private:
+ protected:
   /**
    * *=== NewCodePeriod ===*
    * @brief begins a new code period

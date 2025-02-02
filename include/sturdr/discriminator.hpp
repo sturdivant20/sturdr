@@ -4,7 +4,7 @@
  * =======  ========================================================================================
  * @file    sturdr/discriminator.hpp
  * @brief   Standard satellite tracking match filter discriminators.
- * @date    December 2024
+ * @date    January 2025
  * @author  Daniel Sturdivant <sturdivant20@gmail.com>
  * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
  *              - Kaplan & Hegarty

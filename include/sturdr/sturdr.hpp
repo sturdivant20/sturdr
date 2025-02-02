@@ -22,6 +22,7 @@
 #include <sturdio/yaml-parser.hpp>
 #include <vector>
 
+#include "sturdr/channel-gps-l1ca-array.hpp"
 #include "sturdr/channel-gps-l1ca.hpp"
 #include "sturdr/concurrent-barrier.hpp"
 #include "sturdr/concurrent-queue.hpp"
@@ -38,7 +39,7 @@ class SturDR {
    */
   sturdio::YamlParser yp_;
   Config conf_;
-  sturdio::BinaryFile bf_;
+  std::vector<sturdio::BinaryFile> bf_;
   uint64_t samp_per_ms_;
 
   /**
@@ -48,7 +49,7 @@ class SturDR {
   uint64_t shm_ptr_;
   uint64_t shm_file_size_samp_;
   uint64_t shm_read_size_samp_;
-  std::shared_ptr<Eigen::VectorXcd> shm_;
+  std::shared_ptr<Eigen::MatrixXcd> shm_;
 
   /**
    * @brief channel parameters
@@ -60,7 +61,8 @@ class SturDR {
   uint8_t prn_ptr_;
   std::map<uint8_t, bool> prns_in_use_;
   std::mutex prn_mtx_;
-  std::vector<ChannelGpsL1ca> gps_channels_;
+  std::vector<ChannelGpsL1ca> gps_l1ca_channels_;
+  std::vector<ChannelGpsL1caArray> gps_l1ca_array_channels_;
   std::shared_ptr<ConcurrentBarrier> barrier_;
 
   /**
@@ -102,6 +104,8 @@ class SturDR {
    */
   template <typename T>
   void Run();
+  template <typename T>
+  void RunArray();
 
   /**
    * *=== Run ===*
@@ -109,6 +113,8 @@ class SturDR {
    */
   template <typename T>
   void RunComplex();
+  template <typename T>
+  void RunComplexArray();
 
   /**
    * @brief Thread safe function for a channel to request a new PRN

@@ -4,7 +4,7 @@
  * =======  ========================================================================================
  * @file    sturdr/channel-gps-l1ca.cpp
  * @brief   Implementation of channel for GPS L1 C/A signals.
- * @date    December 2024
+ * @date    January 2025
  * @ref     1. "Understanding GPS/GNSS Principles and Applications", 3rd Edition, 2017
  *            - Kaplan & Hegarty
  *          2. "Global Positioning System: Signals, Measurements, and Performance", 2nd Edition,
@@ -38,7 +38,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
     Config &conf,
     uint8_t &n,
     std::shared_ptr<bool> running,
-    std::shared_ptr<Eigen::VectorXcd> shared_array,
+    std::shared_ptr<Eigen::MatrixXcd> shared_array,
     std::shared_ptr<ConcurrentBarrier> start_barrier,
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
@@ -133,7 +133,7 @@ void ChannelGpsL1ca::Acquire() {
   // Perform parallel acquisition/correlation
   Eigen::MatrixXd corr_map = PcpsSearch(
       fftw_plans_,
-      shm_->segment(shm_ptr_, total_samp_),
+      shm_->col(0).segment(shm_ptr_, total_samp_),
       code_,
       conf_.acquisition.doppler_range,
       conf_.acquisition.doppler_step,
@@ -263,7 +263,7 @@ void ChannelGpsL1ca::Integrate(const uint64_t &samp_to_read) {
 
   // accumulate samples
   AccumulateEPL(
-      shm_->segment(shm_ptr_, samp_to_read),
+      shm_->col(0).segment(shm_ptr_, samp_to_read),
       code_.data(),
       rem_code_phase_,
       nco_code_freq,
@@ -378,6 +378,8 @@ void ChannelGpsL1ca::Dump() {
   file_pkt_.QP2 = P2_.imag();
   file_pkt_.CodePhase = rem_code_phase_;
   file_pkt_.CarrierPhase = rem_carr_phase_;
+
+  // std::cout << "ChannelGpsL1ca::Dump - file log called\n";
   file_log_->info("{}", file_pkt_);
 
   // begin next nco period
@@ -408,44 +410,46 @@ void ChannelGpsL1ca::Status() {
     file_pkt_.TrackingStatus &= ~TrackingFlags::CARRIER_LOCK;
   }
 
-  // mode 0: wide tracking - only check code lock and increment stage by 1
-  if (track_mode_ == 0) {
-    if (code_lock_) {
-      track_mode_ = 1;
-      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_standard, 2);
-      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_standard, 3);
-      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_standard, 2);
-      tap_space_ = conf_.tracking.tap_epl_standard;
+  if (!(*nav_pkt_.is_vector)) {
+    // mode 0: wide tracking - only check code lock and increment stage by 1
+    if (track_mode_ == 0) {
+      if (code_lock_) {
+        track_mode_ = 1;
+        w0d_ = NaturalFrequency(conf_.tracking.dll_bw_standard, 2);
+        w0p_ = NaturalFrequency(conf_.tracking.pll_bw_standard, 3);
+        w0f_ = NaturalFrequency(conf_.tracking.fll_bw_standard, 2);
+        tap_space_ = conf_.tracking.tap_epl_standard;
+      }
     }
-  }
 
-  // mode 1: normal tracking
-  if (track_mode_ == 1) {
-    if (code_lock_ & carr_lock_) {
-      track_mode_ = 2;
-      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_narrow, 2);
-      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_narrow, 3);
-      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_narrow, 2);
-      tap_space_ = conf_.tracking.tap_epl_narrow;
-      file_pkt_.TrackingStatus |= TrackingFlags::FINE_LOCK;
-    } else if (!code_lock_) {
-      track_mode_ = 0;
-      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_wide, 2);
-      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_wide, 3);
-      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_wide, 2);
-      tap_space_ = conf_.tracking.tap_epl_wide;
+    // mode 1: normal tracking
+    if (track_mode_ == 1) {
+      if (code_lock_ & carr_lock_) {
+        track_mode_ = 2;
+        w0d_ = NaturalFrequency(conf_.tracking.dll_bw_narrow, 2);
+        w0p_ = NaturalFrequency(conf_.tracking.pll_bw_narrow, 3);
+        w0f_ = NaturalFrequency(conf_.tracking.fll_bw_narrow, 2);
+        tap_space_ = conf_.tracking.tap_epl_narrow;
+        file_pkt_.TrackingStatus |= TrackingFlags::FINE_LOCK;
+      } else if (!code_lock_) {
+        track_mode_ = 0;
+        w0d_ = NaturalFrequency(conf_.tracking.dll_bw_wide, 2);
+        w0p_ = NaturalFrequency(conf_.tracking.pll_bw_wide, 3);
+        w0f_ = NaturalFrequency(conf_.tracking.fll_bw_wide, 2);
+        tap_space_ = conf_.tracking.tap_epl_wide;
+      }
     }
-  }
 
-  // mode 2: narrow tracking
-  if (track_mode_ == 2) {
-    if (!(code_lock_ & carr_lock_)) {
-      track_mode_ = 1;
-      w0d_ = NaturalFrequency(conf_.tracking.dll_bw_standard, 2);
-      w0p_ = NaturalFrequency(conf_.tracking.pll_bw_standard, 3);
-      w0f_ = NaturalFrequency(conf_.tracking.fll_bw_standard, 2);
-      tap_space_ = conf_.tracking.tap_epl_standard;
-      file_pkt_.TrackingStatus &= ~TrackingFlags::FINE_LOCK;
+    // mode 2: narrow tracking
+    if (track_mode_ == 2) {
+      if (!(code_lock_ & carr_lock_)) {
+        track_mode_ = 1;
+        w0d_ = NaturalFrequency(conf_.tracking.dll_bw_standard, 2);
+        w0p_ = NaturalFrequency(conf_.tracking.pll_bw_standard, 3);
+        w0f_ = NaturalFrequency(conf_.tracking.fll_bw_standard, 2);
+        tap_space_ = conf_.tracking.tap_epl_standard;
+        file_pkt_.TrackingStatus &= ~TrackingFlags::FINE_LOCK;
+      }
     }
   }
 }

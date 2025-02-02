@@ -15,10 +15,14 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/stopwatch.h>
 
+#include <chrono>
 #include <complex>
+#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <thread>
 #include <vector>
 
 #include "sturdr/data-type-adapters.hpp"
@@ -44,7 +48,9 @@ SturDR::SturDR(const std::string yaml_fname)
            yp_.GetVar<bool>("is_complex"),
            static_cast<uint8_t>(yp_.GetVar<uint16_t>("bit_depth")),
            yp_.GetVar<std::string>("signals"),
-           static_cast<uint8_t>(yp_.GetVar<uint16_t>("max_channels"))},
+           static_cast<uint8_t>(yp_.GetVar<uint16_t>("max_channels")),
+           yp_.GetVar<bool>("is_multi_antenna"),
+           static_cast<uint8_t>(yp_.GetVar<uint16_t>("n_ant"))},
           {yp_.GetVar<double>("threshold"),
            yp_.GetVar<double>("doppler_range"),
            yp_.GetVar<double>("doppler_step"),
@@ -73,12 +79,13 @@ SturDR::SturDR(const std::string yaml_fname)
            yp_.GetVar<std::string>("clock_model"),
            yp_.GetVar<double>("process_std"),
            yp_.GetVar<double>("nominal_transit_time")}},
-      bf_{sturdio::BinaryFile(conf_.general.in_file)},
+      bf_(conf_.rfsignal.n_ant),
       samp_per_ms_{static_cast<uint64_t>(conf_.rfsignal.samp_freq) / 1000},
       shm_ptr_{0},
       shm_file_size_samp_{conf_.general.ms_chunk_size * samp_per_ms_},
       shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
-      shm_{std::make_shared<Eigen::VectorXcd>(Eigen::VectorXcd::Zero(shm_file_size_samp_))},
+      shm_{std::make_shared<Eigen::MatrixXcd>(
+          Eigen::MatrixXcd::Zero(shm_file_size_samp_, conf_.rfsignal.n_ant))},
       running_{std::make_shared<bool>(true)},
       n_dopp_bins_{
           2 * static_cast<uint64_t>(
@@ -158,29 +165,80 @@ void SturDR::Start() {
   InitChannels();
 
   // choose correct data type adapter
-  if (!conf_.rfsignal.is_complex) {
-    if (conf_.rfsignal.bit_depth == 8) {
-      // byte
-      Run<int8_t>();
-    } else if (conf_.rfsignal.bit_depth == 16) {
-      // short
-      Run<int16_t>();
-    } else if (conf_.rfsignal.bit_depth == 32) {
-      // float
-      Run<float>();
+  if (!conf_.rfsignal.is_multi_antenna) {
+    // single antenna receiver
+    bf_[0].fopen(conf_.general.in_file);
+
+    if (!conf_.rfsignal.is_complex) {
+      if (conf_.rfsignal.bit_depth == 8) {
+        // byte
+        Run<int8_t>();
+      } else if (conf_.rfsignal.bit_depth == 16) {
+        // short
+        Run<int16_t>();
+      } else if (conf_.rfsignal.bit_depth == 32) {
+        // float
+        Run<float>();
+      }
+    } else {
+      if (conf_.rfsignal.bit_depth == 8) {
+        // complex byte
+        RunComplex<int8_t>();
+      } else if (conf_.rfsignal.bit_depth == 16) {
+        // complex short
+        RunComplex<int16_t>();
+      } else if (conf_.rfsignal.bit_depth == 32) {
+        // complex float
+        RunComplex<float>();
+      }
     }
   } else {
-    if (conf_.rfsignal.bit_depth == 8) {
-      // complex byte
-      RunComplex<int8_t>();
-    } else if (conf_.rfsignal.bit_depth == 16) {
-      // complex short
-      RunComplex<int16_t>();
-    } else if (conf_.rfsignal.bit_depth == 32) {
-      // complex float
-      RunComplex<float>();
+    // multi antenna receiver
+    std::string fname;
+    for (int i = 0; i < conf_.rfsignal.n_ant; i++) {
+      fname = conf_.general.in_file + "-" + std::to_string(i) + ".bin";
+      bf_[i].fopen(fname);
+    }
+
+    if (!conf_.rfsignal.is_complex) {
+      if (conf_.rfsignal.bit_depth == 8) {
+        // byte
+        RunArray<int8_t>();
+      } else if (conf_.rfsignal.bit_depth == 16) {
+        // short
+        RunArray<int16_t>();
+      } else if (conf_.rfsignal.bit_depth == 32) {
+        // float
+        RunArray<float>();
+      }
+    } else {
+      if (conf_.rfsignal.bit_depth == 8) {
+        // byte
+        RunComplexArray<int8_t>();
+      } else if (conf_.rfsignal.bit_depth == 16) {
+        // short
+        RunComplexArray<int16_t>();
+      } else if (conf_.rfsignal.bit_depth == 32) {
+        // float
+        RunComplexArray<float>();
+      }
     }
   }
+
+  // end SturDR
+  *running_ = false;
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  barrier_->NotifyComplete();
+  nav_queue_->NotifyComplete();
+  eph_queue_->NotifyComplete();
+  for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
+    if (!conf_.rfsignal.is_multi_antenna) {
+      gps_l1ca_channels_[i].Join();
+    } else {
+      gps_l1ca_array_channels_[i].Join();
+    }
+  }
+  navigator_->Notify();
 }
 
 // *=== GenNewPrn ===*
@@ -211,13 +269,41 @@ void SturDR::InitChannels() {
   }
 
   // initialize channels of requested type
-  std::function<void(uint8_t&)> get_new_prn_func =
-      std::bind(&SturDR::GetNewPrn, this, std::placeholders::_1);
-  gps_channels_.reserve(conf_.rfsignal.max_channels);
-  for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
-    gps_channels_.emplace_back(
-        conf_, i, running_, shm_, barrier_, eph_queue_, nav_queue_, fftw_plans_, get_new_prn_func);
-    gps_channels_[i - 1].Start();
+  if (conf_.rfsignal.signals == "gps_l1ca") {
+    std::function<void(uint8_t&)> get_new_prn_func =
+        std::bind(&SturDR::GetNewPrn, this, std::placeholders::_1);
+
+    if (!conf_.rfsignal.is_multi_antenna) {
+      gps_l1ca_channels_.reserve(conf_.rfsignal.max_channels);
+      for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
+        gps_l1ca_channels_.emplace_back(
+            conf_,
+            i,
+            running_,
+            shm_,
+            barrier_,
+            eph_queue_,
+            nav_queue_,
+            fftw_plans_,
+            get_new_prn_func);
+        gps_l1ca_channels_[i - 1].Start();
+      }
+    } else {
+      gps_l1ca_array_channels_.reserve(conf_.rfsignal.max_channels);
+      for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
+        gps_l1ca_array_channels_.emplace_back(
+            conf_,
+            i,
+            running_,
+            shm_,
+            barrier_,
+            eph_queue_,
+            nav_queue_,
+            fftw_plans_,
+            get_new_prn_func);
+        gps_l1ca_array_channels_[i - 1].Start();
+      }
+    }
   }
 }
 
@@ -231,10 +317,12 @@ void SturDR::Run() {
 
   // initialize rf data stream
   std::vector<T> rf_stream(shm_read_size_samp_);
-  bf_.fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
-  bf_.fread<T>(rf_stream.data(), shm_read_size_samp_);
+  bf_[0].fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+  bf_[0].fread<T>(rf_stream.data(), shm_read_size_samp_);
   TypeToIDouble<T>(
-      rf_stream.data(), shm_->segment(shm_ptr_, shm_read_size_samp_).data(), shm_read_size_samp_);
+      rf_stream.data(),
+      shm_->col(0).segment(shm_ptr_, shm_read_size_samp_).data(),
+      shm_read_size_samp_);
   shm_ptr_ += shm_read_size_samp_;
   shm_ptr_ %= shm_file_size_samp_;
 
@@ -261,23 +349,15 @@ void SturDR::Run() {
       barrier_->Wait();
 
       // read next signal data while channels are processing
-      bf_.fread<T>(rf_stream.data(), shm_read_size_samp_);
+      bf_[0].fread<T>(rf_stream.data(), shm_read_size_samp_);
       TypeToIDouble<T>(
           rf_stream.data(),
-          shm_->segment(shm_ptr_, shm_read_size_samp_).data(),
+          shm_->col(0).segment(shm_ptr_, shm_read_size_samp_).data(),
           shm_read_size_samp_);
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
     }
   }
-  *running_ = false;
-  barrier_->NotifyComplete();
-  nav_queue_->NotifyComplete();
-  eph_queue_->NotifyComplete();
-  for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
-    gps_channels_[i].Join();
-  }
-  navigator_->Notify();
 }
 
 // *=== RunComplex ===*
@@ -288,11 +368,13 @@ void SturDR::RunComplex() {
 
   // initialize rf data stream
   std::vector<std::complex<T>> rf_stream(shm_read_size_samp_);
-  bf_.fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
-  bf_.freadc<T>(rf_stream.data(), shm_read_size_samp_);
+  bf_[0].fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+  bf_[0].freadc<T>(rf_stream.data(), shm_read_size_samp_);
 
   ITypeToIDouble<T>(
-      rf_stream.data(), shm_->segment(shm_ptr_, shm_read_size_samp_).data(), shm_read_size_samp_);
+      rf_stream.data(),
+      shm_->col(0).segment(shm_ptr_, shm_read_size_samp_).data(),
+      shm_read_size_samp_);
   shm_ptr_ += shm_read_size_samp_;
   shm_ptr_ %= shm_file_size_samp_;
 
@@ -319,33 +401,141 @@ void SturDR::RunComplex() {
       barrier_->Wait();
 
       // read next signal data while channels are processing
-      bf_.freadc<T>(rf_stream.data(), shm_read_size_samp_);
+      bf_[0].freadc<T>(rf_stream.data(), shm_read_size_samp_);
       ITypeToIDouble<T>(
           rf_stream.data(),
-          shm_->segment(shm_ptr_, shm_read_size_samp_).data(),
+          shm_->col(0).segment(shm_ptr_, shm_read_size_samp_).data(),
           shm_read_size_samp_);
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
     }
   }
-  *running_ = false;
-  barrier_->NotifyComplete();
-  nav_queue_->NotifyComplete();
-  eph_queue_->NotifyComplete();
-  for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
-    gps_channels_[i].Join();
+}
+
+// *=== RunArray ===*
+template <typename T>
+void SturDR::RunArray() {
+  spdlog::stopwatch sw;
+  log_->info("Starting SturDR with real input and antenna array");
+
+  // initialize rf data stream
+  std::vector<T> rf_stream(shm_read_size_samp_);
+  for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+    bf_[j].fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+    bf_[j].fread<T>(rf_stream.data(), shm_read_size_samp_);
+    TypeToIDouble<T>(
+        rf_stream.data(),
+        shm_->col(j).segment(shm_ptr_, shm_read_size_samp_).data(),
+        shm_read_size_samp_);
   }
-  navigator_->Notify();
+  shm_ptr_ += shm_read_size_samp_;
+  shm_ptr_ %= shm_file_size_samp_;
+
+  // run channels for specified amount of time
+  int meas_freq_ms = 1000 / (int)conf_.navigation.meas_freq;
+  int read_freq_ms = (int)conf_.general.ms_read_size;
+  int n = (int)conf_.general.ms_to_process + 1;
+  int ndot = std::min(read_freq_ms, meas_freq_ms);
+
+  for (int i = 0; i <= n; i += ndot) {
+    // check for screen printouts every second
+    if (!(i % 1000)) {
+      log_->info("File time: {:.3f} s ... Processing Time: {:.3f} s", (float)i / 1000.0, sw);
+    }
+
+    // check if time for nav update
+    if (!(i % meas_freq_ms)) {
+      navigator_->Notify();
+    }
+
+    // check if time for new data to be parsed
+    if (!(i % read_freq_ms)) {
+      // ready to process data
+      barrier_->Wait();
+
+      // read next signal data while channels are processing
+      for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+        bf_[j].fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+        bf_[j].fread<T>(rf_stream.data(), shm_read_size_samp_);
+        TypeToIDouble<T>(
+            rf_stream.data(),
+            shm_->col(j).segment(shm_ptr_, shm_read_size_samp_).data(),
+            shm_read_size_samp_);
+      }
+      shm_ptr_ += shm_read_size_samp_;
+      shm_ptr_ %= shm_file_size_samp_;
+    }
+  }
+}
+
+// *=== RunComplexArray ===*
+template <typename T>
+void SturDR::RunComplexArray() {
+  spdlog::stopwatch sw;
+  log_->info("Starting SturDR with complex input and antenna array");
+
+  // initialize rf data stream
+  std::vector<std::complex<T>> rf_stream(shm_read_size_samp_);
+  for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+    bf_[j].fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+    bf_[j].freadc<T>(rf_stream.data(), shm_read_size_samp_);
+    ITypeToIDouble<T>(
+        rf_stream.data(),
+        shm_->col(j).segment(shm_ptr_, shm_read_size_samp_).data(),
+        shm_read_size_samp_);
+  }
+  shm_ptr_ += shm_read_size_samp_;
+  shm_ptr_ %= shm_file_size_samp_;
+
+  // run channels for specified amount of time
+  int meas_freq_ms = 1000 / (int)conf_.navigation.meas_freq;
+  int read_freq_ms = (int)conf_.general.ms_read_size;
+  int n = (int)conf_.general.ms_to_process + 1;
+  int ndot = std::min(read_freq_ms, meas_freq_ms);
+
+  for (int i = 0; i <= n; i += ndot) {
+    // check for screen printouts every second
+    if (!(i % 1000)) {
+      log_->info("File time: {:.3f} s ... Processing Time: {:.3f} s", (float)i / 1000.0, sw);
+    }
+
+    // check if time for nav update
+    if (!(i % meas_freq_ms)) {
+      navigator_->Notify();
+    }
+
+    // check if time for new data to be parsed
+    if (!(i % read_freq_ms)) {
+      // ready to process data
+      barrier_->Wait();
+
+      // read next signal data while channels are processing
+      for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+        bf_[j].fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
+        bf_[j].freadc<T>(rf_stream.data(), shm_read_size_samp_);
+        ITypeToIDouble<T>(
+            rf_stream.data(),
+            shm_->col(j).segment(shm_ptr_, shm_read_size_samp_).data(),
+            shm_read_size_samp_);
+      }
+      shm_ptr_ += shm_read_size_samp_;
+      shm_ptr_ %= shm_file_size_samp_;
+    }
+  }
 }
 
 // Explicit instantiation of SturDR::Run
 template void SturDR::Run<int8_t>();
 template void SturDR::Run<int16_t>();
 template void SturDR::Run<float>();
-
-// Explicit instantiation of SturDR::RunComplex
+template void SturDR::RunArray<int8_t>();
+template void SturDR::RunArray<int16_t>();
+template void SturDR::RunArray<float>();
 template void SturDR::RunComplex<int8_t>();
 template void SturDR::RunComplex<int16_t>();
 template void SturDR::RunComplex<float>();
+template void SturDR::RunComplexArray<int8_t>();
+template void SturDR::RunComplexArray<int16_t>();
+template void SturDR::RunComplexArray<float>();
 
 }  // namespace sturdr
