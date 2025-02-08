@@ -27,14 +27,15 @@
 #include <cstdio>
 #include <memory>
 #include <mutex>
+#include <navtools/attitude.hpp>
+#include <navtools/constants.hpp>
 #include <navtools/frames.hpp>
+#include <satutils/ephemeris.hpp>
 #include <satutils/gnss-constants.hpp>
 #include <sturdins/least-squares.hpp>
 #include <sturdins/nav-clock.hpp>
 #include <vector>
 
-#include "navtools/constants.hpp"
-#include "satutils/ephemeris.hpp"
 #include "sturdr/structs-enums.hpp"
 #include "sturdr/vector-tracking.hpp"
 
@@ -66,7 +67,9 @@ Navigator::Navigator(
   // set known parameters for kalman filter
   sturdins::NavigationClock clk = sturdins::GetNavClock(conf_.navigation.clock_model);
   kf_.SetClockSpec(clk.h0, clk.h1, clk.h2);
-  kf_.SetProcessNoise(conf_.navigation.process_std * conf_.navigation.process_std);
+  double Svel = conf_.navigation.process_std_vel * conf_.navigation.process_std_vel;
+  double Satt = conf_.navigation.process_std_att * conf_.navigation.process_std_att;
+  kf_.SetProcessNoise(Svel, Satt);
 
   log_->info("SturDR Navigator initialized");
 }
@@ -127,6 +130,11 @@ void Navigator::NavigationThread() {
               nedv_(2),
               cb_,
               cd_);
+
+          // Eigen::Vector3d rpy = navtools::quat2euler<true, double>(kf_.q_b_l_);
+          // std::cout << kf_.phi_ << ", " << kf_.lam_ << ", " << kf_.h_ << ", " << kf_.vn_ << ", "
+          //           << kf_.ve_ << ", " << kf_.vd_ << ", " << rpy(0) << ", " << rpy(1) << ", "
+          //           << rpy(2) << ", " << cb_ << ", " << cd_ << "\n";
         }
       }
     }
@@ -174,6 +182,7 @@ void Navigator::ChannelNavPacketListener() {
       channel_data_[packet.Header.ChannelNum].HasData = true;
       channel_data_[packet.Header.ChannelNum].VTCodeRate = packet.VTCodeRate;
       channel_data_[packet.Header.ChannelNum].VTCarrierFreq = packet.VTCarrierFreq;
+      channel_data_[packet.Header.ChannelNum].VTUnitVec = packet.VTUnitVec;
       channel_data_[packet.Header.ChannelNum].ReadyForVT = false;
       // channel_sync_[packet.Header.ChannelNum].cv = packet.cv;
       // channel_sync_[packet.Header.ChannelNum].update_complete = packet.update_complete;
@@ -203,7 +212,8 @@ void Navigator::ChannelNavPacketListener() {
                true,
                false,
                packet.VTCodeRate,
-               packet.VTCarrierFreq}});
+               packet.VTCarrierFreq,
+               packet.VTUnitVec}});
       channel_sync_.push_back({packet.cv, packet.update_complete, packet.is_vector, false});
     }
 
@@ -390,7 +400,7 @@ void Navigator::InitNavSolution(
   // least squares
   Eigen::VectorXd x{Eigen::Vector<double, 8>::Zero()};
   Eigen::MatrixXd P{Eigen::Matrix<double, 8, 8>::Zero()};
-  sturdins::GaussNewton(x, P, sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+  sturdins::GnssPVT(x, P, sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
   navtools::ecef2lla<double>(lla_, x.segment(0, 3));
   navtools::ecef2nedv<double>(nedv_, x.segment(3, 3), lla_);
   cb_ = x(6);

@@ -18,6 +18,7 @@
 
 #include "sturdr/beamsteer.hpp"
 #include "sturdr/gnss-signal.hpp"
+#include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
 
@@ -43,55 +44,12 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
           fftw_plans,
           GetNewPrnFunc),
       mu_{5e-9},
-      W_{Eigen::VectorXcd::Zero(conf_.rfsignal.n_ant)},
-      W_err_{Eigen::VectorXcd::Zero(conf_.rfsignal.n_ant)} {
+      W_{Eigen::VectorXcd::Zero(conf_.antenna.n_ant)} {
   W_(0) = 1.0;
 }
 
 // *=== ~ChannelGpsL1caArray ===*
 ChannelGpsL1caArray::~ChannelGpsL1caArray() {
-}
-
-// *=== Track ===*
-void ChannelGpsL1caArray::Track() {
-  // make sure a count of the unprocessed samples is made
-  uint64_t unread_samples = UnreadSampleCount();
-  uint64_t samp_to_read;
-
-  // process until all samples have been read
-  while (unread_samples > 0) {
-    if (samp_remaining_ > 0) {
-      // --- INTEGRATE ---
-      samp_to_read = std::min(samp_remaining_, unread_samples);
-      // std::cout << "samp_to_read: " << samp_to_read << ", samp_remaining: " << samp_remaining_
-      //           << ", unread_samples: " << unread_samples << "\n";
-      Integrate(samp_to_read);
-
-    } else {
-      // --- DUMP ---
-      Dump();
-      // W_ += W_err_;
-      // LmsNormalize(W_);
-    }
-
-    // recount unread samples
-    unread_samples = UnreadSampleCount();
-  }
-
-  // send navigation parameters precise to current sample
-  if (!(*nav_pkt_.is_vector)) {
-    nav_pkt_.FilePtr = shm_ptr_;
-    nav_pkt_.CodePhase = rem_code_phase_;
-    nav_pkt_.Doppler = carr_doppler_;
-    nav_pkt_.CarrierPhase = rem_carr_phase_;
-    q_nav_->push(nav_pkt_);
-    {
-      std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
-      nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
-      // nav_pkt_.cv->wait(channel_lock);
-      *nav_pkt_.update_complete = false;
-    }
-  }
 }
 
 // *=== Integrate ===*
@@ -102,13 +60,30 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
   double nco_code_freq = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
   double nco_carr_freq = intmd_freq_rad_ + carr_doppler_;
 
-  if (file_pkt_.TrackingStatus & TrackingFlags::BIT_SYNC) {
-    // accumulate samples and beamsteer (Least mean squares)
-    LmsBeam(
-        mu_,
-        W_,
-        W_err_,
-        shm_->block(shm_ptr_, 0u, samp_to_read, (uint64_t)conf_.rfsignal.n_ant),
+  if (file_pkt_.TrackingStatus & TrackingFlags::NAV_SOLUTION) {
+    // TODO: accumulate samples and beamsteer (Least mean squares)
+    // LmsBeam(
+    //     mu_,
+    //     W_,
+    //     shm_->block(shm_ptr_, 0u, samp_to_read, (uint64_t)conf_.rfsignal.n_ant),
+    //     code_.data(),
+    //     rem_code_phase_,
+    //     nco_code_freq,
+    //     rem_carr_phase_,
+    //     nco_carr_freq,
+    //     carr_jitter_,
+    //     conf_.rfsignal.samp_freq,
+    //     half_samp_,
+    //     samp_remaining_,
+    //     tap_space_,
+    //     E_,
+    //     P1_,
+    //     P2_,
+    //     L_);
+    DeterministicBeam(
+        conf_.antenna.ant_xyz,
+        u_,
+        shm_->block(shm_ptr_, 0u, samp_to_read, (uint64_t)conf_.antenna.n_ant),
         code_.data(),
         rem_code_phase_,
         nco_code_freq,

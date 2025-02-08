@@ -51,35 +51,14 @@ double VectorFllNco(double &intmd_freq, double &lambda, double &psrdot);
 /**
  * *=== RunVDFllUpdate ===*
  * @brief Runs the vector Delay-Frequency lock loop navigation update
- * @param Eph       Satellite ephemeris object
- * @param tR        Receive time [s]
- * @param tT        Channel transmit time [s]
- * @param doppler   Channel doppler [rad/s]
- * @param dll_disc  Channel DLL discriminator [chips]
- * @param fll_disc  Channel FLL discriminator [rad/s]
- * @param n_samp    Number of samples elapsed since most recent vector update
- * @param filt      EKF filter object
- * @param T         Nominal integration period [s]
- * @param chip_rate Nominal chipping rate of the signal [chips/s]
- * @param theta     Remainder code phase from previous NCO correction [chips]
- * @param lambda    carrier wavelength [m/rad]
- * @param beta      chip width [m/chip]
+ * @param d_samp      Number of samples elapsed since most recent vector update
+ * @param samp_freq   Front end sampling frequency [Hz]
+ * @param intmd_freq  Front end intermediate frequency [Hz]
+ * @param data        Navigation data parsed from each channel
+ * @param tR          Current receive time of the receiver [s]
+ * @param T           Nominal integration period [s]
+ * @param filt        Reference to navigation filter
  */
-// VectorNcoUpdate RunVDFllUpdate(
-//     satutils::KeplerEphem<double> &Eph,
-//     double &tR,
-//     double &tT,
-//     double &doppler,
-//     double &dll_disc,
-//     double &fll_disc,
-//     uint64_t &n_samp,
-//     sturdins::Kns &filt,
-//     double &T,
-//     double &samp_freq,
-//     double &chip_rate,
-//     double &theta,
-//     double &lambda,
-//     double &beta);
 void RunVDFllUpdate(
     uint64_t &d_samp,
     double &samp_freq,

@@ -170,7 +170,6 @@ void DeterministicNull(
 void LmsBeam(
     const double &mu,
     Eigen::Ref<Eigen::VectorXcd> W,
-    Eigen::Ref<Eigen::VectorXcd> delta_W,
     const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
     const bool code[1023],
     double &rem_code_phase,
@@ -228,7 +227,7 @@ void LmsBeam(
     }
 
     // reference correlation vector
-    if (P.real() < 0.0) {
+    if (P.real() > 0.0) {
       S = X.conjugate() * v_code;  // + data bit (r = +1 * nco_code_replica)
     } else {
       S = X.conjugate() * -v_code;  // - data bit (r = -1 * nco_code_replica)

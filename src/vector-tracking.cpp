@@ -19,19 +19,15 @@
 
 #include "sturdr/vector-tracking.hpp"
 
-#include <Eigen/src/Core/Matrix.h>
-#include <spdlog/spdlog.h>
-
 #include <Eigen/Dense>
-#include <iomanip>
 #include <navtools/constants.hpp>
 #include <sturdins/least-squares.hpp>
 
 namespace sturdr {
 
 // *=== VectorDllNco ===*
-double VectorDllNco(double &chip_rate, double &T, double &theta, double &tR, double &tR_pred) {
-  return (chip_rate * T - theta) / (tR_pred - tR);
+double VectorDllNco(double &chip_rate, double &T, double &tau, double &tR, double &tR_pred) {
+  return (chip_rate * T - tau) / (tR_pred - tR);
   // return (chip_rate * T) / (tR_pred - tR);
 }
 
@@ -70,7 +66,8 @@ void RunVDFllUpdate(
   psrdot_var << data.PsrdotVar;
 
   // 4. Combine vector and scaler measurements
-  psr(0) -= data.Beta * data.DllDisc;  //! I DONT KNOW WHY THIS NEED TO BE SUBTRACTED
+  //! SUBTRACTED CODE DISCRIMINATOR BECAUSE MY EARLY AND LATE CORRELATORS ARE REVERSED FROM PAPERS
+  psr(0) -= data.Beta * data.DllDisc;
   psrdot(0) -= data.Lambda * data.FllDisc;
 
   // 4. Run kalman filter (save predicted nav-state)
@@ -92,13 +89,15 @@ void RunVDFllUpdate(
   double tR_pred = tT_pred - sv_clk(0) + (psr_pred / navtools::LIGHT_SPEED<>);
   psrdot_pred -= navtools::LIGHT_SPEED<> * sv_clk(1);
 
-  // 7. Vector FLL update
-  *data.VTCarrierFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);
+  // 7. Unit Vector for potential beamsteering (in body frame)
+  *data.VTUnitVec = filt.C_b_l_.transpose() * u;
 
-  // this is for appending a PLL after VFLL
+  // 8. Vector FLL update
+  *data.VTCarrierFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);
+  //! this is for appending a PLL after VFLL
   // *data.VTCarrierFreq = (psrdot(0) - psrdot_pred) / data.Lambda;
 
-  // 8. Vector DLL update
+  // 9. Vector DLL update
   *data.VTCodeRate = VectorDllNco(data.ChipRate, T, data.CodePhase, tR, tR_pred);
 }
 

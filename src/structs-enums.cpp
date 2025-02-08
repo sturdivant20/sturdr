@@ -149,9 +149,6 @@ std::ostream& operator<<(std::ostream& os, const sturdr::TrackingFlags::Tracking
     std::ostringstream oss;
     while (bitmask) {
       switch (Token & bitmask) {
-        case sturdr::TrackingFlags::TrackingFlags::ACQUIRED:
-          oss << "ACQUIRED & ";
-          break;
         case sturdr::TrackingFlags::TrackingFlags::CODE_LOCK:
           oss << "CODE_LOCK & ";
           break;
@@ -172,6 +169,9 @@ std::ostream& operator<<(std::ostream& os, const sturdr::TrackingFlags::Tracking
           break;
         case sturdr::TrackingFlags::TrackingFlags::FINE_LOCK:
           oss << "FINE_LOCK & ";
+          break;
+        case sturdr::TrackingFlags::TrackingFlags::NAV_SOLUTION:
+          oss << "NAV_SOLUTION & ";
           break;
       }
       bitmask <<= 1;

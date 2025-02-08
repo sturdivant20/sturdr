@@ -202,7 +202,6 @@ void ChannelGpsL1ca::Acquire() {
         intmd_freq_rad_,
         satutils::GPS_CA_CODE_RATE<>);
     NewCodePeriod();
-    file_pkt_.TrackingStatus |= TrackingFlags::ACQUIRED;
 
     // std::string fname = "Channel_" + std::to_string(file_pkt_.Header.ChannelNum) + "_GPS" +
     //                     std::to_string(file_pkt_.Header.SVID);

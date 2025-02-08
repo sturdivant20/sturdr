@@ -26,8 +26,8 @@ namespace sturdr {
 class ChannelGpsL1caArray : public ChannelGpsL1ca {
  protected:
   double mu_;
+  Eigen::Vector3d u_;
   Eigen::VectorXcd W_;
-  Eigen::VectorXcd W_err_;
 
  public:
   /**
@@ -55,7 +55,7 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
    * *=== Track ===*
    * @brief Trys to track current satellite using antenna array processing
    */
-  void Track() override;
+  // void Track() override;
   void Integrate(const uint64_t &samp_to_read) override;
   // void Dump() override;
 

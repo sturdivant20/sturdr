@@ -48,9 +48,7 @@ SturDR::SturDR(const std::string yaml_fname)
            yp_.GetVar<bool>("is_complex"),
            static_cast<uint8_t>(yp_.GetVar<uint16_t>("bit_depth")),
            yp_.GetVar<std::string>("signals"),
-           static_cast<uint8_t>(yp_.GetVar<uint16_t>("max_channels")),
-           yp_.GetVar<bool>("is_multi_antenna"),
-           static_cast<uint8_t>(yp_.GetVar<uint16_t>("n_ant"))},
+           static_cast<uint8_t>(yp_.GetVar<uint16_t>("max_channels"))},
           {yp_.GetVar<double>("threshold"),
            yp_.GetVar<double>("doppler_range"),
            yp_.GetVar<double>("doppler_step"),
@@ -77,15 +75,19 @@ SturDR::SturDR(const std::string yaml_fname)
            yp_.GetVar<bool>("do_vt"),
            static_cast<uint8_t>(yp_.GetVar<uint16_t>("meas_freq")),
            yp_.GetVar<std::string>("clock_model"),
-           yp_.GetVar<double>("process_std"),
-           yp_.GetVar<double>("nominal_transit_time")}},
-      bf_(conf_.rfsignal.n_ant),
+           yp_.GetVar<double>("process_std_vel"),
+           yp_.GetVar<double>("process_std_att"),
+           yp_.GetVar<double>("nominal_transit_time")},
+          {yp_.GetVar<bool>("is_multi_antenna"),
+           static_cast<uint8_t>(yp_.GetVar<uint16_t>("n_ant")),
+           Eigen::MatrixXd::Zero(3, yp_.GetVar<int>("n_ant"))}},
+      bf_(conf_.antenna.n_ant),
       samp_per_ms_{static_cast<uint64_t>(conf_.rfsignal.samp_freq) / 1000},
       shm_ptr_{0},
       shm_file_size_samp_{conf_.general.ms_chunk_size * samp_per_ms_},
       shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
       shm_{std::make_shared<Eigen::MatrixXcd>(
-          Eigen::MatrixXcd::Zero(shm_file_size_samp_, conf_.rfsignal.n_ant))},
+          Eigen::MatrixXcd::Zero(shm_file_size_samp_, conf_.antenna.n_ant))},
       running_{std::make_shared<bool>(true)},
       n_dopp_bins_{
           2 * static_cast<uint64_t>(
@@ -105,7 +107,6 @@ SturDR::SturDR(const std::string yaml_fname)
   // setup terminal/console logger
   log_->set_pattern("\033[1;34m[%D %T.%e][%^%l%$\033[1;34m]: \033[0m%v");
   log_->set_level(conf_.general.log_level);
-
   log_->trace("scenario: {}", conf_.general.scenario);
   log_->trace("ms_to_process: {}", conf_.general.ms_to_process);
   log_->trace("ms_chunk_size: {}", conf_.general.ms_chunk_size);
@@ -141,7 +142,8 @@ SturDR::SturDR(const std::string yaml_fname)
   log_->trace("fll_bandwidth_narrow: {}", conf_.tracking.fll_bw_narrow);
   log_->trace("dll_bandwidth_narrow: {}", conf_.tracking.dll_bw_narrow);
   log_->trace("meas_freq: {}", conf_.navigation.meas_freq);
-  log_->trace("process_std: {}", conf_.navigation.process_std);
+  log_->trace("process_std_vel: {}", conf_.navigation.process_std_vel);
+  log_->trace("process_std_att: {}", conf_.navigation.process_std_att);
   log_->trace("clock_model: {}", conf_.navigation.clock_model);
   log_->trace("nominal_transit_time: {}", conf_.navigation.nominal_transit_time);
   log_->trace("use_psr: {}", conf_.navigation.use_psr);
@@ -149,6 +151,19 @@ SturDR::SturDR(const std::string yaml_fname)
   log_->trace("use_adr: {}", conf_.navigation.use_adr);
   log_->trace("use_cno: {}", conf_.navigation.use_cno);
   log_->trace("do_vt: {}", conf_.navigation.do_vt);
+
+  // read in the antenna positions if necessary
+  if (conf_.antenna.n_ant > 1) {
+    std::vector<double> vec;
+    std::string item;
+    for (int i = 0; i < conf_.antenna.n_ant; i++) {
+      item = "ant_xyz_" + std::to_string(i);
+      yp_.GetVar<std::vector<double>>(vec, item);
+      conf_.antenna.ant_xyz.col(i) = Eigen::Map<Eigen::VectorXd>(vec.data(), vec.size());
+      vec.clear();
+    }
+    std::cout << "ant_pos: \n" << conf_.antenna.ant_xyz << "\n";
+  }
 }
 
 // *=== ~SturDR ===*
@@ -165,7 +180,7 @@ void SturDR::Start() {
   InitChannels();
 
   // choose correct data type adapter
-  if (!conf_.rfsignal.is_multi_antenna) {
+  if (!conf_.antenna.is_multi_antenna) {
     // single antenna receiver
     bf_[0].fopen(conf_.general.in_file);
 
@@ -195,7 +210,7 @@ void SturDR::Start() {
   } else {
     // multi antenna receiver
     std::string fname;
-    for (int i = 0; i < conf_.rfsignal.n_ant; i++) {
+    for (int i = 0; i < conf_.antenna.n_ant; i++) {
       fname = conf_.general.in_file + "-" + std::to_string(i) + ".bin";
       bf_[i].fopen(fname);
     }
@@ -232,7 +247,7 @@ void SturDR::Start() {
   nav_queue_->NotifyComplete();
   eph_queue_->NotifyComplete();
   for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
-    if (!conf_.rfsignal.is_multi_antenna) {
+    if (!conf_.antenna.is_multi_antenna) {
       gps_l1ca_channels_[i].Join();
     } else {
       gps_l1ca_array_channels_[i].Join();
@@ -273,7 +288,7 @@ void SturDR::InitChannels() {
     std::function<void(uint8_t&)> get_new_prn_func =
         std::bind(&SturDR::GetNewPrn, this, std::placeholders::_1);
 
-    if (!conf_.rfsignal.is_multi_antenna) {
+    if (!conf_.antenna.is_multi_antenna) {
       gps_l1ca_channels_.reserve(conf_.rfsignal.max_channels);
       for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
         gps_l1ca_channels_.emplace_back(
@@ -420,7 +435,7 @@ void SturDR::RunArray() {
 
   // initialize rf data stream
   std::vector<T> rf_stream(shm_read_size_samp_);
-  for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+  for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
     bf_[j].fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
     bf_[j].fread<T>(rf_stream.data(), shm_read_size_samp_);
     TypeToIDouble<T>(
@@ -454,7 +469,7 @@ void SturDR::RunArray() {
       barrier_->Wait();
 
       // read next signal data while channels are processing
-      for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+      for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
         bf_[j].fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
         bf_[j].fread<T>(rf_stream.data(), shm_read_size_samp_);
         TypeToIDouble<T>(
@@ -476,7 +491,7 @@ void SturDR::RunComplexArray() {
 
   // initialize rf data stream
   std::vector<std::complex<T>> rf_stream(shm_read_size_samp_);
-  for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+  for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
     bf_[j].fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
     bf_[j].freadc<T>(rf_stream.data(), shm_read_size_samp_);
     ITypeToIDouble<T>(
@@ -510,7 +525,7 @@ void SturDR::RunComplexArray() {
       barrier_->Wait();
 
       // read next signal data while channels are processing
-      for (uint8_t j = 0; j < conf_.rfsignal.n_ant; j++) {
+      for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
         bf_[j].fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
         bf_[j].freadc<T>(rf_stream.data(), shm_read_size_samp_);
         ITypeToIDouble<T>(

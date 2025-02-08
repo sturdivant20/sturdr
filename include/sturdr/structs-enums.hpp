@@ -14,6 +14,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
@@ -63,15 +64,15 @@ enum ChannelState { OFF = 0, IDLE = 1, ACQUIRING = 2, TRACKING = 4 };
 
 namespace TrackingFlags {
 enum TrackingFlags {
-  UNKNOWN = 0,         // 0000 0000 - No tracking
-  ACQUIRED = 1,        // 0000 0001 - Signal acquired
-  CODE_LOCK = 2,       // 0000 0010 - Code Locked
-  CARRIER_LOCK = 4,    // 0000 0100 - Carrier Locked
-  BIT_SYNC = 8,        // 0000 1000 - Data Bit found
-  SUBFRAME_SYNC = 16,  // 0001 0000 - Subframe identified
-  TOW_DECODED = 32,    // 0010 0000 - Subframe ToW decoded
-  EPH_DECODED = 64,    // 0100 0000 - Complete ephemeris decoded (excluding atmospheric parameters)
-  FINE_LOCK = 128      // 1000 0000 - Fine tracking lock
+  UNKNOWN = 0,        // 0000 0000 - No tracking
+  CODE_LOCK = 1,      // 0000 0001 - Code Locked
+  CARRIER_LOCK = 2,   // 0000 0010 - Carrier Locked
+  BIT_SYNC = 4,       // 0000 0100 - Data Bit found
+  SUBFRAME_SYNC = 8,  // 0000 1000 - Subframe identified
+  TOW_DECODED = 16,   // 0001 0000 - Subframe ToW decoded
+  EPH_DECODED = 32,   // 0010 0000 - Complete ephemeris decoded (excluding atmospheric parameters)
+  FINE_LOCK = 64,     // 0100 0000 - Fine tracking lock
+  NAV_SOLUTION = 128  // 1000 0000 - Navigation solution feedback
 };
 };  // namespace TrackingFlags
 
@@ -100,8 +101,6 @@ struct RfSignalConfig {
   uint8_t bit_depth;
   std::string signals;
   uint8_t max_channels;
-  bool is_multi_antenna;
-  uint8_t n_ant;
 };
 struct AcquisitionConfig {
   double threshold;
@@ -134,8 +133,15 @@ struct NavigationConfig {
   bool do_vt;
   uint8_t meas_freq;
   std::string clock_model;
-  double process_std;
+  double process_std_vel;
+  double process_std_att;
   double nominal_transit_time;
+};
+
+struct AntennaConfig {
+  bool is_multi_antenna;
+  uint8_t n_ant;
+  Eigen::MatrixXd ant_xyz;
 };
 struct Config {
   GeneralConfig general;
@@ -143,6 +149,7 @@ struct Config {
   AcquisitionConfig acquisition;
   TrackingConfig tracking;
   NavigationConfig navigation;
+  AntennaConfig antenna;
 };
 
 /**
@@ -217,6 +224,7 @@ struct ChannelNavPacket {
   std::shared_ptr<double> VTCodeRate{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<bool> is_vector{std::make_shared<bool>(false)};
+  std::shared_ptr<Eigen::Vector3d> VTUnitVec{std::make_shared<Eigen::Vector3d>()};
 };
 
 /**
@@ -244,6 +252,7 @@ struct ChannelNavData {
   bool ReadyForVT{false};
   std::shared_ptr<double> VTCodeRate{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
+  std::shared_ptr<Eigen::Vector3d> VTUnitVec{std::make_shared<Eigen::Vector3d>()};
 };
 
 };  // end namespace sturdr
@@ -400,9 +409,6 @@ struct fmt::formatter<sturdr::TrackingFlags::TrackingFlags> : formatter<string_v
       std::ostringstream oss;
       while (bitmask) {
         switch (c & bitmask) {
-          case sturdr::TrackingFlags::TrackingFlags::ACQUIRED:
-            oss << "ACQUIRED & ";
-            break;
           case sturdr::TrackingFlags::TrackingFlags::CODE_LOCK:
             oss << "CODE_LOCK & ";
             break;
@@ -423,6 +429,9 @@ struct fmt::formatter<sturdr::TrackingFlags::TrackingFlags> : formatter<string_v
             break;
           case sturdr::TrackingFlags::TrackingFlags::FINE_LOCK:
             oss << "FINE_LOCK & ";
+            break;
+          case sturdr::TrackingFlags::TrackingFlags::NAV_SOLUTION:
+            oss << "NAV_SOLUTION & ";
             break;
         }
         bitmask <<= 1;
