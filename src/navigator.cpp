@@ -25,11 +25,13 @@
 
 #include <cmath>
 #include <cstdio>
+#include <iomanip>
 #include <memory>
 #include <mutex>
 #include <navtools/attitude.hpp>
 #include <navtools/constants.hpp>
 #include <navtools/frames.hpp>
+#include <navtools/math.hpp>
 #include <satutils/ephemeris.hpp>
 #include <satutils/gnss-constants.hpp>
 #include <sturdins/least-squares.hpp>
@@ -175,10 +177,12 @@ void Navigator::ChannelNavPacketListener() {
       channel_data_[packet.Header.ChannelNum].FllDisc = packet.FllDisc;
       channel_data_[packet.Header.ChannelNum].PsrVar = packet.PsrVar;
       channel_data_[packet.Header.ChannelNum].PsrdotVar = packet.PsrdotVar;
+      channel_data_[packet.Header.ChannelNum].PhaseVar = packet.PhaseVar;
       channel_data_[packet.Header.ChannelNum].Beta = packet.Beta;
       channel_data_[packet.Header.ChannelNum].Lambda = packet.Lambda;
       channel_data_[packet.Header.ChannelNum].ChipRate = packet.ChipRate;
       channel_data_[packet.Header.ChannelNum].CarrierFreq = packet.CarrierFreq;
+      channel_data_[packet.Header.ChannelNum].PromptCorrelators = packet.PromptCorrelators;
       channel_data_[packet.Header.ChannelNum].HasData = true;
       channel_data_[packet.Header.ChannelNum].VTCodeRate = packet.VTCodeRate;
       channel_data_[packet.Header.ChannelNum].VTCarrierFreq = packet.VTCarrierFreq;
@@ -204,10 +208,12 @@ void Navigator::ChannelNavPacketListener() {
                packet.FllDisc,
                packet.PsrVar,
                packet.PsrdotVar,
+               packet.PhaseVar,
                packet.Beta,
                packet.Lambda,
                packet.ChipRate,
                packet.CarrierFreq,
+               packet.PromptCorrelators,
                false,
                true,
                false,
@@ -277,6 +283,7 @@ void Navigator::ChannelEphemPacketListener() {
                0.0,
                0.0,
                0.0,
+               Eigen::VectorXd::Zero(conf_.antenna.n_ant),
                0.0,
                0.0,
                0.0,
@@ -285,6 +292,7 @@ void Navigator::ChannelEphemPacketListener() {
                0.0,
                0.0,
                0.0,
+               Eigen::VectorXcd::Zero(conf_.antenna.n_ant),
                true,
                false,
                false,
@@ -294,7 +302,7 @@ void Navigator::ChannelEphemPacketListener() {
 
     // log ephemeris
     eph_log_->info("GPS{},{}", packet.Header.SVID, packet.Eph);
-  }
+  }  // namespace sturdr
 }
 
 // *=== NavigationUpdate ===
@@ -370,8 +378,8 @@ bool Navigator::NavigationUpdate() {
 
 // *=== InitNavSolution ===*
 void Navigator::InitNavSolution(
-    const Eigen::Ref<const Eigen::MatrixXd> &sv_pos,
-    const Eigen::Ref<const Eigen::MatrixXd> &sv_vel,
+    const Eigen::Ref<const Eigen::Matrix3Xd> &sv_pos,
+    const Eigen::Ref<const Eigen::Matrix3Xd> &sv_vel,
     const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
     const Eigen::Ref<const Eigen::VectorXd> &psrdot,
     const Eigen::Ref<const Eigen::VectorXd> &psr_var,
@@ -410,6 +418,64 @@ void Navigator::InitNavSolution(
   receive_time_ -= (cb_ / navtools::LIGHT_SPEED<>);
   cb_ = 0.0;
 
+  if (conf_.antenna.is_multi_antenna) {
+    std::cout << std::setprecision(10);
+
+    const int N = channel_sync_.size();
+    double tmp1 = 0.0, tmp2 = 0.0;
+    Eigen::Vector3d tmp3, u;
+    Eigen::MatrixXd u_ned(3, N);
+    Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla_);
+
+    // use music (on correlator) to estimate DoA
+    Eigen::VectorXd est_az(N), est_el(N);
+    for (int i = 0; i < N; i++) {
+      sturdins::MUSIC(
+          est_az(i),
+          est_el(i),
+          channel_data_[i + 1].PromptCorrelators,
+          conf_.antenna.ant_xyz,
+          static_cast<int>(conf_.antenna.n_ant),
+          channel_data_[i + 1].Lambda,
+          1e-4);
+
+      // std::cout << std::setprecision(10) << "PromtCorrelators(" << i + 1 << "): \n"
+      //           << channel_data_[i + 1].PromptCorrelators.transpose() << "\n";
+      std::cout << "est_az(" << i + 1 << "): " << est_az(i) * navtools::RAD2DEG<> << ", est_el("
+                << i + 1 << "): " << est_el(i) * navtools::RAD2DEG<> << "\n\n";
+
+      sturdins::RangeAndRate(
+          x.segment(0, 3),
+          x.segment(3, 3),
+          cb_,
+          cd_,
+          sv_pos.col(i),
+          sv_vel.col(i),
+          u,
+          tmp3,
+          tmp1,
+          tmp2);
+      u_ned.col(i) = C_e_l * u;
+    }
+
+    // solve wahbas problem to estimate user attitude
+    Eigen::Matrix3d C_l_b_est;
+    Eigen::MatrixXd u_body_est(3, N);
+    Eigen::VectorXd u_body_var{Eigen::VectorXd::Ones(N)};
+    u_body_est.row(0) = est_az.array().cos() * est_el.array().cos();
+    u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
+    u_body_est.row(2) = -est_el.array().sin();
+    sturdins::Wahba(C_l_b_est, u_body_est, u_ned, u_body_var);
+    Eigen::Vector3d rpy_est = navtools::dcm2euler<true, double>(C_l_b_est.transpose());
+
+    std::cout << "u_from_sv: \n" << u_ned.transpose() << "\n";
+    std::cout << "u_from_music: \n" << u_body_est.transpose() << "\n";
+    std::cout << "est_rpy: " << rpy_est.transpose() * navtools::RAD2DEG<> << "\n";
+
+    // initialize kalman filter
+    kf_.SetAttitude(rpy_est(0), rpy_est(1), rpy_est(2));
+  }
+
   // initialize kalman filter
   kf_.SetPosition(lla_(0), lla_(1), lla_(2));
   kf_.SetVelocity(nedv_(0), nedv_(1), nedv_(2));
@@ -421,8 +487,8 @@ void Navigator::InitNavSolution(
 
 // *=== ScalarNavSolution ===*
 void Navigator::ScalarNavSolution(
-    const Eigen::Ref<const Eigen::MatrixXd> &sv_pos,
-    const Eigen::Ref<const Eigen::MatrixXd> &sv_vel,
+    const Eigen::Ref<const Eigen::Matrix3Xd> &sv_pos,
+    const Eigen::Ref<const Eigen::Matrix3Xd> &sv_vel,
     const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
     const Eigen::Ref<const Eigen::VectorXd> &psrdot,
     const Eigen::Ref<const Eigen::VectorXd> &psr_var,
@@ -452,11 +518,49 @@ void Navigator::ScalarNavSolution(
 
   // propagate navigation filter
   kf_.Propagate(dt);
-  kf_.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+  if (conf_.antenna.is_multi_antenna) {
+    int num_sv = transmit_time.size();
+    Eigen::MatrixXd phase_disc(conf_.antenna.n_ant, num_sv);
+    Eigen::MatrixXd phase_disc_var(conf_.antenna.n_ant, num_sv);
+    Eigen::VectorXd O{Eigen::VectorXd::Ones(conf_.antenna.n_ant)};
+    double lamb;
+    for (int i = 0; i < num_sv; i++) {
+      // phased array information
+      phase_disc.col(i) = channel_data_[i + 1].PllDisc;
+      phase_disc_var.col(i) = O * channel_data_[i + 1].PhaseVar;
+      lamb = channel_data_[i + 1].Lambda;
+    }
+    Eigen::RowVectorXd phase_disc_0 = phase_disc.row(0);
+    phase_disc = (-phase_disc).rowwise() + phase_disc_0;
+    for (int i = 0; i < num_sv; i++) {
+      for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
+        navtools::WrapPiToPi<double>(phase_disc(j, i));
+      }
+    }
+    // std::cout << "phase_disc: \n" << phase_disc.transpose() << "\n";
+
+    kf_.PhasedArrayUpdate(
+        sv_pos,
+        sv_vel,
+        psr,
+        psrdot,
+        phase_disc,
+        psr_var,
+        psrdot_var,
+        phase_disc_var,
+        conf_.antenna.ant_xyz,
+        conf_.antenna.n_ant,
+        lamb);
+  } else {
+    kf_.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+  }
   lla_ << navtools::RAD2DEG<> * kf_.phi_, navtools::RAD2DEG<> * kf_.lam_, kf_.h_;
   nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
   cb_ = kf_.cb_;
   cd_ = kf_.cd_;
+
+  Eigen::Vector3d rpy_est = navtools::dcm2euler<true, double>(kf_.C_b_l_);
+  std::cout << "est_rpy: " << rpy_est.transpose() * navtools::RAD2DEG<> << "\n";
 }
 
 // *=== VectorNavSolution ===*

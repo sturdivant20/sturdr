@@ -126,8 +126,8 @@ class Navigator {
    * @brief initializes navigation with least squares
    */
   void InitNavSolution(
-      const Eigen::Ref<const Eigen::MatrixXd> &sv_pos,
-      const Eigen::Ref<const Eigen::MatrixXd> &sv_vel,
+      const Eigen::Ref<const Eigen::Matrix3Xd> &sv_pos,
+      const Eigen::Ref<const Eigen::Matrix3Xd> &sv_vel,
       const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
       const Eigen::Ref<const Eigen::VectorXd> &psrdot,
       const Eigen::Ref<const Eigen::VectorXd> &psr_var,
@@ -138,8 +138,8 @@ class Navigator {
    * @brief propagates navigation with 'scalar' navigation techniques
    */
   void ScalarNavSolution(
-      const Eigen::Ref<const Eigen::MatrixXd> &sv_pos,
-      const Eigen::Ref<const Eigen::MatrixXd> &sv_vel,
+      const Eigen::Ref<const Eigen::Matrix3Xd> &sv_pos,
+      const Eigen::Ref<const Eigen::Matrix3Xd> &sv_vel,
       const Eigen::Ref<const Eigen::VectorXd> &transmit_time,
       const Eigen::Ref<const Eigen::VectorXd> &psrdot,
       const Eigen::Ref<const Eigen::VectorXd> &psr_var,

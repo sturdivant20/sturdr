@@ -78,6 +78,16 @@ std::complex<double> Correlate(
     const Eigen::Ref<const Eigen::VectorXcd> &rfdata,
     const Eigen::Ref<const Eigen::VectorXcd> &carr,
     const Eigen::Ref<const Eigen::VectorXcd> &code);
+void Correlate(
+    const Eigen::Ref<const Eigen::VectorXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    std::complex<double> &C);
 
 /**
  * *=== CodeNCO ===*

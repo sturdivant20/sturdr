@@ -102,8 +102,7 @@ SturDR::SturDR(const std::string yaml_fname)
       barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
       log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
       nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
-      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()},
-      navigator_{std::make_unique<Navigator>(conf_, nav_queue_, eph_queue_, running_)} {
+      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()} {
   // setup terminal/console logger
   log_->set_pattern("\033[1;34m[%D %T.%e][%^%l%$\033[1;34m]: \033[0m%v");
   log_->set_level(conf_.general.log_level);
@@ -164,6 +163,9 @@ SturDR::SturDR(const std::string yaml_fname)
     }
     std::cout << "ant_pos: \n" << conf_.antenna.ant_xyz << "\n";
   }
+
+  // start navigator
+  navigator_ = std::make_unique<Navigator>(conf_, nav_queue_, eph_queue_, running_);
 }
 
 // *=== ~SturDR ===*
@@ -212,6 +214,7 @@ void SturDR::Start() {
     std::string fname;
     for (int i = 0; i < conf_.antenna.n_ant; i++) {
       fname = conf_.general.in_file + "-" + std::to_string(i) + ".bin";
+      log_->debug("Opening: {}", fname);
       bf_[i].fopen(fname);
     }
 
@@ -470,7 +473,6 @@ void SturDR::RunArray() {
 
       // read next signal data while channels are processing
       for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
-        bf_[j].fseek<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
         bf_[j].fread<T>(rf_stream.data(), shm_read_size_samp_);
         TypeToIDouble<T>(
             rf_stream.data(),
@@ -526,7 +528,6 @@ void SturDR::RunComplexArray() {
 
       // read next signal data while channels are processing
       for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
-        bf_[j].fseekc<T>(static_cast<int>(conf_.general.ms_to_skip * samp_per_ms_));
         bf_[j].freadc<T>(rf_stream.data(), shm_read_size_samp_);
         ITypeToIDouble<T>(
             rf_stream.data(),

@@ -23,6 +23,8 @@
 #include <navtools/constants.hpp>
 #include <sturdins/least-squares.hpp>
 
+#include "navtools/frames.hpp"
+
 namespace sturdr {
 
 // *=== VectorDllNco ===*
@@ -90,7 +92,9 @@ void RunVDFllUpdate(
   psrdot_pred -= navtools::LIGHT_SPEED<> * sv_clk(1);
 
   // 7. Unit Vector for potential beamsteering (in body frame)
-  *data.VTUnitVec = filt.C_b_l_.transpose() * u;
+  Eigen::Vector3d lla{filt.phi_, filt.lam_, filt.h_};
+  Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
+  *data.VTUnitVec = filt.C_b_l_.transpose() * (C_e_l * u);
 
   // 8. Vector FLL update
   *data.VTCarrierFreq = VectorFllNco(intmd_freq, data.Lambda, psrdot_pred);

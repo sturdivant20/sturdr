@@ -101,6 +101,33 @@ std::complex<double> Correlate(
     const Eigen::Ref<const Eigen::VectorXcd> &code) {
   return (code.array() * carr.array() * rfdata.array()).sum();
 }
+void Correlate(
+    const Eigen::Ref<const Eigen::VectorXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    std::complex<double> &C) {
+  // init phase increments
+  double d_code = code_freq / samp_freq;
+  double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
+
+  // loop through number of samples
+  std::complex<double> v_carr;
+  double v_code;
+  for (const std::complex<double> &sample : rfdata) {
+    v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * sample;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    C += (v_code * v_carr);
+
+    // increment
+    rem_code_phase += d_code;
+    rem_carr_phase += d_carr;
+  }
+}
 
 // *=== CodeNCO ===*
 Eigen::VectorXcd CodeNCO(

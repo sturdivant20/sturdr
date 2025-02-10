@@ -105,6 +105,8 @@ ChannelGpsL1ca::ChannelGpsL1ca(
   nav_pkt_.Lambda = navtools::LIGHT_SPEED<> / nav_pkt_.CarrierFreq;
   beta_sq_ = nav_pkt_.Beta * nav_pkt_.Beta;
   lambda_sq_ = nav_pkt_.Lambda * nav_pkt_.Lambda;
+
+  nav_pkt_.PllDisc.resize(1);
 }
 
 // *=== ~ChannelGpsL1ca ===*
@@ -320,10 +322,11 @@ void ChannelGpsL1ca::Dump() {
 
   // update nav packet
   nav_pkt_.DllDisc = chip_err;
-  nav_pkt_.PllDisc = phase_err;
+  nav_pkt_.PllDisc(0) = phase_err;
   nav_pkt_.FllDisc = freq_err;
   nav_pkt_.PsrVar = beta_sq_ * chip_var;
   nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;
+  nav_pkt_.PhaseVar = phase_var;
 
   // tracking loop
   if (!*(nav_pkt_.is_vector)) {

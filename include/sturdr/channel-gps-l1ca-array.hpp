@@ -57,7 +57,7 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
    */
   // void Track() override;
   void Integrate(const uint64_t &samp_to_read) override;
-  // void Dump() override;
+  void Dump() override;
 
   /**
    * *=== NavDataSync ===*
