@@ -195,7 +195,9 @@ std::ostream& operator<<(std::ostream& os, const sturdr::ChannelPacket& c) {
      << "," << (int)c.Week << "," << c.ToW << "," << c.CNo << "," << c.Doppler << "," << c.CodePhase
      << "," << c.CarrierPhase << "," << c.IE << "," << c.IP << "," << c.IL << "," << c.QE << ","
      << c.QP << "," << c.QL << "," << c.IP1 << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << ","
-     << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "\n";
+     << c.DllDisc << "," << c.PllDisc << "," << c.FllDisc << "," << c.IP_A0 << "," << c.IP_A1 << ","
+     << c.IP_A2 << "," << c.IP_A3 << "," << c.QP_A0 << "," << c.QP_A1 << "," << c.QP_A2 << ","
+     << c.QP_A3 << "\n";
   return os;
 }
 

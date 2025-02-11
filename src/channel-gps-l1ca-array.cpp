@@ -255,7 +255,19 @@ void ChannelGpsL1caArray::Dump() {
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
-    u_ = *nav_pkt_.VTUnitVec;
+    // u_ = *nav_pkt_.VTUnitVec;
+
+    // double t = static_cast<double>(total_samp_) / conf_.rfsignal.samp_freq;
+    // kf_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
+    // kf_.UpdateMeasurementsParam(chip_var, phase_var, freq_var);
+    // kf_.Run(chip_err, phase_err, *nav_pkt_.VTCarrierFreq);
+    // rem_carr_phase_ = std::fmod(kf_.x_(0), navtools::TWO_PI<>);
+    // carr_doppler_ = kf_.x_(1);
+    // carr_jitter_ = kf_.x_(2);
+    // // rem_code_phase_ = kf_.x_(3) - static_cast<double>(T_ms_ * satutils::GPS_CA_CODE_LENGTH);
+    // // code_doppler_ = kf_.x_(4) + kappa_ * (carr_doppler_ + carr_jitter_ * t);
+    // kf_.SetRemCarrierPhase(rem_carr_phase_);
+    // kf_.SetRemCodePhase(rem_code_phase_);
   }
 
   // update file packet
@@ -276,6 +288,32 @@ void ChannelGpsL1caArray::Dump() {
   file_pkt_.QP2 = P2_.imag();
   file_pkt_.CodePhase = rem_code_phase_;
   file_pkt_.CarrierPhase = rem_carr_phase_;
+  switch (conf_.antenna.n_ant) {
+    case 2:
+      file_pkt_.IP_A0 = nav_pkt_.PromptCorrelators(0).real();
+      file_pkt_.IP_A1 = nav_pkt_.PromptCorrelators(1).real();
+      file_pkt_.QP_A0 = nav_pkt_.PromptCorrelators(0).imag();
+      file_pkt_.QP_A1 = nav_pkt_.PromptCorrelators(1).imag();
+      break;
+    case 3:
+      file_pkt_.IP_A0 = nav_pkt_.PromptCorrelators(0).real();
+      file_pkt_.IP_A1 = nav_pkt_.PromptCorrelators(1).real();
+      file_pkt_.IP_A2 = nav_pkt_.PromptCorrelators(2).real();
+      file_pkt_.QP_A0 = nav_pkt_.PromptCorrelators(0).imag();
+      file_pkt_.QP_A1 = nav_pkt_.PromptCorrelators(1).imag();
+      file_pkt_.QP_A2 = nav_pkt_.PromptCorrelators(2).imag();
+      break;
+    case 4:
+      file_pkt_.IP_A0 = nav_pkt_.PromptCorrelators(0).real();
+      file_pkt_.IP_A1 = nav_pkt_.PromptCorrelators(1).real();
+      file_pkt_.IP_A2 = nav_pkt_.PromptCorrelators(2).real();
+      file_pkt_.IP_A3 = nav_pkt_.PromptCorrelators(3).real();
+      file_pkt_.QP_A0 = nav_pkt_.PromptCorrelators(0).imag();
+      file_pkt_.QP_A1 = nav_pkt_.PromptCorrelators(1).imag();
+      file_pkt_.QP_A2 = nav_pkt_.PromptCorrelators(2).imag();
+      file_pkt_.QP_A3 = nav_pkt_.PromptCorrelators(3).imag();
+      break;
+  }
 
   // std::cout << "ChannelGpsL1ca::Dump - file log called\n";
   file_log_->info("{}", file_pkt_);

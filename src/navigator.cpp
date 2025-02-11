@@ -18,7 +18,7 @@
 
 #include "sturdr/navigator.hpp"
 
-#include <fmt/ranges.h>
+// #include <fmt/ranges.h>
 #include <spdlog/async.h>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -41,7 +41,13 @@
 #include "sturdr/structs-enums.hpp"
 #include "sturdr/vector-tracking.hpp"
 
+template <typename T>
+struct fmt::formatter<T, std::enable_if_t<std::is_base_of_v<Eigen::DenseBase<T>, T>, char>>
+    : ostream_formatter {};
+
 namespace sturdr {
+
+constexpr inline double RAD2DEG_SQ = navtools::RAD2DEG<> * navtools::RAD2DEG<>;
 
 // *=== Navigator ===*
 Navigator::Navigator(
@@ -105,7 +111,10 @@ void Navigator::NavigationThread() {
       true);
   nav_log_->set_pattern("%v");
   nav_log_->info(
-      "Week,ToW [s],Lat [deg],Lon [deg],Alt [m],vN [m/s],vE [m/s],vD [m/s],b [m],bdot [m/s]");
+      "Week,ToW [s],Lat [deg],Lon [deg],Alt [m],vN [m/s],vE [m/s],vD [m/s],Roll [deg],Pitch "
+      "[deg], Yaw[deg],cb [m],cd [m/s],Lat Var [m^2],Lon Var [m^2],Alt Var [m^2],vN Var "
+      "[(m/s)^2],vE Var [(m/s)^2],vD Var [(m/s)^2],Roll Var [deg^2],Pitch Var [deg^2],Yaw Var "
+      "[deg^2],cb Var [m^2],cd Var [(m/s)^2]");
 
   // do actual navigation work here
   while (*running_) {
@@ -119,9 +128,13 @@ void Navigator::NavigationThread() {
           // log results
           log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
           // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
+          log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
           // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
           nav_log_->info(
-              "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.15f}",
+              "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.11f},{:.11f},"
+              "{:.11f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:."
+              "15f},"
+              "{:.15f},{:.15f}",
               week_,
               receive_time_,
               lla_(0),
@@ -130,8 +143,22 @@ void Navigator::NavigationThread() {
               nedv_(0),
               nedv_(1),
               nedv_(2),
+              rpy_(0),
+              rpy_(1),
+              rpy_(2),
               cb_,
-              cd_);
+              cd_,
+              kf_.P_(0, 0),
+              kf_.P_(1, 1),
+              kf_.P_(2, 2),
+              kf_.P_(3, 3),
+              kf_.P_(4, 4),
+              kf_.P_(5, 5),
+              kf_.P_(6, 6) * RAD2DEG_SQ,
+              kf_.P_(7, 7) * RAD2DEG_SQ,
+              kf_.P_(8, 8) * RAD2DEG_SQ,
+              kf_.P_(9, 9),
+              kf_.P_(10, 10));
 
           // Eigen::Vector3d rpy = navtools::quat2euler<true, double>(kf_.q_b_l_);
           // std::cout << kf_.phi_ << ", " << kf_.lam_ << ", " << kf_.h_ << ", " << kf_.vn_ << ", "
@@ -438,11 +465,10 @@ void Navigator::InitNavSolution(
           static_cast<int>(conf_.antenna.n_ant),
           channel_data_[i + 1].Lambda,
           1e-4);
-
       // std::cout << std::setprecision(10) << "PromtCorrelators(" << i + 1 << "): \n"
       //           << channel_data_[i + 1].PromptCorrelators.transpose() << "\n";
-      std::cout << "est_az(" << i + 1 << "): " << est_az(i) * navtools::RAD2DEG<> << ", est_el("
-                << i + 1 << "): " << est_el(i) * navtools::RAD2DEG<> << "\n\n";
+      // std::cout << "est_az(" << i + 1 << "): " << est_az(i) * navtools::RAD2DEG<> << ", est_el("
+      //           << i + 1 << "): " << est_el(i) * navtools::RAD2DEG<> << "\n\n";
 
       sturdins::RangeAndRate(
           x.segment(0, 3),
@@ -466,14 +492,15 @@ void Navigator::InitNavSolution(
     u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
     u_body_est.row(2) = -est_el.array().sin();
     sturdins::Wahba(C_l_b_est, u_body_est, u_ned, u_body_var);
-    Eigen::Vector3d rpy_est = navtools::dcm2euler<true, double>(C_l_b_est.transpose());
+    rpy_ = navtools::dcm2euler<true, double>(C_l_b_est.transpose());
 
-    std::cout << "u_from_sv: \n" << u_ned.transpose() << "\n";
-    std::cout << "u_from_music: \n" << u_body_est.transpose() << "\n";
-    std::cout << "est_rpy: " << rpy_est.transpose() * navtools::RAD2DEG<> << "\n";
+    // std::cout << "u_from_sv: \n" << u_ned.transpose() << "\n";
+    // std::cout << "u_from_music: \n" << u_body_est.transpose() << "\n";
+    // std::cout << "est_rpy: " << rpy_.transpose() * navtools::RAD2DEG<> << "\n";
 
     // initialize kalman filter
-    kf_.SetAttitude(rpy_est(0), rpy_est(1), rpy_est(2));
+    kf_.SetAttitude(rpy_(0), rpy_(1), rpy_(2));
+    rpy_ *= navtools::DEG2RAD<>;
   }
 
   // initialize kalman filter
@@ -558,9 +585,7 @@ void Navigator::ScalarNavSolution(
   nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
   cb_ = kf_.cb_;
   cd_ = kf_.cd_;
-
-  Eigen::Vector3d rpy_est = navtools::dcm2euler<true, double>(kf_.C_b_l_);
-  std::cout << "est_rpy: " << rpy_est.transpose() * navtools::RAD2DEG<> << "\n";
+  rpy_ = navtools::dcm2euler<true, double>(kf_.C_b_l_) * navtools::RAD2DEG<>;
 }
 
 // *=== VectorNavSolution ===*
@@ -603,7 +628,9 @@ void Navigator::VectorNavSolution() {
           channel_data_[p.second],
           receive_time_,
           T,
-          kf_);
+          kf_,
+          conf_.antenna.ant_xyz,
+          conf_.antenna.n_ant);
 
       // 5. Update file pointer
       UpdateFilePtr(d_samp);
@@ -613,11 +640,16 @@ void Navigator::VectorNavSolution() {
       nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
       cb_ = kf_.cb_;
       cd_ = kf_.cd_;
-      log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
+      rpy_ = navtools::dcm2euler<true, double>(kf_.C_b_l_) * navtools::RAD2DEG<>;
+
+      // log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
       // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
+      // log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
       // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
       nav_log_->info(
-          "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.15f}",
+          "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.11f},{:.11f},"
+          "{:.11f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},"
+          "{:.15f},{:.15f}",
           week_,
           receive_time_,
           lla_(0),
@@ -626,8 +658,22 @@ void Navigator::VectorNavSolution() {
           nedv_(0),
           nedv_(1),
           nedv_(2),
+          rpy_(0),
+          rpy_(1),
+          rpy_(2),
           cb_,
-          cd_);
+          cd_,
+          kf_.P_(0, 0),
+          kf_.P_(1, 1),
+          kf_.P_(2, 2),
+          kf_.P_(3, 3),
+          kf_.P_(4, 4),
+          kf_.P_(5, 5),
+          kf_.P_(6, 6) * RAD2DEG_SQ,
+          kf_.P_(7, 7) * RAD2DEG_SQ,
+          kf_.P_(8, 8) * RAD2DEG_SQ,
+          kf_.P_(9, 9),
+          kf_.P_(10, 10));
     }
   }
 

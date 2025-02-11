@@ -188,6 +188,14 @@ struct ChannelPacket {
   double DllDisc{std::nan("1")};
   double PllDisc{std::nan("1")};
   double FllDisc{std::nan("1")};
+  double IP_A0{std::nan("1")};
+  double IP_A1{std::nan("1")};
+  double IP_A2{std::nan("1")};
+  double IP_A3{std::nan("1")};
+  double QP_A0{std::nan("1")};
+  double QP_A1{std::nan("1")};
+  double QP_A2{std::nan("1")};
+  double QP_A3{std::nan("1")};
 };
 
 /**
@@ -464,7 +472,8 @@ struct fmt::formatter<sturdr::ChannelPacket> : formatter<string_view> {
         << c.CNo << "," << c.Doppler << "," << c.CodePhase << "," << c.CarrierPhase << "," << c.IE
         << "," << c.IP << "," << c.IL << "," << c.QE << "," << c.QP << "," << c.QL << "," << c.IP1
         << "," << c.IP2 << "," << c.QP1 << "," << c.QP2 << "," << c.DllDisc << "," << c.PllDisc
-        << "," << c.FllDisc;
+        << "," << c.FllDisc << "," << c.IP_A0 << "," << c.IP_A1 << "," << c.IP_A2 << "," << c.IP_A3
+        << "," << c.QP_A0 << "," << c.QP_A1 << "," << c.QP_A2 << "," << c.QP_A3;
     return formatter<string_view>::format(oss.str(), ctx);
   };
 };

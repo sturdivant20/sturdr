@@ -66,7 +66,9 @@ void RunVDFllUpdate(
     ChannelNavData &data,
     double &tR,
     double &T,
-    sturdins::Kns &filt);
+    sturdins::Kns &filt,
+    const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
+    const int &n_ant);
 
 }  // namespace sturdr
 

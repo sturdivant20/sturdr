@@ -19,11 +19,19 @@
 
 #include "sturdr/vector-tracking.hpp"
 
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
+
 #include <Eigen/Dense>
 #include <navtools/constants.hpp>
+#include <navtools/math.hpp>
 #include <sturdins/least-squares.hpp>
 
 #include "navtools/frames.hpp"
+
+template <typename T>
+struct fmt::formatter<T, std::enable_if_t<std::is_base_of_v<Eigen::DenseBase<T>, T>, char>>
+    : ostream_formatter {};
 
 namespace sturdr {
 
@@ -46,7 +54,9 @@ void RunVDFllUpdate(
     ChannelNavData &data,
     double &tR,
     double &T,
-    sturdins::Kns &filt) {
+    sturdins::Kns &filt,
+    const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
+    const int &n_ant) {
   // 1. Estimate satellite position, velocity, and clock from transmit time
   Eigen::Vector3d sv_pos, sv_vel, sv_clk, sv_acc;
   double tT = data.ToW + data.CodePhase / data.ChipRate + data.Sv.tgd;  //! FOR GPS L1CA
@@ -74,7 +84,32 @@ void RunVDFllUpdate(
 
   // 4. Run kalman filter (save predicted nav-state)
   filt.Propagate(dt);
-  filt.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+  if (n_ant > 1) {
+    // if using antenna array - estimate attitude
+    Eigen::VectorXd phase_disc = (-data.PllDisc).array() + data.PllDisc(0);
+    Eigen::VectorXd phase_disc_var(n_ant);
+    for (int j = 0; j < n_ant; j++) {
+      navtools::WrapPiToPi<double>(phase_disc(j));
+      phase_disc_var(j) = data.PhaseVar;
+    }
+
+    // spdlog::get("sturdr-console")->error("phase_disc: {}", phase_disc.transpose());
+
+    filt.PhasedArrayUpdate(
+        sv_pos,
+        sv_vel,
+        psr,
+        psrdot,
+        phase_disc,
+        psr_var,
+        psrdot_var,
+        phase_disc_var,
+        ant_xyz,
+        n_ant,
+        data.Lambda);
+  } else {
+    filt.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+  }
 
   // 5. predict state at end of next code period (correct satellite pos/tR)
   Eigen::Vector3d pos_pred, vel_pred;

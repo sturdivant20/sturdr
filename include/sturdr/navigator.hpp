@@ -51,6 +51,7 @@ class Navigator {
   double receive_time_;
   Eigen::Vector3d lla_;
   Eigen::Vector3d nedv_;
+  Eigen::Vector3d rpy_;
   double cb_;
   double cd_;
   bool is_initialized_;

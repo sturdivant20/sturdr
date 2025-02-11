@@ -120,7 +120,7 @@ class Channel {
     file_log_->info(
         "ChannelNum,Constellation,Signal,SVID,ChannelStatus,TrackingStatus,Week,ToW,"
         "CNo,Doppler,CodePhase,CarrierPhase,IE,IP,IL,QE,QP,QL,IP1,IP2,QP1,QP2,"
-        "DllDisc,PllDisc,FllDisc");
+        "DllDisc,PllDisc,FllDisc,IP_A0,IP_A1,IP_A2,IP_A3,QP_A0,QP_A1,QP_A2,QP_A3");
   };
 
   /**
