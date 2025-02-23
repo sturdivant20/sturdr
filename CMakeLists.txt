@@ -130,8 +130,6 @@ else()
         target_link_libraries( ${testname} PUBLIC ${PROJECT_NAME})
     endforeach(file ${testfiles})
 endif()
-add_executable(run_sturdr scripts/run_sturdr.cpp)
-target_link_libraries(run_sturdr PUBLIC ${PROJECT_NAME})
 
 # --- Make Library 'Findable' for other CMake Packages ---
 include(CMakePackageConfigHelpers)
