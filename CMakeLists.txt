@@ -120,7 +120,7 @@ target_link_libraries(
 )
 
 # --- Add Executables ---
-if (NOT DEFINED INSTALL_STURDR_EXAMPLES OR NOT INSTALL_STURDR_EXAMPLES)
+if (NOT DEFINED INSTALL_STURDR_TESTS OR NOT INSTALL_STURDR_TESTS)
 else()
     file(GLOB testfiles "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
     foreach(file ${testfiles})

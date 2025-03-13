@@ -128,7 +128,7 @@ void Navigator::NavigationThread() {
           // log results
           log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
           // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
-          log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
+          // log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
           // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
           nav_log_->info(
               "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.11f},{:.11f},"
@@ -295,7 +295,7 @@ void Navigator::ChannelEphemPacketListener() {
     std::unique_lock<std::mutex> lock(mtx_);
     if (channel_data_.find(packet.Header.ChannelNum) != channel_data_.end()) {
       // update map data
-      channel_data_[packet.Header.ChannelNum].Sv.SetEphem(packet.Eph);
+      channel_data_[packet.Header.ChannelNum].Sv.SetEphemerides(packet.Eph);
       channel_data_[packet.Header.ChannelNum].HasEphem = true;
     } else {
       // add new item to map
@@ -492,7 +492,7 @@ void Navigator::InitNavSolution(
     u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
     u_body_est.row(2) = -est_el.array().sin();
     sturdins::Wahba(C_l_b_est, u_body_est, u_ned, u_body_var);
-    rpy_ = navtools::dcm2euler<true, double>(C_l_b_est.transpose());
+    rpy_ = navtools::dcm2euler<double>(C_l_b_est.transpose(), true);
 
     // std::cout << "u_from_sv: \n" << u_ned.transpose() << "\n";
     // std::cout << "u_from_music: \n" << u_body_est.transpose() << "\n";
@@ -585,7 +585,7 @@ void Navigator::ScalarNavSolution(
   nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
   cb_ = kf_.cb_;
   cd_ = kf_.cd_;
-  rpy_ = navtools::dcm2euler<true, double>(kf_.C_b_l_) * navtools::RAD2DEG<>;
+  rpy_ = navtools::dcm2euler<double>(kf_.C_b_l_, true) * navtools::RAD2DEG<>;
 }
 
 // *=== VectorNavSolution ===*
@@ -640,11 +640,11 @@ void Navigator::VectorNavSolution() {
       nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
       cb_ = kf_.cb_;
       cd_ = kf_.cd_;
-      rpy_ = navtools::dcm2euler<true, double>(kf_.C_b_l_) * navtools::RAD2DEG<>;
+      rpy_ = navtools::dcm2euler<double>(kf_.C_b_l_, true) * navtools::RAD2DEG<>;
 
-      // log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
+      log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
       // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
-      // log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
+      log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
       // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
       nav_log_->info(
           "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.11f},{:.11f},"
