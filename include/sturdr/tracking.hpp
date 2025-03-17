@@ -160,10 +160,11 @@ class TrackingKF {
       const double &w0d, const double &w0p, const double &w0f, const double &k, const double &T);
 
   /**
-   * *=== UpdateDynamicsParam ===*
-   * @brief Change the dynamics update parameters
-   * @param cno Carrier-to-noise density ratio magnitude (not dB-Hz)
-   * @param T   Integration time [s]
+   * *=== UpdateMeasurementsParam ===*
+   * @brief Change the measurement update parameters
+   * @param dll_var DLL discriminator variance [chip^2]
+   * @param pll_var PLL discriminator variance [rad^2]
+   * @param fll_var FLL discriminator variance [(rad/s)^2]
    */
   void UpdateMeasurementsParam(const double &dll_var, const double &pll_var, const double &fll_var);
 
@@ -178,8 +179,40 @@ class TrackingKF {
    */
   void Run(double &chip_err, double &phase_err, double &freq_err);
 
+  /**
+   * *=== SetRemCarrierPhase ===*
+   * @brief Set remainder carrier phase x[0]
+   * @param rem_carrier_phase   carrier phase
+   */
   void SetRemCarrierPhase(const double &rem_carrier_phase);
+
+  /**
+   * *=== SetRemCodePhase ===*
+   * @brief Set remainder carrier phase x[0]
+   * @param rem_code_phase  code phase
+   */
   void SetRemCodePhase(const double &rem_code_phase);
+
+  /**
+   * *=== SetRemCarrierPhase ===*
+   * @brief Set remainder carrier phase x[0]
+   * @return rem_carrier_phase   carrier phase
+   */
+  double GetRemCarrierPhase();
+
+  /**
+   * *=== SetRemCodePhase ===*
+   * @brief Set remainder code phase x[2]
+   * @returns rem_code_phase  code phase
+   */
+  double GetRemCodePhase();
+
+  /**
+   * *=== GetDoppler ===*
+   * @brief Get carrier doppler x[1]
+   * @returns doppler [rad/s]
+   */
+  double GetDoppler();
 
   // make this accessible?
   Eigen::Vector<double, 5> x_;

@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "sturdr/data-type-adapters.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 
 namespace sturdr {
 
@@ -93,11 +94,7 @@ SturDR::SturDR(const std::string yaml_fname)
           2 * static_cast<uint64_t>(
                   conf_.acquisition.doppler_range / conf_.acquisition.doppler_step) +
           1},
-      fftw_plans_{
-          Create1dFftPlan(samp_per_ms_, true),
-          Create1dFftPlan(samp_per_ms_, false),
-          CreateManyFftPlanColWise(samp_per_ms_, n_dopp_bins_, true),
-          CreateManyFftPlanColWise(samp_per_ms_, n_dopp_bins_, false)},
+      fftw_plans_{FftwWrapper()},
       prn_ptr_{1},
       barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
       log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
@@ -151,6 +148,12 @@ SturDR::SturDR(const std::string yaml_fname)
   log_->trace("use_cno: {}", conf_.navigation.use_cno);
   log_->trace("do_vt: {}", conf_.navigation.do_vt);
 
+  // Create FFT plans
+  fftw_plans_.Create1dFftPlan(samp_per_ms_, true);
+  fftw_plans_.Create1dFftPlan(samp_per_ms_, false);
+  fftw_plans_.CreateManyFftPlan(samp_per_ms_, n_dopp_bins_, true, false);
+  fftw_plans_.CreateManyFftPlan(samp_per_ms_, n_dopp_bins_, false, false);
+
   // read in the antenna positions if necessary
   if (conf_.antenna.n_ant > 1) {
     std::vector<double> vec;
@@ -170,10 +173,6 @@ SturDR::SturDR(const std::string yaml_fname)
 
 // *=== ~SturDR ===*
 SturDR::~SturDR() {
-  fftw_destroy_plan(fftw_plans_.fft);
-  fftw_destroy_plan(fftw_plans_.ifft);
-  fftw_destroy_plan(fftw_plans_.fft_many);
-  fftw_destroy_plan(fftw_plans_.ifft_many);
 }
 
 // *=== Start ===*

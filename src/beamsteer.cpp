@@ -14,8 +14,6 @@
 
 #include "sturdr/beamsteer.hpp"
 
-#include <Eigen/src/Core/Matrix.h>
-
 #include <cmath>
 #include <complex>
 #include <iostream>

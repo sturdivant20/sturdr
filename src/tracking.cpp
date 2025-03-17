@@ -219,6 +219,15 @@ void TrackingKF::SetRemCarrierPhase(const double &rem_carrier_phase) {
 void TrackingKF::SetRemCodePhase(const double &rem_code_phase) {
   x_(3) = rem_code_phase;
 }
+double TrackingKF::GetRemCarrierPhase() {
+  return x_(0);
+}
+double TrackingKF::GetRemCodePhase() {
+  return x_(3);
+}
+double TrackingKF::GetDoppler() {
+  return x_(1);
+}
 
 // *=== make_F ===*
 void TrackingKF::make_F(const double &k, const double &T) {

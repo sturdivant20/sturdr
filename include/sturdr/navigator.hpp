@@ -24,7 +24,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <sturdins/kns.hpp>
+#include <sturdins/kinematic-nav.hpp>
 #include <thread>
 
 #include "sturdr/concurrent-queue.hpp"
@@ -56,7 +56,7 @@ class Navigator {
   double cd_;
   bool is_initialized_;
   bool is_vector_;
-  sturdins::Kns kf_;
+  sturdins::KinematicNav kf_;
 
   /**
    * @brief thread scheduling

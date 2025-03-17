@@ -109,20 +109,20 @@ Eigen::VectorXcd CodeNCO(
 
 /**
  * *=== CarrierNCO ===*
- * @brief Creates an upsampled version of the code provided
+ * @brief Creates an sampled version of the carrier wave
  * @param carr_freq Current carrier frequency (including intermediate frequency) [rad/s]
  * @param carr_jit  Current carrier frequency jitter [rad/s^2]
  * @param samp_freq GNSS receiver front end sampling frequency [Hz]
  * @param n_samp    Desired number of samples
  * @param rem_phase Initial fractional phase of the carrier [rad]
- * @return Upsampled version of provided code
+ * @return Phase sampled carrier
  */
 Eigen::VectorXcd CarrierNCO(
     const double &carr_freq,
     const double &carr_jit,
     const double &samp_freq,
-    const uint64_t &n_samp,
-    double &rem_phase);
+    double &rem_phase,
+    const uint64_t &n_samp);
 
 }  // namespace sturdr
 

@@ -54,7 +54,7 @@ void RunVDFllUpdate(
     ChannelNavData &data,
     double &tR,
     double &T,
-    sturdins::Kns &filt,
+    sturdins::KinematicNav &filt,
     const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
     const int &n_ant) {
   // 1. Estimate satellite position, velocity, and clock from transmit time

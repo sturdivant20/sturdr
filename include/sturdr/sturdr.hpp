@@ -57,7 +57,7 @@ class SturDR {
    */
   std::shared_ptr<bool> running_;
   uint64_t n_dopp_bins_;
-  FftPlans fftw_plans_;
+  FftwWrapper fftw_plans_;
   uint8_t prn_ptr_;
   std::map<uint8_t, bool> prns_in_use_;
   std::mutex prn_mtx_;
@@ -93,7 +93,7 @@ class SturDR {
 
   /**
    * *=== Start ===*
-   * @brief initialized and begins running the receiver
+   * @brief Initializes and begins running the receiver
    */
   void Start();
 

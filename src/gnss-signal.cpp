@@ -159,8 +159,8 @@ Eigen::VectorXcd CarrierNCO(
     const double &carr_freq,
     const double &carr_jit,
     const double &samp_freq,
-    const uint64_t &n_samp,
-    double &rem_phase) {
+    double &rem_phase,
+    const uint64_t &n_samp) {
   // init
   Eigen::VectorXcd carr_up(n_samp);
   double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;

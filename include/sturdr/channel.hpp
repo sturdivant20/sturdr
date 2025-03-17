@@ -41,7 +41,7 @@ class Channel {
   std::shared_ptr<bool> running_;
   uint64_t samp_per_ms_;
   uint8_t acq_fail_cnt_;
-  FftPlans fftw_plans_;
+  FftwWrapper fftw_plans_;
   std::function<void(uint8_t &)> new_prn_func_;
 
   /**
@@ -86,7 +86,7 @@ class Channel {
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      FftPlans &fftw_plans,
+      FftwWrapper &fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc)
       : conf_{conf},
         running_{running},

@@ -137,92 +137,142 @@ void CarrierLockDetector(
   }
 }
 
-// *=== LockDetectors ===*
-void LockDetectors(
-    bool &code_lock,
-    bool &carr_lock,
-    double &cno,
-    double &NBD,
-    double &NBP,
-    double &PC,
-    double &PN,
-    const std::complex<double> &P_old,
-    const std::complex<double> &P_new,
-    const double &T,
-    const double &alpha) {
-  try {
-    // Calculate powers
-    double I = P_new.real() * P_new.real();
-    double Q = P_new.imag() * P_new.imag();
-    double P_prev = std::norm(P_old);
-    double P_curr = I + Q;
-    double P_diff = I - Q;
-    double P_avg = 0.5 * (P_prev + P_curr);
-    double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev), 2);
+// // *=== LockDetectors ===*
+// void LockDetectors(
+//     bool &code_lock,
+//     bool &carr_lock,
+//     double &cno,
+//     double &NBD,
+//     double &NBP,
+//     double &PC,
+//     double &PN,
+//     const std::complex<double> &P_old,
+//     const std::complex<double> &P_new,
+//     const double &T,
+//     const double &alpha) {
+//   try {
+//     // Calculate powers
+//     double I = P_new.real() * P_new.real();
+//     double Q = P_new.imag() * P_new.imag();
+//     double P_prev = std::norm(P_old);
+//     double P_curr = I + Q;
+//     double P_diff = I - Q;
+//     double P_avg = 0.5 * (P_prev + P_curr);
+//     double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev), 2);
 
-    // Carrier lock detection
-    //  -> cos(2 * φ) = NBD / NBP
-    //  -> Phase error should be less than 15° to be considered locked
-    //  -> cos(2 * 15) ~ 0.866
-    NBD = LowPassFilter(NBD, P_diff, alpha);
-    NBP = LowPassFilter(NBP, P_curr);
-    carr_lock = ((NBD / NBP) > 0.866);
+//     // Carrier lock detection
+//     //  -> cos(2 * φ) = NBD / NBP
+//     //  -> Phase error should be less than 15° to be considered locked
+//     //  -> cos(2 * 15) ~ 0.866
+//     NBD = LowPassFilter(NBD, P_diff, alpha);
+//     NBP = LowPassFilter(NBP, P_curr);
+//     carr_lock = ((NBD / NBP) > 0.866);
 
-    // Code lock detection (based on Beaulieu's Method)
-    // -> For good code lock, C/N0 should be above 30 dB-Hz or a magnitude of 1000
-    PC = LowPassFilter(PC, P_avg, alpha);
-    PN = LowPassFilter(PN, P_noise, alpha);
-    cno = PC / (PN * T);  // (1 / (PN / PC)) / T
-    code_lock = (cno > 1000.0);
+//     // Code lock detection (based on Beaulieu's Method)
+//     // -> For good code lock, C/N0 should be above 30 dB-Hz or a magnitude of 1000
+//     PC = LowPassFilter(PC, P_avg, alpha);
+//     PN = LowPassFilter(PN, P_noise, alpha);
+//     cno = PC / (PN * T);  // (1 / (PN / PC)) / T
+//     code_lock = (cno > 1000.0);
 
-  } catch (std::exception &e) {
-    spdlog::get("sturdr-console")
-        ->error("lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
+//   } catch (std::exception &e) {
+//     spdlog::get("sturdr-console")
+//         ->error("lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
+//   }
+// }
+// void LockDetectors(
+//     bool &code_lock,
+//     bool &carr_lock,
+//     double &cno,
+//     double &NBD,
+//     double &NBP,
+//     double &PC,
+//     double &PN,
+//     const double &IP_old,
+//     const double &QP_old,
+//     const double &IP_new,
+//     const double &QP_new,
+//     const double &T,
+//     const double &alpha) {
+//   try {
+//     // Calculate powers
+//     double I = IP_new * IP_new;
+//     double Q = QP_new * QP_new;
+//     double P_prev = IP_old * IP_old + QP_old * QP_old;
+//     double P_curr = I + Q;
+//     double P_diff = I - Q;
+//     double P_avg = 0.5 * (P_prev + P_curr);
+//     double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev), 2);
+
+//     // Carrier lock detection
+//     //  -> cos(2 * φ) = NBD / NBP
+//     //  -> Phase error should be less than 15° to be considered locked
+//     //  -> cos(2 * 15) ~ 0.866
+//     NBD = LowPassFilter(NBD, P_diff, alpha);
+//     NBP = LowPassFilter(NBP, P_curr);
+//     carr_lock = ((NBD / NBP) > 0.866);
+
+//     // Code lock detection (based on Beaulieu's Method)
+//     // -> For good code lock, C/N0 should be above 30 dB-Hz or a magnitude of 1000
+//     PC = LowPassFilter(PC, P_avg, alpha);
+//     PN = LowPassFilter(PN, P_noise, alpha);
+//     cno = PC / (PN * T);  // (1 / (PN / PC)) / T
+//     code_lock = (cno > 1000.0);
+
+//   } catch (std::exception &e) {
+//     spdlog::get("sturdr-console")
+//         ->error("lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
+//   }
+// }
+
+LockDetectors::LockDetectors(double alpha)
+    : k_{0.0}, nbp_{0.0}, nbd_{0.0}, m2_{0.0}, m4_{0.0}, cno_{1000.0}, alpha_{alpha} {};
+LockDetectors::~LockDetectors() = default;
+
+void LockDetectors::Update(const double &IP, const double &QP, const double &T) {
+  double I = IP * IP;
+  double Q = QP * QP;
+  double P_curr = I + Q;
+  double P_diff = I - Q;
+  double P_curr2 = P_curr * P_curr;
+
+  if (k_ < 100.0) {
+    k_ += 1.0;
+    double g = 1.0 / k_;
+    m2_ = LowPassFilter(m2_, P_curr, g);
+    m4_ = LowPassFilter(m4_, P_curr2, g);
+    nbd_ = LowPassFilter(nbd_, P_diff, g);
+    nbp_ = LowPassFilter(nbp_, P_curr, g);
+  } else {
+    m2_ = LowPassFilter(m2_, P_curr, alpha_);
+    m4_ = LowPassFilter(m4_, P_curr2, alpha_);
+    nbd_ = LowPassFilter(nbd_, P_diff, alpha_);
+    nbp_ = LowPassFilter(nbp_, P_curr, alpha_);
+    double pd = std::sqrt(std::abs(2.0 * m2_ * m2_ - m4_));
+    double pn = std::abs(m2_ - pd);
+    cno_ = (pd / pn) / T;
   }
 }
-void LockDetectors(
-    bool &code_lock,
-    bool &carr_lock,
-    double &cno,
-    double &NBD,
-    double &NBP,
-    double &PC,
-    double &PN,
-    const double &IP_old,
-    const double &QP_old,
-    const double &IP_new,
-    const double &QP_new,
-    const double &T,
-    const double &alpha) {
-  try {
-    // Calculate powers
-    double I = IP_new * IP_new;
-    double Q = QP_new * QP_new;
-    double P_prev = IP_old * IP_old + QP_old * QP_old;
-    double P_curr = I + Q;
-    double P_diff = I - Q;
-    double P_avg = 0.5 * (P_prev + P_curr);
-    double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev), 2);
+void LockDetectors::Update(std::complex<double> &P, const double &T) {
+  Update(P.real(), P.imag(), T);
+}
 
-    // Carrier lock detection
-    //  -> cos(2 * φ) = NBD / NBP
-    //  -> Phase error should be less than 15° to be considered locked
-    //  -> cos(2 * 15) ~ 0.866
-    NBD = LowPassFilter(NBD, P_diff, alpha);
-    NBP = LowPassFilter(NBP, P_curr);
-    carr_lock = ((NBD / NBP) > 0.866);
+bool LockDetectors::GetCodeLock() {
+  // Code lock detection
+  // -> For good code lock, C/N0 should be above 30 dB-Hz or a magnitude of 1000
+  return (cno_ > 1000.0);
+}
 
-    // Code lock detection (based on Beaulieu's Method)
-    // -> For good code lock, C/N0 should be above 30 dB-Hz or a magnitude of 1000
-    PC = LowPassFilter(PC, P_avg, alpha);
-    PN = LowPassFilter(PN, P_noise, alpha);
-    cno = PC / (PN * T);  // (1 / (PN / PC)) / T
-    code_lock = (cno > 1000.0);
+bool LockDetectors::GetCarrierLock() {
+  // Carrier lock detection
+  //  -> cos(2 * φ) = NBD / NBP
+  //  -> Phase error should be less than 15° to be considered locked
+  //  -> cos(2 * 15) ~ 0.866
+  return ((nbd_ / nbp_) > 0.866);
+}
 
-  } catch (std::exception &e) {
-    spdlog::get("sturdr-console")
-        ->error("lock-detectors.cpp LockDetectors failed! Error -> {}", e.what());
-  }
+double LockDetectors::GetCno() {
+  return cno_;
 }
 
 // *=== LowPassFilter ===

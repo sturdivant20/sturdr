@@ -20,6 +20,7 @@
 #ifndef STURDR_LOCK_DETECTORS_HPP
 #define STURDR_LOCK_DETECTORS_HPP
 
+#include <cmath>
 #include <complex>
 
 namespace sturdr {
@@ -27,7 +28,7 @@ namespace sturdr {
 /**
  * *=== CodeLockDetector ===*
  * @brief Code lock detector and Carrier-to-Noise ratio estimator (must be reset if integration
- *        period changes
+ *        period changes)
  * @param code_lock
  * @param cno
  * @param PC
@@ -81,47 +82,69 @@ void CarrierLockDetector(
     const double &QP,
     const double &alpha = 0.005);
 
-/**
- * *=== LockDetectors ===*
- * @brief Code and carrier GNSS lock detectors
- * @param code_lock Current code lock status
- * @param carr_lock Current carrier lock status
- * @param cno       Current carrier-to-noise-density ratio magnitude (not dB-Hz)
- * @param NBD       Narrow band difference memory
- * @param NBP       Narrow band power memory
- * @param PC        Carrier power memory
- * @param PN        Noise power memory
- * @param P_old     Previous prompt correlator values
- * @param P_new     Current prompt correlator values
- * @param T         Integration time [s]
- * @param alpha     Smoothing (filtering) coefficient, by default 5e-3
- */
-void LockDetectors(
-    bool &code_lock,
-    bool &carr_lock,
-    double &cno,
-    double &NBD,
-    double &NBP,
-    double &PC,
-    double &PN,
-    const std::complex<double> &P_old,
-    const std::complex<double> &P_new,
-    const double &T,
-    const double &alpha = 0.005);
-void LockDetectors(
-    bool &code_lock,
-    bool &carr_lock,
-    double &cno,
-    double &NBD,
-    double &NBP,
-    double &PC,
-    double &PN,
-    const double &IP_old,
-    const double &QP_old,
-    const double &IP_new,
-    const double &QP_new,
-    const double &T,
-    const double &alpha = 0.005);
+// /**
+//  * *=== LockDetectors ===*
+//  * @brief Code and carrier GNSS lock detectors
+//  * @param code_lock Current code lock status
+//  * @param carr_lock Current carrier lock status
+//  * @param cno       Current carrier-to-noise-density ratio magnitude (not dB-Hz)
+//  * @param NBD       Narrow band difference memory
+//  * @param NBP       Narrow band power memory
+//  * @param PC        Carrier power memory
+//  * @param PN        Noise power memory
+//  * @param P_old     Previous prompt correlator values
+//  * @param P_new     Current prompt correlator values
+//  * @param T         Integration time [s]
+//  * @param alpha     Smoothing (filtering) coefficient, by default 5e-3
+//  */
+// void LockDetectors(
+//     bool &code_lock,
+//     bool &carr_lock,
+//     double &cno,
+//     double &NBD,
+//     double &NBP,
+//     double &PC,
+//     double &PN,
+//     const std::complex<double> &P_old,
+//     const std::complex<double> &P_new,
+//     const double &T,
+//     const double &alpha = 0.005);
+// void LockDetectors(
+//     bool &code_lock,
+//     bool &carr_lock,
+//     double &cno,
+//     double &NBD,
+//     double &NBP,
+//     double &PC,
+//     double &PN,
+//     const double &IP_old,
+//     const double &QP_old,
+//     const double &IP_new,
+//     const double &QP_new,
+//     const double &T,
+//     const double &alpha = 0.005);
+
+// *=== LockDetectors ===*
+class LockDetectors {
+ private:
+  double k_;
+  double nbp_;
+  double nbd_;
+  double m2_;
+  double m4_;
+  double cno_;
+  double alpha_;
+
+ public:
+  LockDetectors(double alpha = 0.005);
+  ~LockDetectors();
+
+  void Update(const double &IP, const double &QP, const double &T);
+  void Update(std::complex<double> &P, const double &T);
+  bool GetCodeLock();
+  bool GetCarrierLock();
+  double GetCno();
+};
 
 /**
  * *=== LowPassFilter ===*

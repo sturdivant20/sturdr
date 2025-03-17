@@ -26,6 +26,7 @@
 
 #include "sturdr/acquisition.hpp"
 #include "sturdr/discriminator.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/gnss-signal.hpp"
 #include "sturdr/lock-detectors.hpp"
 #include "sturdr/structs-enums.hpp"
@@ -42,7 +43,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
     std::shared_ptr<ConcurrentBarrier> start_barrier,
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-    FftPlans &fftw_plans,
+    FftwWrapper &fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
     : Channel(
           conf,
@@ -61,10 +62,10 @@ ChannelGpsL1ca::ChannelGpsL1ca(
       carr_doppler_{0.0},
       carr_jitter_{0.0},
       cno_{0.0},
-      nbd_{0.0},
-      nbp_{0.0},
-      pc_{0.0},
-      pn_{0.0},
+      // nbd_{0.0},
+      // nbp_{0.0},
+      // pc_{0.0},
+      // pn_{0.0},
       code_lock_{false},
       carr_lock_{false},
       track_mode_{0u},
@@ -136,7 +137,7 @@ void ChannelGpsL1ca::Acquire() {
   Eigen::MatrixXd corr_map = PcpsSearch(
       fftw_plans_,
       shm_->col(0).segment(shm_ptr_, total_samp_),
-      code_,
+      code_.data(),
       conf_.acquisition.doppler_range,
       conf_.acquisition.doppler_step,
       conf_.rfsignal.samp_freq,
@@ -306,7 +307,11 @@ void ChannelGpsL1ca::Dump() {
   }
 
   // lock detectors
-  LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
+  // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
+  lock_.Update(P_, T_);
+  code_lock_ = lock_.GetCodeLock();
+  carr_lock_ = lock_.GetCarrierLock();
+  cno_ = lock_.GetCno();
 
   // discriminators
   double chip_err = DllNneml2(E_, L_);       // [chips]

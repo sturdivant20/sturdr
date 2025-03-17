@@ -27,12 +27,12 @@ set(PROJECT_VERSION ${STURDR_MAJOR_VERSION}.${STURDR_MINOR_VERSION}.${STURDR_PAT
 message(STATUS "${BoldCyan}${PROJECT_NAME} version ${PROJECT_VERSION}${Reset}")
 
 # --- Compiler Flags ---
-# set(CMAKE_CXX_STANDARD 20)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-# set(CMAKE_CXX_FLAGS_DEBUG "-g -W")
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -fPIC")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -W")
 # set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Ofast -ffast-math -fomit-frame-pointer -fstrict-aliasing -flto -DNDEBUG -march=native")
-# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Ofast -ffast-math")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 
 # --- Add Dependencies ---
 find_package(Eigen3 REQUIRED)
@@ -111,13 +111,14 @@ target_link_libraries(
     ${PROJECT_NAME} PUBLIC
     Eigen3::Eigen
     spdlog::spdlog
+    PkgConfig::FFTW
+    ${FFTW_DOUBLE_THREADS_LIB}
     navtools
     satutils
     sturdio
     sturdins
-    PkgConfig::FFTW
-    ${FFTW_DOUBLE_THREADS_LIB}
 )
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # --- Add Executables ---
 if (NOT DEFINED INSTALL_STURDR_TESTS OR NOT INSTALL_STURDR_TESTS)
@@ -169,3 +170,13 @@ install(
     FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
     DESTINATION lib/cmake/${PROJECT_NAME}
 )
+
+# --- Python ---
+if (NOT DEFINED INSTALL_PYTHON OR INSTALL_PYTHON)
+    find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+    find_package(pybind11 CONFIG REQUIRED)
+    python_add_library(_sturdr_core MODULE src/sturdr-python.cpp WITH_SOABI)
+    target_link_libraries(_sturdr_core PRIVATE pybind11::headers ${PROJECT_NAME} navtools satutils sturdio sturdins)
+    target_compile_definitions(_sturdr_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
+    install(TARGETS _sturdr_core DESTINATION sturdr)
+endif()

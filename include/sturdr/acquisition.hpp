@@ -28,18 +28,18 @@ namespace sturdr {
 /**
  * @brief Acquisition NCO replica constants to reduce numerical stress during runtime
  */
-struct AcquisitionSetup {
-  fftw_plan fft;
-  fftw_plan ifft;
-  fftw_plan fft_many;
-  fftw_plan ifft_many;
-  Eigen::MatrixXcd code_fft;
-  Eigen::MatrixXcd carr_rep;
+// struct AcquisitionSetup {
+//   fftw_plan fft;
+//   fftw_plan ifft;
+//   fftw_plan fft_many;
+//   fftw_plan ifft_many;
+//   Eigen::MatrixXcd code_fft;
+//   Eigen::MatrixXcd carr_rep;
 
-  AcquisitionSetup(){};
-  AcquisitionSetup(uint64_t rows, uint64_t cols)
-      : code_fft{Eigen::MatrixXcd(32, cols)}, carr_rep{Eigen::MatrixXcd(rows, cols)} {};
-};
+//   AcquisitionSetup(){};
+//   AcquisitionSetup(uint64_t rows, uint64_t cols)
+//       : code_fft{Eigen::MatrixXcd(32, cols)}, carr_rep{Eigen::MatrixXcd(rows, cols)} {};
+// };
 
 /**
  * @brief initializes known code ffts and carrier replicas
@@ -52,13 +52,13 @@ struct AcquisitionSetup {
  * @param    code_fft
  * @param    carr_rep
  */
-AcquisitionSetup InitAcquisitionMatrices(
-    const std::array<std::array<bool, 1023>, 32> &codes,
-    const double &d_range,
-    const double &d_step,
-    const double &samp_freq,
-    const double &code_freq,
-    const double &intmd_freq);
+// AcquisitionSetup InitAcquisitionMatrices(
+//     const std::array<std::array<bool, 1023>, 32> &codes,
+//     const double &d_range,
+//     const double &d_step,
+//     const double &samp_freq,
+//     const double &code_freq,
+//     const double &intmd_freq);
 
 //! === SerialSearch ===
 
@@ -68,7 +68,7 @@ AcquisitionSetup InitAcquisitionMatrices(
  * @param    rfdata      Data samples recorded by the RF front end
  * @param    code        Local code (not upsampled)
  * @param    d_range     Max doppler frequency to search [Hz]
- * @param    d_step      Frequency step for doppler search [Z]
+ * @param    d_step      Frequency step for doppler search [Hz]
  * @param    samp_freq   Front end sampling frequency [Hz]
  * @param    code_freq   GNSS signal code frequency [Hz]
  * @param    intmd_freq  Intermediate frequency of the RF signal [Hz]
@@ -76,16 +76,16 @@ AcquisitionSetup InitAcquisitionMatrices(
  * @param    nc_per      Number of non-coherent periods to accumulate, by default 1
  * @return 2D correlation results
  */
+// Eigen::MatrixXd PcpsSearch(
+//     const Eigen::VectorXcd &rfdata,
+//     const uint8_t &c_per,
+//     const uint8_t &nc_per,
+//     const uint8_t &prn,
+//     AcquisitionSetup &acq_setup);
 Eigen::MatrixXd PcpsSearch(
+    FftwWrapper &p,
     const Eigen::VectorXcd &rfdata,
-    const uint8_t &c_per,
-    const uint8_t &nc_per,
-    const uint8_t &prn,
-    AcquisitionSetup &acq_setup);
-Eigen::MatrixXd PcpsSearch(
-    const FftPlans &p,
-    const Eigen::VectorXcd &rfdata,
-    const std::array<bool, 1023> &code,
+    const bool code[1023],
     const double &d_range,
     const double &d_step,
     const double &samp_freq,
@@ -101,7 +101,7 @@ Eigen::MatrixXd PcpsSearch(
  * @brief Compares the two highest peak to the noise floor of the acquisition plane
  * @param corr_map       2D-array from correlation method
  * @param peak_idx       Indexes of highest correlation peak
- * @param metric         Ratio between the highest and second highest peaks
+ * @param metric         Ratio between the highest peak and noise
  */
 void Peak2NoiseFloorTest(const Eigen::MatrixXd &corr_map, int peak_idx[2], double &metric);
 
@@ -110,7 +110,7 @@ void Peak2NoiseFloorTest(const Eigen::MatrixXd &corr_map, int peak_idx[2], doubl
  * @brief General likelihood ratio test
  * @param corr_map       2D-array from correlation method
  * @param peak_idx       Indexes of highest correlation peak
- * @param metric         Ratio between the highest and second highest peaks
+ * @param metric         Ratio between the highest peak and noise
  */
 void GlrtTest(
     const Eigen::MatrixXd &corr_map,

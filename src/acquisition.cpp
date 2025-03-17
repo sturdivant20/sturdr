@@ -15,8 +15,6 @@
 
 #include "sturdr/acquisition.hpp"
 
-#include <Eigen/src/Core/GlobalFunctions.h>
-#include <Eigen/src/Core/Matrix.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
@@ -29,96 +27,96 @@
 
 namespace sturdr {
 
-AcquisitionSetup InitAcquisitionMatrices(
-    const std::array<std::array<bool, 1023>, 32> &codes,
-    const double &d_range,
-    const double &d_step,
-    const double &samp_freq,
-    const double &code_freq,
-    const double &intmd_freq) {
-  // init
-  uint64_t samp_per_ms = static_cast<int>(samp_freq / 1000.0);
-  uint64_t n_dopp_bins = static_cast<int>(2.0 * d_range / d_step + 1.0);
-  AcquisitionSetup acq_setup(n_dopp_bins, samp_per_ms);
+// AcquisitionSetup InitAcquisitionMatrices(
+//     const std::array<std::array<bool, 1023>, 32> &codes,
+//     const double &d_range,
+//     const double &d_step,
+//     const double &samp_freq,
+//     const double &code_freq,
+//     const double &intmd_freq) {
+//   // init
+//   uint64_t samp_per_ms = static_cast<int>(samp_freq / 1000.0);
+//   uint64_t n_dopp_bins = static_cast<int>(2.0 * d_range / d_step + 1.0);
+//   AcquisitionSetup acq_setup(n_dopp_bins, samp_per_ms);
 
-  // create fft plans (shared across all threads)
-  // acq_setup.fft = sturdr::Create1dFftPlan(samp_per_ms, true);
-  // acq_setup.ifft = sturdr::Create1dFftPlan(samp_per_ms, false);
-  acq_setup.fft = sturdr::CreateManyFftPlanRowWise(32, samp_per_ms, true);
-  acq_setup.fft_many = sturdr::CreateManyFftPlanRowWise(n_dopp_bins, samp_per_ms, true);
-  acq_setup.ifft_many = sturdr::CreateManyFftPlanRowWise(n_dopp_bins, samp_per_ms, false);
+//   // create fft plans (shared across all threads)
+//   // acq_setup.fft = sturdr::Create1dFftPlan(samp_per_ms, true);
+//   // acq_setup.ifft = sturdr::Create1dFftPlan(samp_per_ms, false);
+//   acq_setup.fft = sturdr::CreateManyFftPlan(32, samp_per_ms, true, true);
+//   acq_setup.fft_many = sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, true, true);
+//   acq_setup.ifft_many = sturdr::CreateManyFftPlan(n_dopp_bins, samp_per_ms, false, true);
 
-  // Doppler bins
-  Eigen::VectorXd dopp_bins =
-      Eigen::VectorXd::LinSpaced(n_dopp_bins, -d_range, d_range).array() + intmd_freq;
+//   // Doppler bins
+//   Eigen::VectorXd dopp_bins =
+//       Eigen::VectorXd::LinSpaced(n_dopp_bins, -d_range, d_range).array() + intmd_freq;
 
-  // Initialize code replicas
-  double rem_phase = 0.0;
-  for (int i = 0; i < 32; i++) {
-    acq_setup.code_fft.row(i) =
-        CodeNCO(codes[i].data(), code_freq, samp_freq, rem_phase, samp_per_ms);
-  }
-  ExecuteManyFftPlan(acq_setup.fft, acq_setup.code_fft, acq_setup.code_fft);
-  acq_setup.code_fft = acq_setup.code_fft.conjugate() / samp_per_ms;
+//   // Initialize code replicas
+//   double rem_phase = 0.0;
+//   for (int i = 0; i < 32; i++) {
+//     acq_setup.code_fft.row(i) =
+//         CodeNCO(codes[i].data(), code_freq, samp_freq, rem_phase, samp_per_ms);
+//   }
+//   ExecuteManyFftPlan(acq_setup.fft, acq_setup.code_fft, acq_setup.code_fft);
+//   acq_setup.code_fft = acq_setup.code_fft.conjugate() / samp_per_ms;
 
-  // initialize carrier replica
-  Eigen::VectorXd carr_phase_pts =
-      Eigen::VectorXd::LinSpaced(samp_per_ms, 0.0, static_cast<double>(samp_per_ms - 1)) *
-      (navtools::TWO_PI<double> / samp_freq);
-  acq_setup.carr_rep = -navtools::COMPLEX_I<> * (dopp_bins * carr_phase_pts.transpose());
-  acq_setup.carr_rep = acq_setup.carr_rep.array().exp();
+//   // initialize carrier replica
+//   Eigen::VectorXd carr_phase_pts =
+//       Eigen::VectorXd::LinSpaced(samp_per_ms, 0.0, static_cast<double>(samp_per_ms - 1)) *
+//       (navtools::TWO_PI<double> / samp_freq);
+//   acq_setup.carr_rep = -navtools::COMPLEX_I<> * (dopp_bins * carr_phase_pts.transpose());
+//   acq_setup.carr_rep = acq_setup.carr_rep.array().exp();
 
-  return acq_setup;
-}
+//   return acq_setup;
+// }
 
 // *=== PcpsSearch ===*
+// Eigen::MatrixXd PcpsSearch(
+//     const Eigen::VectorXcd &rfdata,
+//     const uint8_t &c_per,
+//     const uint8_t &nc_per,
+//     const uint8_t &prn,
+//     AcquisitionSetup &acq_setup) {
+//   // init
+//   int n_dopp_bins = acq_setup.carr_rep.rows();
+//   int samp_per_code = acq_setup.carr_rep.cols();
+//   int code_idx = prn - 1;
+
+//   // Allocate correlation results map
+//   Eigen::MatrixXd corr_map = Eigen::MatrixXd::Zero(n_dopp_bins, samp_per_code);
+//   Eigen::MatrixXcd coh_sum = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
+//   Eigen::MatrixXcd x_carr = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
+
+//   // Loop through each non-coherent period
+//   uint64_t i_sig = 0;
+//   for (uint8_t i_nc = 0; i_nc < nc_per; i_nc++) {
+//     coh_sum = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
+
+//     // Loop through each coherent period
+//     for (uint8_t j_c = 0; j_c < c_per; j_c++) {
+//       // Wiped carrier FFT
+//       x_carr = acq_setup.carr_rep.array().rowwise() *
+//                rfdata.segment(i_sig, samp_per_code).array().transpose();
+//       ExecuteManyFftPlan(acq_setup.fft_many, x_carr, x_carr);
+
+//       // Combined Code-Wiped Carrier IFFT
+//       x_carr = x_carr.array().rowwise() * acq_setup.code_fft.row(code_idx).array();
+//       ExecuteManyFftPlan(acq_setup.ifft_many, x_carr, x_carr);
+
+//       // coherent sum
+//       coh_sum += x_carr;  // x_carr.array() / n ??
+//       i_sig += samp_per_code;
+//     }
+
+//     // sum normalized power noncoherently
+//     corr_map += (coh_sum / (samp_per_code * c_per)).cwiseAbs2();
+//   }
+//   return corr_map;
+// }
+
 Eigen::MatrixXd PcpsSearch(
+    FftwWrapper &p,
     const Eigen::VectorXcd &rfdata,
-    const uint8_t &c_per,
-    const uint8_t &nc_per,
-    const uint8_t &prn,
-    AcquisitionSetup &acq_setup) {
-  // init
-  int n_dopp_bins = acq_setup.carr_rep.rows();
-  int samp_per_code = acq_setup.carr_rep.cols();
-  int code_idx = prn - 1;
-
-  // Allocate correlation results map
-  Eigen::MatrixXd corr_map = Eigen::MatrixXd::Zero(n_dopp_bins, samp_per_code);
-  Eigen::MatrixXcd coh_sum = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
-  Eigen::MatrixXcd x_carr = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
-
-  // Loop through each non-coherent period
-  uint64_t i_sig = 0;
-  for (uint8_t i_nc = 0; i_nc < nc_per; i_nc++) {
-    coh_sum = Eigen::MatrixXcd::Zero(n_dopp_bins, samp_per_code);
-
-    // Loop through each coherent period
-    for (uint8_t j_c = 0; j_c < c_per; j_c++) {
-      // Wiped carrier FFT
-      x_carr = acq_setup.carr_rep.array().rowwise() *
-               rfdata.segment(i_sig, samp_per_code).array().transpose();
-      ExecuteManyFftPlan(acq_setup.fft_many, x_carr, x_carr);
-
-      // Combined Code-Wiped Carrier IFFT
-      x_carr = x_carr.array().rowwise() * acq_setup.code_fft.row(code_idx).array();
-      ExecuteManyFftPlan(acq_setup.ifft_many, x_carr, x_carr);
-
-      // coherent sum
-      coh_sum += x_carr;  // x_carr.array() / n ??
-      i_sig += samp_per_code;
-    }
-
-    // sum normalized power noncoherently
-    corr_map += (coh_sum / (samp_per_code * c_per)).cwiseAbs2();
-  }
-  return corr_map;
-}
-
-Eigen::MatrixXd PcpsSearch(
-    const FftPlans &p,
-    const Eigen::VectorXcd &rfdata,
-    const std::array<bool, 1023> &code,
+    const bool code[1023],
     const double &d_range,
     const double &d_step,
     const double &samp_freq,
@@ -135,8 +133,9 @@ Eigen::MatrixXd PcpsSearch(
     // Initialize code replica
     uint64_t n_samp = static_cast<uint64_t>(samp_freq) / 1000;
     double rem_phase = 0.0;
-    Eigen::VectorXcd code_up = CodeNCO(code.data(), code_freq, samp_freq, rem_phase, n_samp);
-    ExecuteFftPlan(p.fft, code_up, code_up);
+    Eigen::VectorXcd code_up = CodeNCO(code, code_freq, samp_freq, rem_phase, n_samp);
+    // ExecuteFftPlan(p.fft, code_up, code_up);
+    p.ExecuteFftPlan(code_up, code_up, true, false);
     code_up = code_up.conjugate() / static_cast<double>(n_samp);
 
     // initialize carrier replica
@@ -166,12 +165,14 @@ Eigen::MatrixXd PcpsSearch(
         // Wiped carrier FFT
         // x_carr = carr_up.array().rowwise() * rfdata.segment(i_sig, n_samp).array().transpose();
         x_carr = carr_up.array().colwise() * rfdata.segment(i_sig, n_samp).array();
-        ExecuteManyFftPlan(p.fft_many, x_carr, x_carr);
+        // ExecuteManyFftPlan(p.fft_many, x_carr, x_carr);
+        p.ExecuteFftPlan(x_carr, x_carr, true, true);
 
         // Combined Code-Wiped Carrier IFFT
         // x_carr = x_carr.array().rowwise() * code_up.array().transpose();
         x_carr = x_carr.array().colwise() * code_up.array();
-        ExecuteManyFftPlan(p.ifft_many, x_carr, x_carr);
+        // ExecuteManyFftPlan(p.ifft_many, x_carr, x_carr);
+        p.ExecuteFftPlan(x_carr, x_carr, false, true);
 
         // coherent sum
         coh_sum += x_carr;  // x_carr.array() / n ??

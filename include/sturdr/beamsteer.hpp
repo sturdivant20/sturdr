@@ -22,7 +22,7 @@ namespace sturdr {
 /**
  * *=== DeterministicBeam ===*
  * @brief Accumulates 'n_samp' samples of the current integration period and beamsteers toward
- *        provided uint vector
+ *        provided unit vector
  * @param ant_xyz         Known antenna positions in the body frame [in cycles (2*pi/lambda*xyz_m)]
  * @param u               Desired unit vector in the body frame
  * @param rfdata          Recorded signal data
@@ -61,7 +61,7 @@ void DeterministicBeam(
     std::complex<double> &L);
 
 /**
- * *=== DeterministicBeam ===*
+ * *=== DeterministicNull ===*
  * @brief Accumulates 'n_samp' samples of the current integration period and nullsteers toward
  *        provided uint vector
  * @param ant_xyz         Known antenna positions in the body frame [in cycles (2*pi/lambda*xyz_m)]

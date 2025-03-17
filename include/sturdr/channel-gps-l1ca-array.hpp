@@ -20,6 +20,7 @@
 #include <Eigen/Dense>
 
 #include "sturdr/channel-gps-l1ca.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 
 namespace sturdr {
 
@@ -42,7 +43,7 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      FftPlans &fftw_plans,
+      FftwWrapper &fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc);
 
   /**

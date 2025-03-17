@@ -22,7 +22,7 @@
 
 #include <cmath>
 #include <satutils/ephemeris.hpp>
-#include <sturdins/kns.hpp>
+#include <sturdins/kinematic-nav.hpp>
 
 #include "sturdr/structs-enums.hpp"
 
@@ -66,7 +66,7 @@ void RunVDFllUpdate(
     ChannelNavData &data,
     double &tR,
     double &T,
-    sturdins::Kns &filt,
+    sturdins::KinematicNav &filt,
     const Eigen::Ref<const Eigen::MatrixXd> &ant_xyz,
     const int &n_ant);
 

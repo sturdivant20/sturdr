@@ -18,6 +18,7 @@
 
 #include "sturdr/beamsteer.hpp"
 #include "sturdr/discriminator.hpp"
+#include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/gnss-signal.hpp"
 #include "sturdr/lock-detectors.hpp"
 #include "sturdr/structs-enums.hpp"
@@ -33,7 +34,7 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
     std::shared_ptr<ConcurrentBarrier> start_barrier,
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-    FftPlans &fftw_plans,
+    FftwWrapper &fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
     : ChannelGpsL1ca(
           conf,
@@ -198,7 +199,11 @@ void ChannelGpsL1caArray::Dump() {
   }
 
   // lock detectors
-  LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
+  // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
+  lock_.Update(P_, T_);
+  code_lock_ = lock_.GetCodeLock();
+  carr_lock_ = lock_.GetCarrierLock();
+  cno_ = lock_.GetCno();
 
   // discriminators
   double chip_err = DllNneml2(E_, L_);       // [chips]

@@ -22,6 +22,8 @@
 #include <satutils/gps-lnav.hpp>
 
 #include "sturdr/channel.hpp"
+#include "sturdr/fftw-wrapper.hpp"
+#include "sturdr/lock-detectors.hpp"
 #include "sturdr/tracking.hpp"
 
 namespace sturdr {
@@ -39,12 +41,13 @@ class ChannelGpsL1ca : public Channel {
   double carr_doppler_;
   double carr_jitter_;
   double cno_;
-  double nbd_;
-  double nbp_;
-  double pc_;
-  double pn_;
   bool code_lock_;
   bool carr_lock_;
+  LockDetectors lock_;
+  // double nbd_;
+  // double nbp_;
+  // double pc_;
+  // double pn_;
   double beta_sq_;
   double lambda_sq_;
 
@@ -94,7 +97,7 @@ class ChannelGpsL1ca : public Channel {
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      FftPlans &fftw_plans,
+      FftwWrapper &fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc);
 
   /**
