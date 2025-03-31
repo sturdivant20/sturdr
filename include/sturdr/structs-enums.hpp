@@ -124,6 +124,7 @@ struct TrackingConfig {
   double dll_bw_narrow;
   double pll_bw_narrow;
   double fll_bw_narrow;
+  double cno_alpha = 0.005;
 };
 struct NavigationConfig {
   bool use_psr;
@@ -234,7 +235,8 @@ struct ChannelNavPacket {
   std::shared_ptr<double> VTCodeRate{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<bool> is_vector{std::make_shared<bool>(false)};
-  std::shared_ptr<Eigen::Vector3d> VTUnitVec{std::make_shared<Eigen::Vector3d>()};
+  std::shared_ptr<Eigen::Vector3d> UnitVec{
+      std::make_shared<Eigen::Vector3d>(std::nan("1") * Eigen::Vector3d::Ones())};
 };
 
 /**
@@ -264,7 +266,8 @@ struct ChannelNavData {
   bool ReadyForVT{false};
   std::shared_ptr<double> VTCodeRate{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
-  std::shared_ptr<Eigen::Vector3d> VTUnitVec{std::make_shared<Eigen::Vector3d>()};
+  std::shared_ptr<Eigen::Vector3d> UnitVec{
+      std::make_shared<Eigen::Vector3d>(std::nan("1") * Eigen::Vector3d::Ones())};
 };
 
 };  // end namespace sturdr

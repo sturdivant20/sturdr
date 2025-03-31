@@ -57,7 +57,7 @@ class SturDR {
    */
   std::shared_ptr<bool> running_;
   uint64_t n_dopp_bins_;
-  FftwWrapper fftw_plans_;
+  std::shared_ptr<FftwWrapper> fftw_plans_;
   uint8_t prn_ptr_;
   std::map<uint8_t, bool> prns_in_use_;
   std::mutex prn_mtx_;

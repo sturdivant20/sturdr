@@ -8,11 +8,11 @@ Daniel Sturdivant's GNSS Software Defined Radio
 Contains the following modules:
 
 1. `acquisition`
-2. `beamsteer`
-3. `discriminator`
-4. `gnsssignal`
-5. `lockdetectors`
-6. `tracking`
+2. `discriminator`
+3. `gnsssignal`
+4. `lockdetectors`
+5. `tracking`
+6. `BeamFormer`
 7. `FftwWrapper`
 8. `SturDR`
 
@@ -21,22 +21,122 @@ Contains the following modules:
 from __future__ import annotations
 import numpy
 from . import acquisition
-from . import beamsteer
 from . import discriminator
 from . import gnsssignal
 from . import lockdetectors
 from . import tracking
 
 __all__ = [
+    "BeamFormer",
     "FftwWrapper",
     "SturDR",
     "acquisition",
-    "beamsteer",
     "discriminator",
     "gnsssignal",
     "lockdetectors",
     "tracking",
 ]
+
+class BeamFormer:
+    """
+
+    BeamFormer
+    ==========
+
+    Simple, deterministic beamsteering for GNSS phased array antenna.
+    """
+
+    def CalcNullingWeights(self, u_body: numpy.ndarray[numpy.float64[3, 1]]) -> None:
+        """
+        CalcNullingWeights
+        ==================
+
+        Calculates deterministic null steering weights
+
+        Parameters
+        ==========
+
+        u_body : np.ndarray
+
+            unit vector to beam steer towards in the body frame
+        """
+
+    def CalcSteeringWeights(self, u_body: numpy.ndarray[numpy.float64[3, 1]]) -> None:
+        """
+        CalcSteeringWeights
+        ===================
+
+        Calculates deterministic beam steering weights
+
+        Parameters
+        ==========
+
+        u_body : np.ndarray
+
+            unit vector to beam steer towards in the body frame
+        """
+
+    def GetWeights(self) -> numpy.ndarray[numpy.complex128[m, 1]]:
+        """
+        GetWeights
+        ==========
+
+        Grab the current weights of the beamformer
+
+        Returns
+        =======
+
+        W : np.ndarray
+
+            current weighting vector
+        """
+
+    def __call__(self, x: numpy.ndarray[numpy.complex128[m, 1]]) -> complex:
+        """
+        ()
+        ==
+
+        The beamforming operation (combines x elements into 1 beamformed element)
+
+        Parameters
+        ----------
+
+        x : np.ndarray
+
+            vector of complex elements to beamform together
+
+        Returns
+        -------
+
+        y : np.ndarray
+
+            beamformed combination of x
+        """
+
+    def __init__(
+        self, n_ant: int, lamb: float, ant_xyz: numpy.ndarray[numpy.float64[3, n]]
+    ) -> None:
+        """
+        BeamFormer
+        ==========
+
+        Constructor
+
+        Parameters
+        ----------
+
+        n_ant : int
+
+            number of antennas
+
+        lamb : double
+
+            wavelength of carrier signal [m/rad]
+
+        ant_xyz : np.ndarray
+
+            3 x n_ant antenna body frame coordinates
+        """
 
 class FftwWrapper:
     """

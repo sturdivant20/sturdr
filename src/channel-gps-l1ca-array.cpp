@@ -16,7 +16,6 @@
 
 #include "sturdr/channel-gps-l1ca-array.hpp"
 
-#include "sturdr/beamsteer.hpp"
 #include "sturdr/discriminator.hpp"
 #include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/gnss-signal.hpp"
@@ -34,7 +33,7 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
     std::shared_ptr<ConcurrentBarrier> start_barrier,
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-    FftwWrapper &fftw_plans,
+    std::shared_ptr<FftwWrapper> fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
     : ChannelGpsL1ca(
           conf,
@@ -46,9 +45,11 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
           nav_queue,
           fftw_plans,
           GetNewPrnFunc),
-      mu_{5e-9},
-      W_{Eigen::VectorXcd::Zero(conf_.antenna.n_ant)} {
-  W_(0) = 1.0;
+      u_body_{std::nan("1") * Eigen::Vector3d::Ones()},
+      p_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      p1_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      p2_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      bf_{BeamFormer(conf_.antenna.n_ant, nav_pkt_.Lambda, conf_.antenna.ant_xyz)} {
   nav_pkt_.PromptCorrelators.resize(conf_.antenna.n_ant);
   nav_pkt_.PromptCorrelators = Eigen::VectorXcd::Zero(conf_.antenna.n_ant);
   nav_pkt_.PllDisc.resize(conf_.antenna.n_ant);
@@ -56,90 +57,17 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
 
 // *=== ~ChannelGpsL1caArray ===*
 ChannelGpsL1caArray::~ChannelGpsL1caArray() {
+  log_->trace("~ChannelGpsL1ca");
 }
-
-// // *=== Track ===*
-// void ChannelGpsL1caArray::Track() {
-//   // make sure a count of the unprocessed samples is made
-//   uint64_t unread_samples = UnreadSampleCount();
-//   uint64_t samp_to_read;
-
-//   // process until all samples have been read
-//   while (unread_samples > 0) {
-//     if (samp_remaining_ > 0) {
-//       // --- INTEGRATE ---
-//       samp_to_read = std::min(samp_remaining_, unread_samples);
-//       // std::cout << "samp_to_read: " << samp_to_read << ", samp_remaining: " << samp_remaining_
-//       //           << ", unread_samples: " << unread_samples << "\n";
-//       Integrate(samp_to_read);
-
-//     } else {
-//       // --- DUMP ---
-//       Dump();
-//     }
-
-//     // recount unread samples
-//     unread_samples = UnreadSampleCount();
-//   }
-
-//   // send navigation parameters precise to current sample
-//   if (!(*nav_pkt_.is_vector)) {
-//     nav_pkt_.FilePtr = shm_ptr_;
-//     nav_pkt_.CodePhase = rem_code_phase_;
-//     nav_pkt_.Doppler = carr_doppler_;
-//     nav_pkt_.CarrierPhase = rem_carr_phase_;
-//     q_nav_->push(nav_pkt_);
-//     {
-//       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
-//       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_;
-//       });
-//       // nav_pkt_.cv->wait(channel_lock);
-//       *nav_pkt_.update_complete = false;
-//     }
-//   }
-// }
 
 // *=== Integrate ===*
 void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
   double nco_code_freq = satutils::GPS_CA_CODE_RATE<> + code_doppler_;
   double nco_carr_freq = intmd_freq_rad_ + carr_doppler_;
 
-  // if (*nav_pkt_.is_vector) {
-  //   DeterministicBeam(
-  //       conf_.antenna.ant_xyz,
-  //       u_,
-  //       shm_->block(shm_ptr_, 0u, samp_to_read, (uint64_t)conf_.antenna.n_ant),
-  //       code_.data(),
-  //       rem_code_phase_,
-  //       nco_code_freq,
-  //       rem_carr_phase_,
-  //       nco_carr_freq,
-  //       carr_jitter_,
-  //       conf_.rfsignal.samp_freq,
-  //       half_samp_,
-  //       samp_remaining_,
-  //       tap_space_,
-  //       E_,
-  //       P1_,
-  //       P2_,
-  //       L_);
-  //   for (int i = 0; i < conf_.antenna.n_ant; i++) {
-  //     Correlate(
-  //         shm_->col(i).segment(shm_ptr_, samp_to_read),
-  //         code_.data(),
-  //         rem_code_phase_,
-  //         nco_code_freq,
-  //         rem_carr_phase_,
-  //         nco_carr_freq,
-  //         carr_jitter_,
-  //         conf_.rfsignal.samp_freq,
-  //         nav_pkt_.PromptCorrelators(i));
-  //   }
-  // } else {
-  double init_code_phase = rem_code_phase_, init_carr_phase = rem_carr_phase_;
   // accumulate samples
-  AccumulateEPL(
-      shm_->col(0).segment(shm_ptr_, samp_to_read),
+  AccumulateEPLArray(
+      shm_->block(shm_ptr_, 0, samp_to_read, conf_.antenna.n_ant),
       code_.data(),
       rem_code_phase_,
       nco_code_freq,
@@ -151,27 +79,9 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
       samp_remaining_,
       tap_space_,
       E_,
-      P1_,
-      P2_,
+      p1_array_,
+      p2_array_,
       L_);
-
-  nav_pkt_.PromptCorrelators(0) += (P1_ + P2_);
-  double tmp_code_phase, tmp_carr_phase;
-  for (int i = 1; i < conf_.antenna.n_ant; i++) {
-    tmp_code_phase = init_code_phase;
-    tmp_carr_phase = init_carr_phase;
-    Correlate(
-        shm_->col(i).segment(shm_ptr_, samp_to_read),
-        code_.data(),
-        tmp_code_phase,
-        nco_code_freq,
-        tmp_carr_phase,
-        nco_carr_freq,
-        carr_jitter_,
-        conf_.rfsignal.samp_freq,
-        nav_pkt_.PromptCorrelators(i));
-  }
-  // }
   // P_ += (P1_ + P2_);
 
   // move forward in buffer
@@ -181,7 +91,13 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 
 // *=== Dump ===*
 void ChannelGpsL1caArray::Dump() {
+  // beamsteer
+  if (!std::isnan(u_body_(0))) bf_.CalcSteeringWeights(u_body_);
+  P1_ = bf_(p1_array_);
+  P2_ = bf_(p2_array_);
+
   // combine prompt sections
+  p_array_ = p1_array_ + p2_array_;
   P_ = P1_ + P2_;
 
   // check if navigation data needs to be parsed
@@ -200,7 +116,7 @@ void ChannelGpsL1caArray::Dump() {
 
   // lock detectors
   // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
-  lock_.Update(P_, T_);
+  lock_.Update(p_array_(0), T_);
   code_lock_ = lock_.GetCodeLock();
   carr_lock_ = lock_.GetCarrierLock();
   cno_ = lock_.GetCno();
@@ -219,14 +135,14 @@ void ChannelGpsL1caArray::Dump() {
 
   // update nav packet
   nav_pkt_.DllDisc = chip_err;
-  // nav_pkt_.PllDisc = phase_err;
-  nav_pkt_.FllDisc = freq_err;
-  nav_pkt_.PsrVar = beta_sq_ * chip_var;
-  nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;
-  nav_pkt_.PhaseVar = 2.0 * phase_var;
   for (uint8_t i = 0; i < conf_.antenna.n_ant; i++) {
-    nav_pkt_.PllDisc(i) = PllAtan2(nav_pkt_.PromptCorrelators(i));
+    nav_pkt_.PllDisc(i) = PllAtan2(p_array_(i));
   }
+  nav_pkt_.FllDisc = freq_err;
+  nav_pkt_.PsrVar = beta_sq_ * chip_var;       // to (m)^2
+  nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;  // to (m/s)^2
+  nav_pkt_.PhaseVar = 2.0 * phase_var;
+  nav_pkt_.PromptCorrelators = p_array_;
 
   // tracking loop
   if (!*(nav_pkt_.is_vector)) {
@@ -260,7 +176,7 @@ void ChannelGpsL1caArray::Dump() {
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
-    // u_ = *nav_pkt_.VTUnitVec;
+    u_body_ = *nav_pkt_.UnitVec;
 
     // double t = static_cast<double>(total_samp_) / conf_.rfsignal.samp_freq;
     // kf_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
@@ -321,7 +237,8 @@ void ChannelGpsL1caArray::Dump() {
   }
 
   // std::cout << "ChannelGpsL1ca::Dump - file log called\n";
-  file_log_->info("{}", file_pkt_);
+  // file_log_->info("{}", file_pkt_);
+  file_log_->write(reinterpret_cast<char *>(&file_pkt_), sizeof(ChannelPacket));
 
   // begin next nco period
   int_per_cnt_ += T_ms_;

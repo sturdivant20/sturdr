@@ -15,13 +15,14 @@
 #ifndef STURDR_CHANNEL_HPP
 #define STURDR_CHANNEL_HPP
 
-#include <spdlog/async.h>
-#include <spdlog/sinks/basic_file_sink.h>
+// #include <spdlog/async.h>
+// #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <Eigen/Dense>
+#include <fstream>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <thread>
 
@@ -41,7 +42,7 @@ class Channel {
   std::shared_ptr<bool> running_;
   uint64_t samp_per_ms_;
   uint8_t acq_fail_cnt_;
-  FftwWrapper fftw_plans_;
+  std::shared_ptr<FftwWrapper> fftw_plans_;
   std::function<void(uint8_t &)> new_prn_func_;
 
   /**
@@ -64,7 +65,8 @@ class Channel {
    */
   ChannelPacket file_pkt_;
   std::shared_ptr<spdlog::logger> log_;
-  std::shared_ptr<spdlog::logger> file_log_;
+  // std::shared_ptr<spdlog::logger> file_log_;
+  std::shared_ptr<std::ofstream> file_log_;
 
  public:
   /**
@@ -86,7 +88,7 @@ class Channel {
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      FftwWrapper &fftw_plans,
+      std::shared_ptr<FftwWrapper> fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc)
       : conf_{conf},
         running_{running},
@@ -107,20 +109,25 @@ class Channel {
         nav_pkt_{ChannelNavPacket()},
         file_pkt_{ChannelPacket()},
         log_{spdlog::get("sturdr-console")},
-        file_log_{spdlog::basic_logger_st<spdlog::async_factory>(
-            "sturdr-ch" + std::to_string(n) + "-log",
+        file_log_{std::make_shared<std::ofstream>(
             conf.general.out_folder + "/" + conf.general.scenario + "/SturDR_Ch" +
-                std::to_string(n) + "_Log.csv",
-            true)} {
+                std::to_string(n) + "_Log.bin",
+            std::ios::binary | std::ios::trunc)}
+  // file_log_{spdlog::basic_logger_st<spdlog::async_factory>(
+  //     "sturdr-ch" + std::to_string(n) + "-log",
+  //     conf.general.out_folder + "/" + conf.general.scenario + "/SturDR_Ch" +
+  //         std::to_string(n) + "_Log.csv",
+  //     true)}
+  {
     file_pkt_.ChannelStatus = ChannelState::ACQUIRING;
     file_pkt_.Header.ChannelNum = n;
     eph_pkt_.Header.ChannelNum = n;
     nav_pkt_.Header.ChannelNum = n;
-    file_log_->set_pattern("%v");
-    file_log_->info(
-        "ChannelNum,Constellation,Signal,SVID,ChannelStatus,TrackingStatus,Week,ToW,"
-        "CNo,Doppler,CodePhase,CarrierPhase,IE,IP,IL,QE,QP,QL,IP1,IP2,QP1,QP2,"
-        "DllDisc,PllDisc,FllDisc,IP_A0,IP_A1,IP_A2,IP_A3,QP_A0,QP_A1,QP_A2,QP_A3");
+    // file_log_->set_pattern("%v");
+    // file_log_->info(
+    //     "ChannelNum,Constellation,Signal,SVID,ChannelStatus,TrackingStatus,Week,ToW,"
+    //     "CNo,Doppler,CodePhase,CarrierPhase,IE,IP,IL,QE,QP,QL,IP1,IP2,QP1,QP2,"
+    //     "DllDisc,PllDisc,FllDisc,IP_A0,IP_A1,IP_A2,IP_A3,QP_A0,QP_A1,QP_A2,QP_A3");
   };
 
   /**
@@ -128,6 +135,7 @@ class Channel {
    * @brief Destructor
    */
   virtual ~Channel() {
+    file_log_->close();
     if (thread_->joinable()) {
       thread_->join();
     }
@@ -170,6 +178,7 @@ class Channel {
       bar_->Wait();
       UpdateShmWriterPtr();
     }
+    log_->debug("Channel {} stopping ...", file_pkt_.Header.ChannelNum);
   };
 
  protected:

@@ -65,6 +65,22 @@ void AccumulateEPL(
     std::complex<double> &P1,
     std::complex<double> &P2,
     std::complex<double> &L);
+void AccumulateEPLArray(
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    std::complex<double> E,
+    Eigen::Ref<Eigen::VectorXcd> P1,
+    Eigen::Ref<Eigen::VectorXcd> P2,
+    std::complex<double> L);
 
 /**
  * *=== Correlate ===*

@@ -68,7 +68,8 @@ SturDR::SturDR(const std::string yaml_fname)
            yp_.GetVar<double>("fll_bandwidth"),
            yp_.GetVar<double>("dll_bandwidth_narrow"),
            yp_.GetVar<double>("pll_bandwidth_narrow"),
-           yp_.GetVar<double>("fll_bandwidth_narrow")},
+           yp_.GetVar<double>("fll_bandwidth_narrow"),
+           yp_.GetVar<double>("cno_alpha")},
           {yp_.GetVar<bool>("use_psr"),
            yp_.GetVar<bool>("use_doppler"),
            yp_.GetVar<bool>("use_adr"),
@@ -94,7 +95,7 @@ SturDR::SturDR(const std::string yaml_fname)
           2 * static_cast<uint64_t>(
                   conf_.acquisition.doppler_range / conf_.acquisition.doppler_step) +
           1},
-      fftw_plans_{FftwWrapper()},
+      fftw_plans_{std::make_shared<FftwWrapper>()},
       prn_ptr_{1},
       barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
       log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
@@ -137,6 +138,7 @@ SturDR::SturDR(const std::string yaml_fname)
   log_->trace("pll_bandwidth_narrow: {}", conf_.tracking.pll_bw_narrow);
   log_->trace("fll_bandwidth_narrow: {}", conf_.tracking.fll_bw_narrow);
   log_->trace("dll_bandwidth_narrow: {}", conf_.tracking.dll_bw_narrow);
+  log_->trace("cno_alpha: {}", conf_.tracking.cno_alpha);
   log_->trace("meas_freq: {}", conf_.navigation.meas_freq);
   log_->trace("process_std_vel: {}", conf_.navigation.process_std_vel);
   log_->trace("process_std_att: {}", conf_.navigation.process_std_att);
@@ -149,10 +151,10 @@ SturDR::SturDR(const std::string yaml_fname)
   log_->trace("do_vt: {}", conf_.navigation.do_vt);
 
   // Create FFT plans
-  fftw_plans_.Create1dFftPlan(samp_per_ms_, true);
-  fftw_plans_.Create1dFftPlan(samp_per_ms_, false);
-  fftw_plans_.CreateManyFftPlan(samp_per_ms_, n_dopp_bins_, true, false);
-  fftw_plans_.CreateManyFftPlan(samp_per_ms_, n_dopp_bins_, false, false);
+  fftw_plans_->Create1dFftPlan(samp_per_ms_, true);
+  fftw_plans_->Create1dFftPlan(samp_per_ms_, false);
+  fftw_plans_->CreateManyFftPlan(samp_per_ms_, n_dopp_bins_, true, false);
+  fftw_plans_->CreateManyFftPlan(samp_per_ms_, n_dopp_bins_, false, false);
 
   // read in the antenna positions if necessary
   if (conf_.antenna.n_ant > 1) {
@@ -173,6 +175,8 @@ SturDR::SturDR(const std::string yaml_fname)
 
 // *=== ~SturDR ===*
 SturDR::~SturDR() {
+  log_->trace("~SturDR");
+  log_->info("SturDR shutting down ...");
 }
 
 // *=== Start ===*
@@ -243,6 +247,7 @@ void SturDR::Start() {
   }
 
   // end SturDR
+  log_->info("SturDR killing threads ...");
   *running_ = false;
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   barrier_->NotifyComplete();

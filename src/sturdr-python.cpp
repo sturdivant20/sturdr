@@ -15,7 +15,7 @@
 #include <pybind11/stl.h>
 
 #include "sturdr/acquisition.hpp"
-#include "sturdr/beamsteer.hpp"
+#include "sturdr/beamformer.hpp"
 #include "sturdr/discriminator.hpp"
 #include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/gnss-signal.hpp"
@@ -36,11 +36,11 @@ PYBIND11_MODULE(_sturdr_core, h) {
     Contains the following modules:
 
     1. `acquisition`
-    2. `beamsteer`
-    3. `discriminator`
-    4. `gnsssignal`
-    5. `lockdetectors`
-    6. `tracking`
+    2. `discriminator`
+    3. `gnsssignal`
+    4. `lockdetectors`
+    5. `tracking`
+    6. `BeamFormer`
     7. `FftwWrapper`
     8. `SturDR`
     )pbdoc";
@@ -195,208 +195,97 @@ PYBIND11_MODULE(_sturdr_core, h) {
       )pbdoc");
 
   //! === Beam Steer ===============================================================================
-  py::module_ bs = h.def_submodule("beamsteer", R"pbdoc(
-    Beam Steer
-    ==========
+  py::class_<BeamFormer>(h, "BeamFormer")
+      .def(
+          py::init<int, double, Eigen::Matrix3Xd>(),
+          py::arg("n_ant"),
+          py::arg("lamb"),
+          py::arg("ant_xyz"),
+          R"pbdoc(
+          BeamFormer
+          ==========
 
-    Simple, deterministic beamsteering for GNSS phased array antenna.)pbdoc");
+          Constructor
+          
+          Parameters
+          ----------
 
-  bs.def(
-      "DeterministicBeam",
-      &DeterministicBeam,
-      py::arg("ant_xyz"),
-      py::arg("u"),
-      py::arg("rfdata"),
-      py::arg("code"),
-      py::arg("rem_code_phase"),
-      py::arg("code_freq"),
-      py::arg("rem_carr_phase"),
-      py::arg("carr_freq"),
-      py::arg("carr_jit"),
-      py::arg("samp_freq"),
-      py::arg("half_samp"),
-      py::arg("samp_remaining"),
-      py::arg("t_space"),
-      py::arg("E"),
-      py::arg("P1"),
-      py::arg("P2"),
-      py::arg("L"),
-      R"pbdoc(
-      DeterministicBeam
-      =================
+          n_ant : int
 
-      Accumulates 'n_samp' samples of the current integration period and beamsteers toward provided unit vector.
+              number of antennas
 
-      Parameters
-      ----------
+          lamb : double
 
-      axt_xyz : np.ndarray
-      
-          Known antenna positions in the body frame [in cycles (2*pi/lambda*xyz_m)]
+              wavelength of carrier signal [m/rad]
 
-      u : np.ndarray
-      
-          Desired unit vector in the body frame
+          ant_xyz : np.ndarray
 
-      rfdata : np.ndarray
-      
-          Data samples recorded by the RF front end
+              3 x n_ant antenna body frame coordinates
+          )pbdoc")
+      .def("GetWeights", &BeamFormer::GetWeights, R"pbdoc(
+          GetWeights
+          ==========
+          
+          Grab the current weights of the beamformer
+          
+          Returns
+          =======
 
-      code : np.ndarray
+          W : np.ndarray
 
-          Local code (not upsampled)
+              current weighting vector
+          )pbdoc")
+      .def("CalcSteeringWeights", &BeamFormer::CalcSteeringWeights, py::arg("u_body"), R"pbdoc(
+          CalcSteeringWeights
+          ===================
 
-      rem_code_phase : double
+          Calculates deterministic beam steering weights
 
-          Initial fractional phase of the code
+          Parameters
+          ==========
 
-      code_freq : double
+          u_body : np.ndarray
 
-          GNSS signal code frequency [Hz]
+              unit vector to beam steer towards in the body frame
+          )pbdoc")
+      .def("CalcNullingWeights", &BeamFormer::CalcNullingWeights, py::arg("u_body"), R"pbdoc(
+          CalcNullingWeights
+          ==================
 
-      rem_carr_phase : double
+          Calculates deterministic null steering weights
 
-          Initial fractional phase of the carrier [rad]
+          Parameters
+          ==========
 
-      carr_freq : double
+          u_body : np.ndarray
 
-          Current carrier frequency (including intermediate frequency) [rad/s]
+              unit vector to beam steer towards in the body frame
+          )pbdoc")
+      .def("__call__", &BeamFormer::operator(), py::arg("x"), R"pbdoc(
+          ()
+          ==
 
-      carr_jit : double
+          The beamforming operation (combines x elements into 1 beamformed element)
 
-          Current carrier frequency jitter [rad/s^2]
+          Parameters
+          ----------
 
-      samp_freq : double
+          x : np.ndarray
 
-          Front end sampling frequency [Hz]
+              vector of complex elements to beamform together
 
-      half_samp : uint64
+          Returns
+          -------
 
-          Number of samples in half the TOTAL accumulation period
+          y : np.ndarray
 
-      samp_remaining : uint64
+              beamformed combination of x
+          )pbdoc")
+      .doc() = R"pbdoc(
+          BeamFormer
+          ==========
 
-          Number of samples remaining to be accumulated inside TOTAL period
-
-      t_space : double
-
-          Spacing between correlator taps
-
-      E : complex(double)
-
-          Early correlator
-
-      P1 : complex(double)
-
-          Prompt first-half correlator
-
-      P2 : complex(double)
-
-          Prompt second-half correlator
-
-      L : complex(double)
-
-          Late correlator
-      )pbdoc");
-
-  // DeterministicNull
-  bs.def(
-      "DeterministicNull",
-      &DeterministicNull,
-      py::arg("ant_xyz"),
-      py::arg("u"),
-      py::arg("rfdata"),
-      py::arg("code"),
-      py::arg("rem_code_phase"),
-      py::arg("code_freq"),
-      py::arg("rem_carr_phase"),
-      py::arg("carr_freq"),
-      py::arg("carr_jit"),
-      py::arg("samp_freq"),
-      py::arg("half_samp"),
-      py::arg("samp_remaining"),
-      py::arg("t_space"),
-      py::arg("E"),
-      py::arg("P1"),
-      py::arg("P2"),
-      py::arg("L"),
-      R"pbdoc(
-      DeterministicNull
-      =================
-
-      Accumulates 'n_samp' samples of the current integration period and nullsteers toward provided unit vector.
-
-      Parameters
-      ----------
-
-      axt_xyz : np.ndarray
-      
-          Known antenna positions in the body frame [in cycles (2*pi/lambda*xyz_m)]
-
-      u : np.ndarray
-      
-          Desired unit vector in the body frame
-
-      rfdata : np.ndarray
-      
-          Data samples recorded by the RF front end
-
-      code : np.ndarray
-
-          Local code (not upsampled)
-
-      rem_code_phase : double
-
-          Initial fractional phase of the code
-
-      code_freq : double
-
-          GNSS signal code frequency [Hz]
-
-      rem_carr_phase : double
-
-          Initial fractional phase of the carrier [rad]
-
-      carr_freq : double
-
-          Current carrier frequency (including intermediate frequency) [rad/s]
-
-      carr_jit : double
-
-          Current carrier frequency jitter [rad/s^2]
-
-      samp_freq : double
-
-          Front end sampling frequency [Hz]
-
-      half_samp : uint64
-
-          Number of samples in half the TOTAL accumulation period
-
-      samp_remaining : uint64
-
-          Number of samples remaining to be accumulated inside TOTAL period
-
-      t_space : double
-
-          Spacing between correlator taps
-
-      E : complex(double)
-
-          Early correlator
-
-      P1 : complex(double)
-
-          Prompt first-half correlator
-
-      P2 : complex(double)
-
-          Prompt second-half correlator
-
-      L : complex(double)
-
-          Late correlator
-      )pbdoc");
+          Simple, deterministic beamsteering for GNSS phased array antenna.)pbdoc";
 
   //! === Discriminator ============================================================================
   py::module_ disc = h.def_submodule("discriminator", R"pbdoc(

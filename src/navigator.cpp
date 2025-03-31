@@ -19,9 +19,11 @@
 #include "sturdr/navigator.hpp"
 
 // #include <fmt/ranges.h>
-#include <spdlog/async.h>
-#include <spdlog/fmt/ostr.h>
-#include <spdlog/sinks/basic_file_sink.h>
+// #include <spdlog/async.h>
+// #include <spdlog/fmt/ostr.h>
+// #include <spdlog/sinks/basic_file_sink.h>
+#include <Eigen/src/Core/Matrix.h>
+#include <spdlog/spdlog.h>
 
 #include <cmath>
 #include <cstdio>
@@ -41,9 +43,9 @@
 #include "sturdr/structs-enums.hpp"
 #include "sturdr/vector-tracking.hpp"
 
-template <typename T>
-struct fmt::formatter<T, std::enable_if_t<std::is_base_of_v<Eigen::DenseBase<T>, T>, char>>
-    : ostream_formatter {};
+// template <typename T>
+// struct fmt::formatter<T, std::enable_if_t<std::is_base_of_v<Eigen::DenseBase<T>, T>, char>>
+//     : ostream_formatter {};
 
 namespace sturdr {
 
@@ -61,7 +63,7 @@ Navigator::Navigator(
           conf_.general.ms_chunk_size * static_cast<uint64_t>(conf_.rfsignal.samp_freq) / 1000},
       receive_time_{0.0},
       lla_{Eigen::Vector3d::Zero()},
-      nedv_{Eigen::Vector3d::Zero()},
+      vel_{Eigen::Vector3d::Zero()},
       cb_{0.0},
       cd_{0.0},
       is_initialized_{false},
@@ -71,7 +73,13 @@ Navigator::Navigator(
       update_{false},
       running_{running},
       thread_{std::thread(&Navigator::NavigationThread, this)},
-      log_{spdlog::get("sturdr-console")} {
+      log_{spdlog::get("sturdr-console")},
+      nav_log_{std::make_shared<std::ofstream>(
+          conf_.general.out_folder + "/" + conf_.general.scenario + "/Navigation_Log.bin",
+          std::ios::binary | std::ios::trunc)},
+      eph_log_{std::make_shared<std::ofstream>(
+          conf_.general.out_folder + "/" + conf_.general.scenario + "/Ephemeris_Log.bin",
+          std::ios::binary | std::ios::trunc)} {
   // set known parameters for kalman filter
   sturdins::NavigationClock clk = sturdins::GetNavClock(conf_.navigation.clock_model);
   kf_.SetClockSpec(clk.h0, clk.h1, clk.h2);
@@ -84,6 +92,9 @@ Navigator::Navigator(
 
 // *=== ~Navigator ===*
 Navigator::~Navigator() {
+  log_->trace("~Navigator");
+  nav_log_->close();
+  eph_log_->close();
   if (thread_.joinable()) {
     thread_.join();
   }
@@ -104,18 +115,6 @@ void Navigator::NavigationThread() {
   std::thread nav_packet_t(&Navigator::ChannelNavPacketListener, this);
   std::thread eph_packet_t(&Navigator::ChannelEphemPacketListener, this);
 
-  // initialize navigation logger
-  nav_log_ = spdlog::basic_logger_mt<spdlog::async_factory>(
-      "sturdr-navigation-log",
-      conf_.general.out_folder + "/" + conf_.general.scenario + "/Navigation_Log.csv",
-      true);
-  nav_log_->set_pattern("%v");
-  nav_log_->info(
-      "Week,ToW [s],Lat [deg],Lon [deg],Alt [m],vN [m/s],vE [m/s],vD [m/s],Roll [deg],Pitch "
-      "[deg], Yaw[deg],cb [m],cd [m/s],Lat Var [m^2],Lon Var [m^2],Alt Var [m^2],vN Var "
-      "[(m/s)^2],vE Var [(m/s)^2],vD Var [(m/s)^2],Roll Var [deg^2],Pitch Var [deg^2],Yaw Var "
-      "[deg^2],cb Var [m^2],cd Var [(m/s)^2]");
-
   // do actual navigation work here
   while (*running_) {
     // TODO: figure out how to 'safely' wait for current queue items to process
@@ -127,43 +126,21 @@ void Navigator::NavigationThread() {
         if (NavigationUpdate()) {
           // log results
           log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
-          // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
+          // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", vel_(0), vel_(1), vel_(2));
           // log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
           // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
-          nav_log_->info(
-              "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.11f},{:.11f},"
-              "{:.11f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:."
-              "15f},"
-              "{:.15f},{:.15f}",
-              week_,
-              receive_time_,
-              lla_(0),
-              lla_(1),
-              lla_(2),
-              nedv_(0),
-              nedv_(1),
-              nedv_(2),
-              rpy_(0),
-              rpy_(1),
-              rpy_(2),
-              cb_,
-              cd_,
-              kf_.P_(0, 0),
-              kf_.P_(1, 1),
-              kf_.P_(2, 2),
-              kf_.P_(3, 3),
-              kf_.P_(4, 4),
-              kf_.P_(5, 5),
-              kf_.P_(6, 6) * RAD2DEG_SQ,
-              kf_.P_(7, 7) * RAD2DEG_SQ,
-              kf_.P_(8, 8) * RAD2DEG_SQ,
-              kf_.P_(9, 9),
-              kf_.P_(10, 10));
-
-          // Eigen::Vector3d rpy = navtools::quat2euler<true, double>(kf_.q_b_l_);
-          // std::cout << kf_.phi_ << ", " << kf_.lam_ << ", " << kf_.h_ << ", " << kf_.vn_ << ", "
-          //           << kf_.ve_ << ", " << kf_.vd_ << ", " << rpy(0) << ", " << rpy(1) << ", "
-          //           << rpy(2) << ", " << cb_ << ", " << cd_ << "\n";
+          Eigen::Vector<double, 11> tmp = kf_.P_.diagonal();
+          tmp.segment(6, 3) *= RAD2DEG_SQ;
+          tmp.segment(9, 2) *= 1e9 / navtools::LIGHT_SPEED<>;
+          nav_log_->write(reinterpret_cast<char *>(&week_), sizeof(uint16_t));
+          nav_log_->write(reinterpret_cast<char *>(&receive_time_), sizeof(double));
+          nav_log_->write(reinterpret_cast<char *>(lla_.data()), 3 * sizeof(double));
+          nav_log_->write(reinterpret_cast<char *>(vel_.data()), 3 * sizeof(double));
+          // nav_log_->write(reinterpret_cast<char *>(rpy_.data()), 3 * sizeof(double));
+          nav_log_->write(reinterpret_cast<char *>(q_.data()), 4 * sizeof(double));
+          nav_log_->write(reinterpret_cast<char *>(&cb_), sizeof(double));
+          nav_log_->write(reinterpret_cast<char *>(&cd_), sizeof(double));
+          nav_log_->write(reinterpret_cast<char *>(tmp.data()), 11 * sizeof(double));
         }
       }
     }
@@ -173,6 +150,7 @@ void Navigator::NavigationThread() {
     std::unique_lock<std::mutex> event_lock(event_mtx_);
     cv_.wait(event_lock, [this] { return update_ || !*running_; });
   }
+  log_->debug("Navigator stopping...");
 
   // kill listener threads
   nav_packet_t.join();
@@ -213,7 +191,7 @@ void Navigator::ChannelNavPacketListener() {
       channel_data_[packet.Header.ChannelNum].HasData = true;
       channel_data_[packet.Header.ChannelNum].VTCodeRate = packet.VTCodeRate;
       channel_data_[packet.Header.ChannelNum].VTCarrierFreq = packet.VTCarrierFreq;
-      channel_data_[packet.Header.ChannelNum].VTUnitVec = packet.VTUnitVec;
+      channel_data_[packet.Header.ChannelNum].UnitVec = packet.UnitVec;
       channel_data_[packet.Header.ChannelNum].ReadyForVT = false;
       // channel_sync_[packet.Header.ChannelNum].cv = packet.cv;
       // channel_sync_[packet.Header.ChannelNum].update_complete = packet.update_complete;
@@ -246,28 +224,13 @@ void Navigator::ChannelNavPacketListener() {
                false,
                packet.VTCodeRate,
                packet.VTCarrierFreq,
-               packet.VTUnitVec}});
+               packet.UnitVec}});
       channel_sync_.push_back({packet.cv, packet.update_complete, packet.is_vector, false});
     }
 
     // run vector tracking updates
     if (is_vector_) {
-      // log_->warn(
-      //     "Channel {} - GPS{:02d} requesting vector update (fd: {:.3f}, fd,ca: {:.3f}, ptr: {},"
-      //     "size: {}, Ready4VT: {})",
-      //     packet.Header.ChannelNum,
-      //     packet.Header.SVID,
-      //     packet.Doppler / navtools::TWO_PI<>,
-      //     *packet.VTCodeRate - satutils::GPS_CA_CODE_RATE<>,
-      //     packet.FilePtr,
-      //     file_size_,
-      //     channel_data_[packet.Header.ChannelNum].ReadyForVT);
       channel_data_[packet.Header.ChannelNum].ReadyForVT = true;
-      // std::cout << "Ready4VT: [ ";
-      // for (auto &it : channel_data_) {
-      //   std::cout << it.second.ReadyForVT << " ";
-      // }
-      // std::cout << "]\n";
       VectorNavSolution();
 
     } else {
@@ -276,19 +239,20 @@ void Navigator::ChannelNavPacketListener() {
       packet.cv->notify_one();
     }
   }
+  log_->debug("Nav-Packet listener stopping ...");
 }
 
 // *=== ChannelEphemPacketListener ===*
 void Navigator::ChannelEphemPacketListener() {
   // initialize ephemeris logger
-  eph_log_ = spdlog::basic_logger_st(
-      "sturdr-ephemeris-log",
-      conf_.general.out_folder + "/" + conf_.general.scenario + "/Ephemeris_Log.csv",
-      true);
-  eph_log_->set_pattern("%v");
-  eph_log_->info(
-      "SVID,iode,iodc,toe,toc,tgd,af2,af1,af0,e,sqrtA,deltan,m0,omega0,omega,omegaDot,i0,iDot,"
-      "cuc,cus,cic,cis,crc,crs,ura,health");
+  // eph_log_ = spdlog::basic_logger_st(
+  //     "sturdr-ephemeris-log",
+  //     conf_.general.out_folder + "/" + conf_.general.scenario + "/Ephemeris_Log.csv",
+  //     true);
+  // eph_log_->set_pattern("%v");
+  // eph_log_->info(
+  //     "SVID,iode,iodc,toe,toc,tgd,af2,af1,af0,e,sqrtA,deltan,m0,omega0,omega,omegaDot,i0,iDot,"
+  //     "cuc,cus,cic,cis,crc,crs,ura,health");
 
   ChannelEphemPacket packet;
   while (eph_queue_->pop(packet) && *running_) {
@@ -328,8 +292,12 @@ void Navigator::ChannelEphemPacketListener() {
     }
 
     // log ephemeris
-    eph_log_->info("GPS{},{}", packet.Header.SVID, packet.Eph);
+    // eph_log_->info("GPS{},{}", packet.Header.SVID, packet.Eph);
+    eph_log_->write(reinterpret_cast<char *>(&packet.Header.SVID), sizeof(uint8_t));
+    eph_log_->write(
+        reinterpret_cast<char *>(&packet.Eph), sizeof(satutils::KeplerElements<double>));
   }  // namespace sturdr
+  log_->debug("Ephemeris-Packet listener stopping ...");
 }
 
 // *=== NavigationUpdate ===
@@ -415,11 +383,7 @@ void Navigator::InitNavSolution(
   receive_time_ = transmit_time.minCoeff() + conf_.navigation.nominal_transit_time;
   Eigen::VectorXd psr = (receive_time_ - transmit_time.array()) * navtools::LIGHT_SPEED<>;
 
-  // std::cout << "transmit time: [ " << std::setprecision(17);
-  // for (uint8_t i = 0; i < transmit_time.size(); i++) {
-  //   std::cout << transmit_time(i) << ", ";
-  // }
-  // std::cout << "]\n";
+  // std::cout << "receive time = " << receive_time_ << " | dt = " << dt << "\n\n";
   // std::cout << "#: transmit time | psr(var) | psrdot(var)\n";
   // for (uint8_t i = 0; i < transmit_time.size(); i++) {
   //   std::cout << (int)i << ": " << std::setprecision(17) << transmit_time(i)
@@ -437,7 +401,7 @@ void Navigator::InitNavSolution(
   Eigen::MatrixXd P{Eigen::Matrix<double, 8, 8>::Zero()};
   sturdins::GnssPVT(x, P, sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
   navtools::ecef2lla<double>(lla_, x.segment(0, 3));
-  navtools::ecef2nedv<double>(nedv_, x.segment(3, 3), lla_);
+  navtools::ecef2nedv<double>(vel_, x.segment(3, 3), lla_);
   cb_ = x(6);
   cd_ = x(7);
 
@@ -492,23 +456,28 @@ void Navigator::InitNavSolution(
     u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
     u_body_est.row(2) = -est_el.array().sin();
     sturdins::Wahba(C_l_b_est, u_body_est, u_ned, u_body_var);
-    rpy_ = navtools::dcm2euler<double>(C_l_b_est.transpose(), true);
 
     // std::cout << "u_from_sv: \n" << u_ned.transpose() << "\n";
     // std::cout << "u_from_music: \n" << u_body_est.transpose() << "\n";
     // std::cout << "est_rpy: " << rpy_.transpose() * navtools::RAD2DEG<> << "\n";
 
     // initialize kalman filter
-    kf_.SetAttitude(rpy_(0), rpy_(1), rpy_(2));
-    rpy_ *= navtools::DEG2RAD<>;
+    kf_.SetAttitude(C_l_b_est.transpose());
+
+    // save beamsteering unit vector
+    Eigen::Matrix3Xd u_body = kf_.C_b_l_.transpose() * u_ned;
+    for (int ii = 0; ii < u_body.cols(); ii++) {
+      *channel_data_[ii].UnitVec = u_body.col(ii);
+    }
   }
 
   // initialize kalman filter
   kf_.SetPosition(lla_(0), lla_(1), lla_(2));
-  kf_.SetVelocity(nedv_(0), nedv_(1), nedv_(2));
+  kf_.SetVelocity(vel_(0), vel_(1), vel_(2));
   kf_.SetClock(cb_, cd_);
   lla_(0) *= navtools::RAD2DEG<>;
   lla_(1) *= navtools::RAD2DEG<>;
+  q_ = kf_.q_b_l_;
   is_initialized_ = true;
 }
 
@@ -526,11 +495,7 @@ void Navigator::ScalarNavSolution(
   receive_time_ += dt;
   Eigen::VectorXd psr = (receive_time_ - transmit_time.array()) * navtools::LIGHT_SPEED<>;
 
-  // std::cout << "transmit time: [ " << std::setprecision(17);
-  // for (uint8_t i = 0; i < transmit_time.size(); i++) {
-  //   std::cout << transmit_time(i) << ", ";
-  // }
-  // std::cout << "]\n";
+  // std::cout << "receive time = " << receive_time_ << " | dt = " << dt << "\n\n";
   // std::cout << "#: transmit time | psr(var) | psrdot(var)\n";
   // for (uint8_t i = 0; i < transmit_time.size(); i++) {
   //   std::cout << (int)i << ": " << std::setprecision(17) << transmit_time(i)
@@ -558,7 +523,7 @@ void Navigator::ScalarNavSolution(
       lamb = channel_data_[i + 1].Lambda;
     }
     Eigen::RowVectorXd phase_disc_0 = phase_disc.row(0);
-    phase_disc = (-phase_disc).rowwise() + phase_disc_0;
+    phase_disc = phase_disc.rowwise() - phase_disc_0;
     for (int i = 0; i < num_sv; i++) {
       for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
         navtools::WrapPiToPi<double>(phase_disc(j, i));
@@ -578,14 +543,30 @@ void Navigator::ScalarNavSolution(
         conf_.antenna.ant_xyz,
         conf_.antenna.n_ant,
         lamb);
+    // rpy_ = navtools::dcm2euler<double>(kf_.C_b_l_, true) * navtools::RAD2DEG<>;
+
   } else {
     kf_.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
   }
   lla_ << navtools::RAD2DEG<> * kf_.phi_, navtools::RAD2DEG<> * kf_.lam_, kf_.h_;
-  nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
-  cb_ = kf_.cb_;
-  cd_ = kf_.cd_;
-  rpy_ = navtools::dcm2euler<double>(kf_.C_b_l_, true) * navtools::RAD2DEG<>;
+  vel_ << kf_.vn_, kf_.ve_, kf_.vd_;
+  cb_ = kf_.cb_ * 1e9 / navtools::LIGHT_SPEED<>;
+  cd_ = kf_.cd_ * 1e9 / navtools::LIGHT_SPEED<>;
+  q_ = kf_.q_b_l_;
+
+  if (conf_.antenna.is_multi_antenna) {
+    Eigen::Vector3d xyz = navtools::lla2ecef<double>(lla_);
+    Eigen::Vector3d xyzv = navtools::ned2ecefv<double>(vel_, lla_);
+    Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla_);
+
+    // save beamsteering unit vector
+    Eigen::Vector3d u, tmp;
+    double tmp1, tmp2;
+    for (size_t ii = 0; ii < channel_data_.size(); ii++) {
+      sturdins::RangeAndRate(xyz, xyzv, kf_.cb_, kf_.cd_, sv_pos, sv_vel, u, tmp, tmp1, tmp2);
+      *channel_data_[ii].UnitVec = kf_.C_b_l_.transpose() * (C_e_l * u);
+    }
+  }
 }
 
 // *=== VectorNavSolution ===*
@@ -637,43 +618,25 @@ void Navigator::VectorNavSolution() {
 
       // 6. Log solution
       lla_ << navtools::RAD2DEG<> * kf_.phi_, navtools::RAD2DEG<> * kf_.lam_, kf_.h_;
-      nedv_ << kf_.vn_, kf_.ve_, kf_.vd_;
-      cb_ = kf_.cb_;
-      cd_ = kf_.cd_;
-      rpy_ = navtools::dcm2euler<double>(kf_.C_b_l_, true) * navtools::RAD2DEG<>;
+      vel_ << kf_.vn_, kf_.ve_, kf_.vd_;
+      cb_ = kf_.cb_ * 1e9 / navtools::LIGHT_SPEED<>;
+      cd_ = kf_.cd_ * 1e9 / navtools::LIGHT_SPEED<>;
+      q_ = kf_.q_b_l_;
+      // rpy_ = navtools::dcm2euler<double>(kf_.C_b_l_, true) * navtools::RAD2DEG<>;
 
       log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", lla_(0), lla_(1), lla_(2));
-      // log_->info("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", nedv_(0), nedv_(1), nedv_(2));
-      log_->debug("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy_(0), rpy_(1), rpy_(2));
-      // log_->info("\tCLK:\t{:.2f}, {:.3f}", cb_, cd_);
-      nav_log_->info(
-          "{},{:.17f},{:.15f},{:.15f},{:.11f},{:.15f},{:.15f},{:.15f},{:.11f},{:.11f},{:.11f},"
-          "{:.11f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},{:.15f},"
-          "{:.15f},{:.15f}",
-          week_,
-          receive_time_,
-          lla_(0),
-          lla_(1),
-          lla_(2),
-          nedv_(0),
-          nedv_(1),
-          nedv_(2),
-          rpy_(0),
-          rpy_(1),
-          rpy_(2),
-          cb_,
-          cd_,
-          kf_.P_(0, 0),
-          kf_.P_(1, 1),
-          kf_.P_(2, 2),
-          kf_.P_(3, 3),
-          kf_.P_(4, 4),
-          kf_.P_(5, 5),
-          kf_.P_(6, 6) * RAD2DEG_SQ,
-          kf_.P_(7, 7) * RAD2DEG_SQ,
-          kf_.P_(8, 8) * RAD2DEG_SQ,
-          kf_.P_(9, 9),
-          kf_.P_(10, 10));
+      Eigen::Vector<double, 11> tmp = kf_.P_.diagonal();
+      tmp.segment(6, 3) *= RAD2DEG_SQ;
+      tmp.segment(9, 2) *= 1e9 / navtools::LIGHT_SPEED<>;
+      nav_log_->write(reinterpret_cast<char *>(&week_), sizeof(uint16_t));
+      nav_log_->write(reinterpret_cast<char *>(&receive_time_), sizeof(double));
+      nav_log_->write(reinterpret_cast<char *>(lla_.data()), 3 * sizeof(double));
+      nav_log_->write(reinterpret_cast<char *>(vel_.data()), 3 * sizeof(double));
+      // nav_log_->write(reinterpret_cast<char *>(rpy_.data()), 3 * sizeof(double));
+      nav_log_->write(reinterpret_cast<char *>(q_.data()), 4 * sizeof(double));
+      nav_log_->write(reinterpret_cast<char *>(&cb_), sizeof(double));
+      nav_log_->write(reinterpret_cast<char *>(&cd_), sizeof(double));
+      nav_log_->write(reinterpret_cast<char *>(tmp.data()), 11 * sizeof(double));
     }
   }
 

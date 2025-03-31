@@ -43,7 +43,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
     std::shared_ptr<ConcurrentBarrier> start_barrier,
     std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
     std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-    FftwWrapper &fftw_plans,
+    std::shared_ptr<FftwWrapper> fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
     : Channel(
           conf,
@@ -68,6 +68,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
       // pn_{0.0},
       code_lock_{false},
       carr_lock_{false},
+      lock_{conf_.tracking.cno_alpha},
       track_mode_{0u},
       kappa_{satutils::GPS_CA_CODE_RATE<> / (navtools::TWO_PI<> * satutils::GPS_L1_FREQUENCY<>)},
       w0d_{NaturalFrequency(conf_.tracking.dll_bw_wide, 2)},
@@ -112,6 +113,8 @@ ChannelGpsL1ca::ChannelGpsL1ca(
 
 // *=== ~ChannelGpsL1ca ===*
 ChannelGpsL1ca::~ChannelGpsL1ca() {
+  log_->trace("~ChannelGpsL1ca");
+  file_log_->close();
   if (thread_->joinable()) {
     thread_->join();
   }
@@ -135,7 +138,7 @@ void ChannelGpsL1ca::Acquire() {
 
   // Perform parallel acquisition/correlation
   Eigen::MatrixXd corr_map = PcpsSearch(
-      fftw_plans_,
+      *fftw_plans_,
       shm_->col(0).segment(shm_ptr_, total_samp_),
       code_.data(),
       conf_.acquisition.doppler_range,
@@ -386,8 +389,10 @@ void ChannelGpsL1ca::Dump() {
   file_pkt_.CodePhase = rem_code_phase_;
   file_pkt_.CarrierPhase = rem_carr_phase_;
 
-  // std::cout << "ChannelGpsL1ca::Dump - file log called\n";
-  file_log_->info("{}", file_pkt_);
+  // no need to log additional correlators here
+  // file_log_->info("{}", file_pkt_);
+  file_log_->write(
+      reinterpret_cast<char *>(&file_pkt_), sizeof(ChannelPacket) - 8 * sizeof(double));
 
   // begin next nco period
   int_per_cnt_ += T_ms_;

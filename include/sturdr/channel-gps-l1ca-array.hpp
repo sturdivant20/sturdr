@@ -19,6 +19,7 @@
 
 #include <Eigen/Dense>
 
+#include "sturdr/beamformer.hpp"
 #include "sturdr/channel-gps-l1ca.hpp"
 #include "sturdr/fftw-wrapper.hpp"
 
@@ -26,9 +27,11 @@ namespace sturdr {
 
 class ChannelGpsL1caArray : public ChannelGpsL1ca {
  protected:
-  double mu_;
-  Eigen::Vector3d u_;
-  Eigen::VectorXcd W_;
+  Eigen::Vector3d u_body_;
+  Eigen::VectorXcd p_array_;
+  Eigen::VectorXcd p1_array_;
+  Eigen::VectorXcd p2_array_;
+  BeamFormer bf_;
 
  public:
   /**
@@ -43,7 +46,7 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
       std::shared_ptr<ConcurrentBarrier> start_barrier,
       std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
       std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
-      FftwWrapper &fftw_plans,
+      std::shared_ptr<FftwWrapper> fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc);
 
   /**

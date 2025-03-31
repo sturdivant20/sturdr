@@ -63,7 +63,7 @@ endif()
 
 set(STURDR_HDRS
     include/sturdr/acquisition.hpp
-    include/sturdr/beamsteer.hpp
+    include/sturdr/beamformer.hpp
     include/sturdr/channel.hpp
     include/sturdr/channel-gps-l1ca.hpp
     include/sturdr/channel-gps-l1ca-array.hpp
@@ -83,7 +83,7 @@ set(STURDR_HDRS
 
 set(STURDR_SRCS
     src/acquisition.cpp
-    src/beamsteer.cpp
+    src/beamformer.cpp
     src/channel-gps-l1ca.cpp
     src/channel-gps-l1ca-array.cpp
     src/data-type-adapters.cpp

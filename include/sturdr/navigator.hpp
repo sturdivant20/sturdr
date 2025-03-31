@@ -21,6 +21,7 @@
 
 #include <Eigen/Dense>
 #include <condition_variable>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -50,8 +51,8 @@ class Navigator {
   uint16_t week_;
   double receive_time_;
   Eigen::Vector3d lla_;
-  Eigen::Vector3d nedv_;
-  Eigen::Vector3d rpy_;
+  Eigen::Vector3d vel_;
+  Eigen::Vector4d q_;
   double cb_;
   double cd_;
   bool is_initialized_;
@@ -75,8 +76,10 @@ class Navigator {
    * @brief spdlog loggers
    */
   std::shared_ptr<spdlog::logger> log_;
-  std::shared_ptr<spdlog::logger> nav_log_;
-  std::shared_ptr<spdlog::logger> eph_log_;
+  // std::shared_ptr<spdlog::logger> nav_log_;
+  // std::shared_ptr<spdlog::logger> eph_log_;
+  std::shared_ptr<std::ofstream> nav_log_;
+  std::shared_ptr<std::ofstream> eph_log_;
 
  public:
   /**
