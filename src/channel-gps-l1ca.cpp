@@ -41,20 +41,10 @@ ChannelGpsL1ca::ChannelGpsL1ca(
     std::shared_ptr<bool> running,
     std::shared_ptr<Eigen::MatrixXcd> shared_array,
     std::shared_ptr<ConcurrentBarrier> start_barrier,
-    std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
-    std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+    std::shared_ptr<ConcurrentQueue> nav_queue,
     std::shared_ptr<FftwWrapper> fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
-    : Channel(
-          conf,
-          n,
-          running,
-          shared_array,
-          start_barrier,
-          eph_queue,
-          nav_queue,
-          fftw_plans,
-          GetNewPrnFunc),
+    : Channel(conf, n, running, shared_array, start_barrier, nav_queue, fftw_plans, GetNewPrnFunc),
       intmd_freq_rad_{navtools::TWO_PI<> * conf_.rfsignal.intmd_freq},
       rem_code_phase_{0.0},
       code_doppler_{0.0},
@@ -246,17 +236,21 @@ void ChannelGpsL1ca::Track() {
 
   // send navigation parameters precise to current sample
   if (!(*nav_pkt_.is_vector)) {
+    // log_->info("pushing message to navigator ...");
     nav_pkt_.FilePtr = shm_ptr_;
     nav_pkt_.CodePhase = rem_code_phase_;
     nav_pkt_.Doppler = carr_doppler_;
     nav_pkt_.CarrierPhase = rem_carr_phase_;
+    *nav_pkt_.update_complete = false;
     q_nav_->push(nav_pkt_);
     {
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
-      // nav_pkt_.cv->wait(channel_lock);
-      *nav_pkt_.update_complete = false;
     }
+    log_->error(
+        "Channel {}, scalar processing - continuing, is_vector = {} ...",
+        (int)nav_pkt_.Header.ChannelNum,
+        (int)*nav_pkt_.is_vector);
   }
 }
 
@@ -336,9 +330,15 @@ void ChannelGpsL1ca::Dump() {
   nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;
   nav_pkt_.PhaseVar = phase_var;
 
+  log_->trace(
+      "Channel {} here, is_vector = {} ...",
+      (int)nav_pkt_.Header.ChannelNum,
+      (int)*nav_pkt_.is_vector);
   // tracking loop
   if (!*(nav_pkt_.is_vector)) {
     // *--- scalar process ---*
+    // std::cout << "Channel " << (int)nav_pkt_.Header.ChannelNum
+    //           << ", is_vector = " << *nav_pkt_.is_vector << "\n";
     double t = static_cast<double>(total_samp_) / conf_.rfsignal.samp_freq;
     kf_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
     kf_.UpdateMeasurementsParam(chip_var, phase_var, freq_var);
@@ -351,23 +351,35 @@ void ChannelGpsL1ca::Dump() {
     kf_.SetRemCarrierPhase(rem_carr_phase_);
     kf_.SetRemCodePhase(rem_code_phase_);
   } else {
+    // *--- vector process ---
+    // log_->warn(
+    //     "Channel {}, is_vector = {}", (int)nav_pkt_.Header.ChannelNum, (int)*nav_pkt_.is_vector);
+
     rem_carr_phase_ = std::fmod(rem_carr_phase_, navtools::TWO_PI<>);
     rem_code_phase_ -= static_cast<double>(T_ms_ * satutils::GPS_CA_CODE_LENGTH);
 
-    // *--- vector process ---
     nav_pkt_.FilePtr = shm_ptr_;
     nav_pkt_.CodePhase = rem_code_phase_;
     nav_pkt_.Doppler = carr_doppler_;
     nav_pkt_.CarrierPhase = rem_carr_phase_;
+    *nav_pkt_.update_complete = false;
     q_nav_->push(nav_pkt_);
     {
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
+      log_->warn(
+          "Channel {}, update_complete = {}, is_vector = {}",
+          (int)nav_pkt_.Header.ChannelNum,
+          (int)*nav_pkt_.update_complete,
+          (int)*nav_pkt_.is_vector);
       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
-      *nav_pkt_.update_complete = false;
     }
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
+    // log_->warn(
+    //     "Channel {}, update complete = {}",
+    //     (int)nav_pkt_.Header.ChannelNum,
+    //     (int)*nav_pkt_.update_complete);
   }
 
   // update file packet
@@ -535,7 +547,7 @@ void ChannelGpsL1ca::Demodulate() {
   if (gps_lnav_.AreEphemeridesParsed()) {
     eph_pkt_.Header = file_pkt_.Header;
     eph_pkt_.Eph = gps_lnav_.GetEphemerides();
-    q_eph_->push(eph_pkt_);
+    q_nav_->push(eph_pkt_);
     log_->info(
         "SturDR Channel {}: GPS{} ephemeris subframes 1,2 and 3 parsed!",
         eph_pkt_.Header.ChannelNum,

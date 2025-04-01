@@ -73,8 +73,7 @@ class SturDR {
   /**
    * @brief navigation parameters
    */
-  std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue_;
-  std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue_;
+  std::shared_ptr<ConcurrentQueue> nav_queue_;
   std::unique_ptr<Navigator> navigator_;
 
  public:

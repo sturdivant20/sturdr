@@ -27,6 +27,7 @@
 
 #include "sturdr/data-type-adapters.hpp"
 #include "sturdr/fftw-wrapper.hpp"
+#include "sturdr/structs-enums.hpp"
 
 namespace sturdr {
 
@@ -99,8 +100,7 @@ SturDR::SturDR(const std::string yaml_fname)
       prn_ptr_{1},
       barrier_{std::make_shared<ConcurrentBarrier>(conf_.rfsignal.max_channels + 1)},
       log_{spdlog::stdout_color_mt<spdlog::async_factory>("sturdr-console")},
-      nav_queue_{std::make_shared<ConcurrentQueue<ChannelNavPacket>>()},
-      eph_queue_{std::make_shared<ConcurrentQueue<ChannelEphemPacket>>()} {
+      nav_queue_{std::make_shared<ConcurrentQueue>()} {
   // setup terminal/console logger
   log_->set_pattern("\033[1;34m[%D %T.%e][%^%l%$\033[1;34m]: \033[0m%v");
   log_->set_level(conf_.general.log_level);
@@ -170,7 +170,7 @@ SturDR::SturDR(const std::string yaml_fname)
   }
 
   // start navigator
-  navigator_ = std::make_unique<Navigator>(conf_, nav_queue_, eph_queue_, running_);
+  navigator_ = std::make_unique<Navigator>(conf_, nav_queue_, running_);
 }
 
 // *=== ~SturDR ===*
@@ -252,7 +252,6 @@ void SturDR::Start() {
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   barrier_->NotifyComplete();
   nav_queue_->NotifyComplete();
-  eph_queue_->NotifyComplete();
   for (uint8_t i = 0; i < (uint8_t)conf_.rfsignal.max_channels; i++) {
     if (!conf_.antenna.is_multi_antenna) {
       gps_l1ca_channels_[i].Join();
@@ -260,7 +259,6 @@ void SturDR::Start() {
       gps_l1ca_array_channels_[i].Join();
     }
   }
-  navigator_->Notify();
 }
 
 // *=== GenNewPrn ===*
@@ -299,30 +297,14 @@ void SturDR::InitChannels() {
       gps_l1ca_channels_.reserve(conf_.rfsignal.max_channels);
       for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
         gps_l1ca_channels_.emplace_back(
-            conf_,
-            i,
-            running_,
-            shm_,
-            barrier_,
-            eph_queue_,
-            nav_queue_,
-            fftw_plans_,
-            get_new_prn_func);
+            conf_, i, running_, shm_, barrier_, nav_queue_, fftw_plans_, get_new_prn_func);
         gps_l1ca_channels_[i - 1].Start();
       }
     } else {
       gps_l1ca_array_channels_.reserve(conf_.rfsignal.max_channels);
       for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
         gps_l1ca_array_channels_.emplace_back(
-            conf_,
-            i,
-            running_,
-            shm_,
-            barrier_,
-            eph_queue_,
-            nav_queue_,
-            fftw_plans_,
-            get_new_prn_func);
+            conf_, i, running_, shm_, barrier_, nav_queue_, fftw_plans_, get_new_prn_func);
         gps_l1ca_array_channels_[i - 1].Start();
       }
     }
@@ -362,7 +344,8 @@ void SturDR::Run() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      navigator_->Notify();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed
@@ -414,7 +397,8 @@ void SturDR::RunComplex() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      navigator_->Notify();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed
@@ -467,7 +451,8 @@ void SturDR::RunArray() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      navigator_->Notify();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed
@@ -522,7 +507,8 @@ void SturDR::RunComplexArray() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      navigator_->Notify();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed

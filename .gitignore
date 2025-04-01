@@ -7,3 +7,9 @@ install/
 *.yaml
 *.yml
 .venv/
+
+_OLD
+__OLD
+OLD
+OLD_DELETE
+DELETE

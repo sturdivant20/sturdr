@@ -12,17 +12,17 @@
 #ifndef STURDR_CONCURRENT_QUEUE_HPP
 #define STURDR_CONCURRENT_QUEUE_HPP
 
+#include <any>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
 
 namespace sturdr {
 
-template <typename T>
 class ConcurrentQueue {
  private:
   mutable std::mutex mutex_;
-  std::queue<T> queue_;
+  std::queue<std::any> queue_;
   std::condition_variable cond_var_;
   bool is_finished_;
 
@@ -37,21 +37,17 @@ class ConcurrentQueue {
    * *=== ~ConcurrentQueue ===*
    * @brief Destructor
    */
-  ~ConcurrentQueue(){};
+  ~ConcurrentQueue() = default;
 
   /**
    * *=== push ===*
    * @brief Push data into the queue
    */
+  template <typename T>
   void push(const T& data) {
-    // acquire lock
-    std::unique_lock<std::mutex> lock(mutex_);
-
-    // Add item to queue
-    queue_.push(data);
-
-    // Notify waiting thread
-    cond_var_.notify_one();
+    std::unique_lock<std::mutex> lock(mutex_);  // acquire lock
+    queue_.push(data);                          // copy item to queue
+    cond_var_.notify_one();                     // notify waiting thread
   }
 
   /**
@@ -59,13 +55,15 @@ class ConcurrentQueue {
    * @brief Remove element from the queue
    * @return True|False based on if queue had item to return
    */
-  bool pop(T& data) {
+  bool pop(std::any& data) {
     // acquire lock and wait for data
     std::unique_lock<std::mutex> lock(mutex_);
     cond_var_.wait(lock, [this] { return !queue_.empty() || is_finished_; });
 
-    // return value
+    // make sure we have not reached the end
     if (is_finished_ && queue_.empty()) return false;
+
+    // copy into provided memory
     data = queue_.front();
     queue_.pop();
     return true;
@@ -86,14 +84,23 @@ class ConcurrentQueue {
    * @brief Clears the queue.
    */
   void clear() {
-    queue_ = std::queue<T>();
+    std::unique_lock<std::mutex> lock(mutex_);
+    queue_ = std::queue<std::any>();
   };
+  bool empty() const {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return queue_.empty();
+  }
 
   void NotifyComplete() {
     is_finished_ = true;
     cond_var_.notify_all();
   }
+  bool IsFinished() const {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return is_finished_;
+  }
 };
 
-}  // end namespace sturdr
+}  // namespace sturdr
 #endif

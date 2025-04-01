@@ -268,6 +268,15 @@ struct ChannelNavData {
   std::shared_ptr<double> VTCarrierFreq{std::make_shared<double>(std::nan("1"))};
   std::shared_ptr<Eigen::Vector3d> UnitVec{
       std::make_shared<Eigen::Vector3d>(std::nan("1") * Eigen::Vector3d::Ones())};
+  std::shared_ptr<std::mutex> mtx{std::make_shared<std::mutex>()};
+  std::shared_ptr<std::condition_variable> cv{std::make_shared<std::condition_variable>()};
+  std::shared_ptr<bool> update_complete{std::make_shared<bool>(false)};
+  std::shared_ptr<bool> is_vector{std::make_shared<bool>(false)};
+};
+
+struct SturdrNavRequest {
+  uint64_t MsElapsed{0};
+  bool DoNavUpdate{false};
 };
 
 };  // end namespace sturdr

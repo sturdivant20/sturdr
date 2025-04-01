@@ -54,8 +54,7 @@ class Channel {
   uint64_t shm_file_size_samp_;
   uint64_t shm_read_size_samp_;
   std::shared_ptr<ConcurrentBarrier> bar_;
-  std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> q_eph_;
-  std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> q_nav_;
+  std::shared_ptr<ConcurrentQueue> q_nav_;
   std::shared_ptr<std::thread> thread_;
   ChannelEphemPacket eph_pkt_;
   ChannelNavPacket nav_pkt_;
@@ -86,8 +85,7 @@ class Channel {
       std::shared_ptr<bool> running,
       std::shared_ptr<Eigen::MatrixXcd> shared_array,
       std::shared_ptr<ConcurrentBarrier> start_barrier,
-      std::shared_ptr<ConcurrentQueue<ChannelEphemPacket>> eph_queue,
-      std::shared_ptr<ConcurrentQueue<ChannelNavPacket>> nav_queue,
+      std::shared_ptr<ConcurrentQueue> nav_queue,
       std::shared_ptr<FftwWrapper> fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc)
       : conf_{conf},
@@ -102,7 +100,6 @@ class Channel {
         shm_file_size_samp_{conf_.general.ms_chunk_size * samp_per_ms_},
         shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
         bar_{start_barrier},
-        q_eph_{eph_queue},
         q_nav_{nav_queue},
         // thread_{std::make_shared<std::thread>(&Channel::Run, this)},
         eph_pkt_{ChannelEphemPacket()},
