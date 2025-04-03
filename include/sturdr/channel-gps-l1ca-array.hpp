@@ -27,7 +27,6 @@ namespace sturdr {
 
 class ChannelGpsL1caArray : public ChannelGpsL1ca {
  protected:
-  Eigen::Vector3d u_body_;
   Eigen::VectorXcd p_array_;
   Eigen::VectorXcd p1_array_;
   Eigen::VectorXcd p2_array_;

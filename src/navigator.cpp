@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <navtools/attitude.hpp>
 #include <navtools/frames.hpp>
 #include <navtools/math.hpp>
 #include <sturdins/least-squares.hpp>
@@ -127,6 +128,8 @@ void Navigator::NavUpdate() {
         navtools::RAD2DEG<> * kf_.phi_,
         navtools::RAD2DEG<> * kf_.lam_,
         kf_.h_);
+    Eigen::Vector3d rpy = navtools::quat2euler<double>(kf_.q_b_l_, true) * navtools::RAD2DEG<>;
+    log_->info("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy(0), rpy(1), rpy(2));
     // log_->debug("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", kf_.vn_, kf_.ve_, kf_.vd_);
     // log_->debug(
     //     "\tQ:\t{:.4f}, {:.4f}, {:.4f}, {:.4f}",

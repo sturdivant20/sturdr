@@ -122,6 +122,8 @@ SturDR::SturDR(const std::string yaml_fname)
   log_->trace("bit_depth: {}", conf_.rfsignal.bit_depth);
   log_->trace("signals: {}", conf_.rfsignal.signals);
   log_->trace("max_channels: {}", conf_.rfsignal.max_channels);
+  log_->trace("is_multi_antenna: {}", conf_.antenna.is_multi_antenna);
+  log_->trace("n_ant: {}", conf_.antenna.n_ant);
   log_->trace("doppler_range: {}", conf_.acquisition.doppler_range);
   log_->trace("doppler_step: {}", conf_.acquisition.doppler_step);
   log_->trace("num_coh_per: {}", conf_.acquisition.num_coh_per);
@@ -168,7 +170,7 @@ SturDR::SturDR(const std::string yaml_fname)
       conf_.antenna.ant_xyz.col(i) = Eigen::Map<Eigen::VectorXd>(vec.data(), vec.size());
       vec.clear();
     }
-    std::cout << "ant_pos: \n" << conf_.antenna.ant_xyz << "\n";
+    // std::cout << "ant_pos: \n" << conf_.antenna.ant_xyz << "\n";
   }
 
   // start navigator
@@ -355,6 +357,7 @@ void SturDR::Run() {
   int n = (int)conf_.general.ms_to_process + 1;
   int ndot = std::min(read_freq_ms, meas_freq_ms);
 
+  barrier1_->Wait();
   for (int i = 0; i <= n; i += ndot) {
     // check for screen printouts every second
     if (!(i % 1000)) {
@@ -363,16 +366,14 @@ void SturDR::Run() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
-      // navigator_->NavUpdate();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed
     if (!(i % read_freq_ms)) {
-      // ready to process data
-      barrier1_->Wait();
-
       // read next signal data while channels are processing
+      barrier2_->Wait();
       bf_[0].fread<T>(rf_stream.data(), shm_read_size_samp_);
       TypeToIDouble<T>(
           rf_stream.data(),
@@ -380,6 +381,9 @@ void SturDR::Run() {
           shm_read_size_samp_);
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
+
+      // ready to continue
+      barrier1_->Wait();
     }
   }
 }
@@ -481,6 +485,7 @@ void SturDR::RunArray() {
   int n = (int)conf_.general.ms_to_process + 1;
   int ndot = std::min(read_freq_ms, meas_freq_ms);
 
+  barrier1_->Wait();
   for (int i = 0; i <= n; i += ndot) {
     // check for screen printouts every second
     if (!(i % 1000)) {
@@ -489,16 +494,14 @@ void SturDR::RunArray() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
-      // navigator_->NavUpdate();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed
     if (!(i % read_freq_ms)) {
-      // ready to process data
-      barrier1_->Wait();
-
       // read next signal data while channels are processing
+      barrier2_->Wait();
       for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
         bf_[j].fread<T>(rf_stream.data(), shm_read_size_samp_);
         TypeToIDouble<T>(
@@ -508,6 +511,9 @@ void SturDR::RunArray() {
       }
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
+
+      // ready to continue
+      barrier1_->Wait();
     }
   }
 }
@@ -537,6 +543,7 @@ void SturDR::RunComplexArray() {
   int n = (int)conf_.general.ms_to_process + 1;
   int ndot = std::min(read_freq_ms, meas_freq_ms);
 
+  barrier1_->Wait();
   for (int i = 0; i <= n; i += ndot) {
     // check for screen printouts every second
     if (!(i % 1000)) {
@@ -545,16 +552,14 @@ void SturDR::RunComplexArray() {
 
     // check if time for nav update
     if (!(i % meas_freq_ms)) {
-      nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
-      // navigator_->NavUpdate();
+      // nav_queue_->push(SturdrNavRequest({(uint64_t)i, true}));
+      navigator_->NavUpdate();
     }
 
     // check if time for new data to be parsed
     if (!(i % read_freq_ms)) {
-      // ready to process data
-      barrier1_->Wait();
-
       // read next signal data while channels are processing
+      barrier2_->Wait();
       for (uint8_t j = 0; j < conf_.antenna.n_ant; j++) {
         bf_[j].freadc<T>(rf_stream.data(), shm_read_size_samp_);
         ITypeToIDouble<T>(
@@ -564,6 +569,9 @@ void SturDR::RunComplexArray() {
       }
       shm_ptr_ += shm_read_size_samp_;
       shm_ptr_ %= shm_file_size_samp_;
+
+      // ready to continue
+      barrier1_->Wait();
     }
   }
 }

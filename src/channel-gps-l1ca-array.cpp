@@ -37,7 +37,6 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
     std::function<void(uint8_t &)> &GetNewPrnFunc)
     : ChannelGpsL1ca(
           conf, n, running, shared_array, barrier1, barrier2, nav_queue, fftw_plans, GetNewPrnFunc),
-      u_body_{std::nan("1") * Eigen::Vector3d::Ones()},
       p_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       p1_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       p2_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
@@ -49,7 +48,7 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
 
 // *=== ~ChannelGpsL1caArray ===*
 ChannelGpsL1caArray::~ChannelGpsL1caArray() {
-  log_->trace("~ChannelGpsL1ca");
+  log_->trace("~ChannelGpsL1caArray");
 }
 
 // *=== Integrate ===*
@@ -59,7 +58,7 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 
   // accumulate samples
   AccumulateEPLArray(
-      shm_->block(shm_ptr_, 0, samp_to_read, conf_.antenna.n_ant),
+      shm_->block(shm_ptr_, 0, samp_to_read, (int)conf_.antenna.n_ant),
       code_.data(),
       rem_code_phase_,
       nco_code_freq,
@@ -74,6 +73,22 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
       p1_array_,
       p2_array_,
       L_);
+  // AccumulateEPL(
+  //     shm_->col(0).segment(shm_ptr_, samp_to_read),
+  //     code_.data(),
+  //     rem_code_phase_,
+  //     nco_code_freq,
+  //     rem_carr_phase_,
+  //     nco_carr_freq,
+  //     carr_jitter_,
+  //     conf_.rfsignal.samp_freq,
+  //     half_samp_,
+  //     samp_remaining_,
+  //     tap_space_,
+  //     E_,
+  //     p1_array_(0),
+  //     p2_array_(0),
+  //     L_);
   // P_ += (P1_ + P2_);
 
   // move forward in buffer
@@ -83,10 +98,16 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 
 // *=== Dump ===*
 void ChannelGpsL1caArray::Dump() {
+  // log_->warn("u_body = [{}, {}, {}]", u_body_(0), u_body_(1), u_body_(2));
   // beamsteer
-  if (!std::isnan(u_body_(0))) bf_.CalcSteeringWeights(u_body_);
-  P1_ = bf_(p1_array_);
-  P2_ = bf_(p2_array_);
+  if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
+    bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
+    P1_ = bf_(p1_array_);
+    P2_ = bf_(p2_array_);
+  } else {
+    P1_ = p1_array_(0);
+    P2_ = p2_array_(0);
+  }
 
   // combine prompt sections
   p_array_ = p1_array_ + p2_array_;
@@ -168,7 +189,6 @@ void ChannelGpsL1caArray::Dump() {
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
-    u_body_ = *nav_pkt_.UnitVec;
 
     // double t = static_cast<double>(total_samp_) / conf_.rfsignal.samp_freq;
     // kf_.UpdateDynamicsParam(w0d_, w0p_, w0f_, kappa_, t);
@@ -238,6 +258,9 @@ void ChannelGpsL1caArray::Dump() {
   Status();
 
   // reset correlators to zero
+  p_array_.setZero();
+  p1_array_.setZero();
+  p2_array_.setZero();
   P_old_ = P_;
   E_ = 0.0;
   P_ = 0.0;
