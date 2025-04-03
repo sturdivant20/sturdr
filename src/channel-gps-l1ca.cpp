@@ -40,11 +40,13 @@ ChannelGpsL1ca::ChannelGpsL1ca(
     uint8_t &n,
     std::shared_ptr<bool> running,
     std::shared_ptr<Eigen::MatrixXcd> shared_array,
-    std::shared_ptr<ConcurrentBarrier> start_barrier,
+    std::shared_ptr<ConcurrentBarrier> barrier1,
+    std::shared_ptr<ConcurrentBarrier> barrier2,
     std::shared_ptr<ConcurrentQueue> nav_queue,
     std::shared_ptr<FftwWrapper> fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
-    : Channel(conf, n, running, shared_array, start_barrier, nav_queue, fftw_plans, GetNewPrnFunc),
+    : Channel(
+          conf, n, running, shared_array, barrier1, barrier2, nav_queue, fftw_plans, GetNewPrnFunc),
       intmd_freq_rad_{navtools::TWO_PI<> * conf_.rfsignal.intmd_freq},
       rem_code_phase_{0.0},
       code_doppler_{0.0},
@@ -247,10 +249,12 @@ void ChannelGpsL1ca::Track() {
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
     }
-    log_->error(
-        "Channel {}, scalar processing - continuing, is_vector = {} ...",
-        (int)nav_pkt_.Header.ChannelNum,
-        (int)*nav_pkt_.is_vector);
+
+    // log_->trace(
+    //     "Channel {}, scalar processing, is_vector = {}, file_ptr = {} ...",
+    //     (int)nav_pkt_.Header.ChannelNum,
+    //     (int)*nav_pkt_.is_vector,
+    //     (int)shm_ptr_);
   }
 }
 
@@ -330,10 +334,11 @@ void ChannelGpsL1ca::Dump() {
   nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;
   nav_pkt_.PhaseVar = phase_var;
 
-  log_->trace(
-      "Channel {} here, is_vector = {} ...",
-      (int)nav_pkt_.Header.ChannelNum,
-      (int)*nav_pkt_.is_vector);
+  // log_->trace(
+  //     "Channel {}, scalar processing, is_vector = {}, file_ptr = {} ...",
+  //     (int)nav_pkt_.Header.ChannelNum,
+  //     (int)*nav_pkt_.is_vector,
+  //     (int)shm_ptr_);
   // tracking loop
   if (!*(nav_pkt_.is_vector)) {
     // *--- scalar process ---*
@@ -350,6 +355,11 @@ void ChannelGpsL1ca::Dump() {
     code_doppler_ = kf_.x_(4) + kappa_ * (carr_doppler_ + carr_jitter_ * t);
     kf_.SetRemCarrierPhase(rem_carr_phase_);
     kf_.SetRemCodePhase(rem_code_phase_);
+    // log_->trace(
+    //     "Channel {}, scalar processing, is_vector = {}, file_ptr = {} ...",
+    //     (int)nav_pkt_.Header.ChannelNum,
+    //     (int)*nav_pkt_.is_vector,
+    //     (int)shm_ptr_);
   } else {
     // *--- vector process ---
     // log_->warn(
@@ -366,20 +376,17 @@ void ChannelGpsL1ca::Dump() {
     q_nav_->push(nav_pkt_);
     {
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
-      log_->warn(
-          "Channel {}, update_complete = {}, is_vector = {}",
-          (int)nav_pkt_.Header.ChannelNum,
-          (int)*nav_pkt_.update_complete,
-          (int)*nav_pkt_.is_vector);
+      // log_->warn(
+      //     "Channel {}, update_complete = {}, is_vector = {}, file_ptr = {}",
+      //     (int)nav_pkt_.Header.ChannelNum,
+      //     (int)*nav_pkt_.update_complete,
+      //     (int)*nav_pkt_.is_vector,
+      //     (int)shm_ptr_);
       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
     }
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
-    // log_->warn(
-    //     "Channel {}, update complete = {}",
-    //     (int)nav_pkt_.Header.ChannelNum,
-    //     (int)*nav_pkt_.update_complete);
   }
 
   // update file packet

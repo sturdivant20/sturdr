@@ -23,6 +23,7 @@
 #include <sturdins/least-squares.hpp>
 #include <sturdins/nav-clock.hpp>
 
+#include "navtools/constants.hpp"
 #include "sturdr/structs-enums.hpp"
 #include "sturdr/vector-tracking.hpp"
 
@@ -113,14 +114,7 @@ void Navigator::NavThread() {
 
 // *=== ~NavUpdate ===*
 void Navigator::NavUpdate() {
-  if (is_vector_) {
-    // std::cout << "File pointers = [ ";
-    // for (auto &it : ch_data_) {
-    //   std::cout << (int)it.second.FilePtr << " ";
-    // }
-    // std::cout << "]\n";
-    if (!VectorUpdate()) return;
-  } else {
+  if (!is_vector_) {
     ScalarUpdate();
   }
 
@@ -128,7 +122,11 @@ void Navigator::NavUpdate() {
   if (is_init_) {
     LogNavData();
 
-    log_->debug("\tLLA:\t{:.8f}, {:.8f}, {:.2f}", kf_.phi_, kf_.lam_, kf_.h_);
+    log_->info(
+        "\tLLA:\t{:.8f}, {:.8f}, {:.2f}",
+        navtools::RAD2DEG<> * kf_.phi_,
+        navtools::RAD2DEG<> * kf_.lam_,
+        kf_.h_);
     // log_->debug("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", kf_.vn_, kf_.ve_, kf_.vd_);
     // log_->debug(
     //     "\tQ:\t{:.4f}, {:.4f}, {:.4f}, {:.4f}",
@@ -210,11 +208,11 @@ void Navigator::ChannelUpdate(ChannelNavPacket &msg) {
   // notify completion
   if (is_vector_) {
     ch_data_[msg.Header.ChannelNum].ReadyForVT = true;
-    NavUpdate();
-    log_->warn(
-        "update_complete = {}, {}",
-        *msg.update_complete,
-        *ch_data_[msg.Header.ChannelNum].update_complete);
+    if (!VectorUpdate()) return;
+    // log_->warn(
+    //     "update_complete = {}, {}",
+    //     *msg.update_complete,
+    //     *ch_data_[msg.Header.ChannelNum].update_complete);
   } else {
     *msg.update_complete = true;
     msg.cv->notify_all();
@@ -445,7 +443,7 @@ void Navigator::ScalarUpdate() {
         // std::cout << (int)it.second.FilePtr << " ";
       }
       // std::cout << "]\n";
-      log_->info("Channels will now begin vector tracking!");
+      log_->debug("Channels will now begin vector tracking!");
     }
   }
 
@@ -468,9 +466,21 @@ bool Navigator::VectorUpdate() {
   std::vector<std::pair<uint64_t, uint8_t>> sample_ptrs;
   for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : ch_data_) {
     if (!it.second.ReadyForVT) return false;
-    sample_ptrs.push_back({(it.second.FilePtr + nav_file_ptr_) % file_size_, it.first});
+    // sample_ptrs.push_back({(it.second.FilePtr + nav_file_ptr_) % file_size_, it.first});
+    sample_ptrs.push_back({(it.second.FilePtr + nav_file_ptr_), it.first});
   }
-  log_->info("calling VectorUpdate ...");
+  // log_->info(
+  //     "calling VectorUpdate, file_ptrs = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}]...",
+  //     sample_ptrs[0].first,
+  //     sample_ptrs[1].first,
+  //     sample_ptrs[2].first,
+  //     sample_ptrs[3].first,
+  //     sample_ptrs[4].first,
+  //     sample_ptrs[5].first,
+  //     sample_ptrs[6].first,
+  //     sample_ptrs[7].first,
+  //     sample_ptrs[8].first,
+  //     sample_ptrs[9].first);
 
   // known constants
   double intmd_freq_rad = navtools::TWO_PI<> * conf_.rfsignal.intmd_freq;
@@ -505,13 +515,16 @@ bool Navigator::VectorUpdate() {
       // update file pointer
       UpdateFilePtr(d_samp);
 
-      // log solution
-      LogNavData();
+      // // log solution
+      // LogNavData();
     }
   }
 
+  // log solution only after finished
+  LogNavData();
+
   // tell channels to continue
-  log_->warn("notifying complete ...");
+  // log_->warn("notifying complete ...");
   for (auto &it : ch_data_) {
     it.second.ReadyForVT = false;
     *it.second.update_complete = true;

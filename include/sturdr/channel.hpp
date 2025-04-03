@@ -53,7 +53,8 @@ class Channel {
   uint64_t shm_writer_ptr_;
   uint64_t shm_file_size_samp_;
   uint64_t shm_read_size_samp_;
-  std::shared_ptr<ConcurrentBarrier> bar_;
+  std::shared_ptr<ConcurrentBarrier> barrier1_;
+  std::shared_ptr<ConcurrentBarrier> barrier2_;
   std::shared_ptr<ConcurrentQueue> q_nav_;
   std::shared_ptr<std::thread> thread_;
   ChannelEphemPacket eph_pkt_;
@@ -84,7 +85,8 @@ class Channel {
       uint8_t &n,
       std::shared_ptr<bool> running,
       std::shared_ptr<Eigen::MatrixXcd> shared_array,
-      std::shared_ptr<ConcurrentBarrier> start_barrier,
+      std::shared_ptr<ConcurrentBarrier> barrier1,
+      std::shared_ptr<ConcurrentBarrier> barrier2,
       std::shared_ptr<ConcurrentQueue> nav_queue,
       std::shared_ptr<FftwWrapper> fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc)
@@ -99,7 +101,8 @@ class Channel {
         shm_writer_ptr_{0},
         shm_file_size_samp_{conf_.general.ms_chunk_size * samp_per_ms_},
         shm_read_size_samp_{conf_.general.ms_read_size * samp_per_ms_},
-        bar_{start_barrier},
+        barrier1_{barrier1},
+        barrier2_{barrier2},
         q_nav_{nav_queue},
         // thread_{std::make_shared<std::thread>(&Channel::Run, this)},
         eph_pkt_{ChannelEphemPacket()},
@@ -154,12 +157,13 @@ class Channel {
    */
   void Run() {
     // wait for initial shm data to be added
-    bar_->Wait();
+    barrier1_->Wait();
     UpdateShmWriterPtr();
 
     // continue processing data until SturDR ends
     while (*running_) {
       // process
+      barrier2_->Wait();
       switch (file_pkt_.ChannelStatus) {
         case ChannelState::IDLE:
           break;
@@ -172,7 +176,7 @@ class Channel {
       }
 
       // wait for new shm data
-      bar_->Wait();
+      barrier1_->Wait();
       UpdateShmWriterPtr();
     }
     log_->debug("Channel {} stopping ...", file_pkt_.Header.ChannelNum);

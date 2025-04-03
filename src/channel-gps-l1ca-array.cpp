@@ -30,12 +30,13 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
     uint8_t &n,
     std::shared_ptr<bool> running,
     std::shared_ptr<Eigen::MatrixXcd> shared_array,
-    std::shared_ptr<ConcurrentBarrier> start_barrier,
+    std::shared_ptr<ConcurrentBarrier> barrier1,
+    std::shared_ptr<ConcurrentBarrier> barrier2,
     std::shared_ptr<ConcurrentQueue> nav_queue,
     std::shared_ptr<FftwWrapper> fftw_plans,
     std::function<void(uint8_t &)> &GetNewPrnFunc)
     : ChannelGpsL1ca(
-          conf, n, running, shared_array, start_barrier, nav_queue, fftw_plans, GetNewPrnFunc),
+          conf, n, running, shared_array, barrier1, barrier2, nav_queue, fftw_plans, GetNewPrnFunc),
       u_body_{std::nan("1") * Eigen::Vector3d::Ones()},
       p_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       p1_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},

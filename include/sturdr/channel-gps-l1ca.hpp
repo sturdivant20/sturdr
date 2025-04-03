@@ -94,7 +94,8 @@ class ChannelGpsL1ca : public Channel {
       uint8_t &n,
       std::shared_ptr<bool> running,
       std::shared_ptr<Eigen::MatrixXcd> shared_array,
-      std::shared_ptr<ConcurrentBarrier> start_barrier,
+      std::shared_ptr<ConcurrentBarrier> barrier1,
+      std::shared_ptr<ConcurrentBarrier> barrier2,
       std::shared_ptr<ConcurrentQueue> nav_queue,
       std::shared_ptr<FftwWrapper> fftw_plans,
       std::function<void(uint8_t &)> &GetNewPrnFunc);
