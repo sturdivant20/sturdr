@@ -244,6 +244,7 @@ void ChannelGpsL1ca::Track() {
     nav_pkt_.Doppler = carr_doppler_;
     nav_pkt_.CarrierPhase = rem_carr_phase_;
     *nav_pkt_.update_complete = false;
+
     q_nav_->push(nav_pkt_);
     {
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
@@ -555,7 +556,7 @@ void ChannelGpsL1ca::Demodulate() {
     eph_pkt_.Header = file_pkt_.Header;
     eph_pkt_.Eph = gps_lnav_.GetEphemerides();
     q_nav_->push(eph_pkt_);
-    log_->info(
+    log_->debug(
         "SturDR Channel {}: GPS{} ephemeris subframes 1,2 and 3 parsed!",
         eph_pkt_.Header.ChannelNum,
         eph_pkt_.Header.SVID);

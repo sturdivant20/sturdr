@@ -119,10 +119,8 @@ void Navigator::NavUpdate() {
     ScalarUpdate();
   }
 
-  // log results
+  // log to console
   if (is_init_) {
-    LogNavData();
-
     log_->info(
         "\tLLA:\t{:.8f}, {:.8f}, {:.2f}",
         navtools::RAD2DEG<> * kf_.phi_,
@@ -211,11 +209,23 @@ void Navigator::ChannelUpdate(ChannelNavPacket &msg) {
   // notify completion
   if (is_vector_) {
     ch_data_[msg.Header.ChannelNum].ReadyForVT = true;
-    if (!VectorUpdate()) return;
+    // log_->warn(
+    //     "ReadyForVT = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}]",
+    //     ch_data_[1].ReadyForVT,
+    //     ch_data_[2].ReadyForVT,
+    //     ch_data_[3].ReadyForVT,
+    //     ch_data_[4].ReadyForVT,
+    //     ch_data_[5].ReadyForVT,
+    //     ch_data_[6].ReadyForVT,
+    //     ch_data_[7].ReadyForVT,
+    //     ch_data_[8].ReadyForVT,
+    //     ch_data_[9].ReadyForVT,
+    //     ch_data_[10].ReadyForVT);
     // log_->warn(
     //     "update_complete = {}, {}",
     //     *msg.update_complete,
     //     *ch_data_[msg.Header.ChannelNum].update_complete);
+    if (!VectorUpdate()) return;
   } else {
     *msg.update_complete = true;
     msg.cv->notify_all();
@@ -372,8 +382,10 @@ void Navigator::ScalarUpdate() {
     receive_time_ -= (x(6) / navtools::LIGHT_SPEED<>);
     x(6) = 0.0;
     // std::cout << "receive time = " << std::setprecision(17) << receive_time_ << "\n\n";
+    kf_.SetPosition(lla(0), lla(1), lla(2));
+    kf_.SetVelocity(nedv(0), nedv(1), nedv(2));
+    kf_.SetClock(x(6), x(7));
 
-    Eigen::Matrix3d C_l_b = Eigen::Matrix3d::Identity();
     if (conf_.antenna.is_multi_antenna) {
       // Attitude Estimation
       const int N = ch_data_.size();
@@ -381,6 +393,7 @@ void Navigator::ScalarUpdate() {
       Eigen::Vector3d tmp3, u;
       Eigen::MatrixXd u_ned(3, N);
       Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
+      Eigen::Matrix3d C_l_b;
 
       // MUSIC estimator
       Eigen::VectorXd est_az(N), est_el(N);
@@ -394,7 +407,7 @@ void Navigator::ScalarUpdate() {
             static_cast<int>(conf_.antenna.n_ant),
             ch_data_[i + 1].Lambda,
             1e-4);
-        // get true unit vector
+        // get ephemeris unit vector
         sturdins::RangeAndRate(
             x.segment(0, 3),
             x.segment(3, 3),
@@ -415,7 +428,9 @@ void Navigator::ScalarUpdate() {
       u_body_est.row(0) = est_az.array().cos() * est_el.array().cos();
       u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
       u_body_est.row(2) = -est_el.array().sin();
+      // u_body_est *= -1.0;
       sturdins::Wahba(C_l_b, u_body_est, u_ned, u_body_var);
+      kf_.SetAttitude(C_l_b.transpose());
 
       // save beamsteering unit vector to channels
       Eigen::Matrix3Xd u_body = kf_.C_b_l_.transpose() * u_ned;
@@ -423,15 +438,6 @@ void Navigator::ScalarUpdate() {
         *ch_data_[ii].UnitVec = u_body.col(ii);
       }
     }
-
-    // correct clock bias in receive time
-    receive_time_ -= (x(6) / navtools::LIGHT_SPEED<>);
-
-    // initialize kalman filter
-    kf_.SetPosition(lla(0), lla(1), lla(2));
-    kf_.SetVelocity(nedv(0), nedv(1), nedv(2));
-    kf_.SetAttitude(C_l_b.transpose());
-    kf_.SetClock(x(6), x(7));
 
     week_ = ch_data_[good_sv[0]].Week + 2048;
     nav_file_ptr_ = file_ptrs.minCoeff();
@@ -461,18 +467,22 @@ void Navigator::ScalarUpdate() {
   //   std::cout << (int)i << ": " << sv_pos(0, i) << ", " << sv_pos(1, i) << ", " << sv_pos(2, i)
   //             << " | " << sv_vel(0, i) << ", " << sv_vel(1, i) << ", " << sv_vel(2, i) << "\n";
   // }
+
+  // log result
+  LogNavData();
 }
 
 // *=== VectorUpdate ===*
 bool Navigator::VectorUpdate() {
   // make sure all channels have arrived
   std::vector<std::pair<uint64_t, uint8_t>> sample_ptrs;
-  for (const std::pair<const uint8_t, sturdr::ChannelNavData> &it : ch_data_) {
-    if (!it.second.ReadyForVT) return false;
+  for (uint8_t i = 1; i < (uint8_t)ch_data_.size(); i++) {
+    // log_->error("{}", ch_data_[i].ReadyForVT);
+    if (!ch_data_[i].ReadyForVT) return false;
     // sample_ptrs.push_back({(it.second.FilePtr + nav_file_ptr_) % file_size_, it.first});
-    sample_ptrs.push_back({(it.second.FilePtr + nav_file_ptr_), it.first});
+    sample_ptrs.push_back({(ch_data_[i].FilePtr + nav_file_ptr_), i});
   }
-  // log_->info(
+  // log_->warn(
   //     "calling VectorUpdate, file_ptrs = [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}]...",
   //     sample_ptrs[0].first,
   //     sample_ptrs[1].first,

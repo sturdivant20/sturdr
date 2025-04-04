@@ -108,6 +108,7 @@ void RunVDFllUpdate(
         n_ant,
         data.Lambda);
   } else {
+    // spdlog::get("sturdr-console")->error("Regular update ... ");
     filt.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
   }
 

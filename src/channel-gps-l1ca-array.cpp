@@ -180,11 +180,17 @@ void ChannelGpsL1caArray::Dump() {
     nav_pkt_.CodePhase = rem_code_phase_;
     nav_pkt_.Doppler = carr_doppler_;
     nav_pkt_.CarrierPhase = rem_carr_phase_;
+    *nav_pkt_.update_complete = false;
     q_nav_->push(nav_pkt_);
     {
       std::unique_lock<std::mutex> channel_lock(*nav_pkt_.mtx);
+      // log_->warn(
+      //     "Channel {}, update_complete = {}, is_vector = {}, file_ptr = {}",
+      //     (int)nav_pkt_.Header.ChannelNum,
+      //     (int)*nav_pkt_.update_complete,
+      //     (int)*nav_pkt_.is_vector,
+      //     (int)shm_ptr_);
       nav_pkt_.cv->wait(channel_lock, [this] { return *nav_pkt_.update_complete || !*running_; });
-      *nav_pkt_.update_complete = false;
     }
     carr_doppler_ = *nav_pkt_.VTCarrierFreq - intmd_freq_rad_;
     carr_jitter_ = 0.0;
@@ -267,9 +273,6 @@ void ChannelGpsL1caArray::Dump() {
   L_ = 0.0;
   P1_ = 0.0;
   P2_ = 0.0;
-  for (int i = 0; i < conf_.antenna.n_ant; i++) {
-    nav_pkt_.PromptCorrelators(i) = 0.0;
-  }
 }
 
 }  // namespace sturdr
