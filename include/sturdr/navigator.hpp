@@ -21,9 +21,14 @@
 
 #include <Eigen/Dense>
 #include <any>
+#include <condition_variable>
 #include <fstream>
 #include <map>
 #include <memory>
+#include <sturdds/ChannelMessage.hpp>
+#include <sturdds/NavMessage.hpp>
+#include <sturdds/interface.hpp>
+#include <sturdds/publisher.hpp>
 #include <sturdins/kinematic-nav.hpp>
 #include <thread>
 
@@ -55,6 +60,14 @@ class Navigator {
   std::shared_ptr<spdlog::logger> log_;
   std::shared_ptr<std::ofstream> nav_log_;
   std::shared_ptr<std::ofstream> eph_log_;
+  sturdds::Interface dds_node_;
+  std::unique_ptr<sturdds::Publisher<NavMessage>> dds_nav_pub_;
+  NavMessage dds_nav_msg_;
+  std::unique_ptr<sturdds::Publisher<ChannelMessage>> dds_channel_pub_;
+  ChannelMessage dds_channel_msg_;
+  uint64_t dds_index_;
+  // std::condition_variable dds_cv_;
+  // std::mutex dds_mtx_;
 
  public:
   Navigator(Config& conf, std::shared_ptr<ConcurrentQueue> queue, std::shared_ptr<bool> running);
@@ -67,6 +80,7 @@ class Navigator {
   void ScalarUpdate();
   bool VectorUpdate();
   void LogNavData();
+  void LogDDSMsg();
 
   /**
    * *=== UpdateShmWriterPtr ===*

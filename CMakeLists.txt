@@ -41,6 +41,7 @@ find_package(navtools REQUIRED)
 find_package(satutils REQUIRED)
 find_package(sturdio REQUIRED)
 find_package(sturdins REQUIRED)
+find_package(sturdds REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(FFTW REQUIRED fftw3 IMPORTED_TARGET)
 
@@ -117,6 +118,7 @@ target_link_libraries(
     satutils
     sturdio
     sturdins
+    sturdds
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -176,7 +178,7 @@ if (NOT DEFINED INSTALL_PYTHON OR INSTALL_PYTHON)
     find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
     find_package(pybind11 CONFIG REQUIRED)
     python_add_library(_sturdr_core MODULE src/sturdr-python.cpp WITH_SOABI)
-    target_link_libraries(_sturdr_core PRIVATE pybind11::headers ${PROJECT_NAME} navtools satutils sturdio sturdins)
+    target_link_libraries(_sturdr_core PRIVATE pybind11::headers ${PROJECT_NAME})
     target_compile_definitions(_sturdr_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
     install(TARGETS _sturdr_core DESTINATION sturdr)
 endif()

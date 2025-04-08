@@ -334,6 +334,7 @@ void ChannelGpsL1ca::Dump() {
   nav_pkt_.PsrVar = beta_sq_ * chip_var;
   nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;
   nav_pkt_.PhaseVar = phase_var;
+  nav_pkt_.CNo = (cno_ > 0.0) ? 10.0 * std::log10(cno_) : 0.0;
 
   // log_->trace(
   //     "Channel {}, scalar processing, is_vector = {}, file_ptr = {} ...",
@@ -392,7 +393,7 @@ void ChannelGpsL1ca::Dump() {
 
   // update file packet
   file_pkt_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
-  file_pkt_.CNo = (cno_ > 0.0) ? 10.0 * std::log10(cno_) : 0.0;
+  file_pkt_.CNo = nav_pkt_.CNo;
   file_pkt_.DllDisc = chip_err;
   file_pkt_.PllDisc = phase_err;
   file_pkt_.FllDisc = freq_err;

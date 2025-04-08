@@ -215,6 +215,7 @@ struct ChannelNavPacket {
   uint64_t FilePtr{0};
   uint16_t Week{65535};
   double ToW{std::nan("1")};
+  double CNo{std::nan("1")};
   double Doppler{std::nan("1")};
   double CodePhase{std::nan("1")};
   double CarrierPhase{std::nan("1")};
@@ -243,11 +244,14 @@ struct ChannelNavPacket {
  * @brief Data stored by navigation controller for each channel
  */
 struct ChannelNavData {
+  HeaderPacket Header;
   uint64_t FilePtr{0};
   satutils::KeplerEphem<double> Sv;
   uint16_t Week{65535};
   double ToW{std::nan("1")};
+  double CNo{std::nan("1")};
   double Doppler{std::nan("1")};
+  double Pseudorange{std::nan("1")};
   double CodePhase{std::nan("1")};
   double CarrierPhase{std::nan("1")};
   double DllDisc{std::nan("1")};
@@ -260,6 +264,8 @@ struct ChannelNavData {
   double Lambda{std::nan("1")};
   double ChipRate{std::nan("1")};
   double CarrierFreq{std::nan("1")};
+  double Azimuth{std::nan("1")};
+  double Elevation{std::nan("1")};
   Eigen::VectorXcd PromptCorrelators;
   bool HasEphem{false};
   bool HasData{false};

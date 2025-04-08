@@ -156,6 +156,7 @@ void ChannelGpsL1caArray::Dump() {
   nav_pkt_.PsrdotVar = lambda_sq_ * freq_var;  // to (m/s)^2
   nav_pkt_.PhaseVar = 2.0 * phase_var;
   nav_pkt_.PromptCorrelators = p_array_;
+  nav_pkt_.CNo = (cno_ > 0.0) ? 10.0 * std::log10(cno_) : 0.0;
 
   // tracking loop
   if (!*(nav_pkt_.is_vector)) {
@@ -211,7 +212,7 @@ void ChannelGpsL1caArray::Dump() {
 
   // update file packet
   file_pkt_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
-  file_pkt_.CNo = (cno_ > 0.0) ? 10.0 * std::log10(cno_) : 0.0;
+  file_pkt_.CNo = nav_pkt_.CNo;
   file_pkt_.DllDisc = chip_err;
   file_pkt_.PllDisc = phase_err;
   file_pkt_.FllDisc = freq_err;

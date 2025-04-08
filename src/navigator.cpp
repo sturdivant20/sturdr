@@ -16,13 +16,21 @@
 
 #include "sturdr/navigator.hpp"
 
+#include <chrono>
 #include <cmath>
+#include <fastdds/dds/core/policy/QosPolicies.hpp>
+#include <fastdds/dds/publisher/qos/DataWriterQos.hpp>
+#include <fastdds/dds/publisher/qos/PublisherQos.hpp>
 #include <iostream>
+#include <mutex>
 #include <navtools/attitude.hpp>
 #include <navtools/frames.hpp>
 #include <navtools/math.hpp>
+#include <sturdds/ChannelMessagePubSubTypes.hpp>
+#include <sturdds/NavMessagePubSubTypes.hpp>
 #include <sturdins/least-squares.hpp>
 #include <sturdins/nav-clock.hpp>
+#include <thread>
 
 #include "navtools/constants.hpp"
 #include "sturdr/structs-enums.hpp"
@@ -55,6 +63,16 @@ Navigator::Navigator(
   kf_.SetClockSpec(clk.h0, clk.h1, clk.h2);
   kf_.SetProcessNoise(conf_.navigation.process_std_vel, conf_.navigation.process_std_att);
 
+  // create dds objects
+  eprosima::fastdds::dds::DataWriterQos writer_qos = eprosima::fastdds::dds::DATAWRITER_QOS_DEFAULT;
+  writer_qos.history().kind = eprosima::fastdds::dds::KEEP_ALL_HISTORY_QOS;
+  eprosima::fastdds::dds::TopicDataType *type1 = new NavMessagePubSubType();
+  dds_nav_pub_ = dds_node_.CreatePublisher<NavMessage>("sturdr-navigator", type1, writer_qos);
+  eprosima::fastdds::dds::TopicDataType *type2 = new ChannelMessagePubSubType();
+  dds_channel_pub_ =
+      dds_node_.CreatePublisher<ChannelMessage>("sturdr-channels", type2, writer_qos);
+  dds_index_ = 0;
+
   // start thread
   thread_ = std::thread(&Navigator::NavThread, this);
   log_->info("SturDR Navigator initialized");
@@ -72,6 +90,8 @@ Navigator::~Navigator() {
 
 // *=== ~NavThread ===*
 void Navigator::NavThread() {
+  // std::thread dds_thread(&Navigator::LogDDSMsg, this);
+
   // run the navigator while SturDR is on
   while (queue_->pop(msg_) && *running_) {
     const std::type_info &msg_type = msg_.type();
@@ -110,6 +130,12 @@ void Navigator::NavThread() {
       log_->warn("Invalid type received in queue!");
     }
   }
+
+  // {
+  //   std::unique_lock<std::mutex> lock(dds_mtx_);
+  //   dds_cv_.notify_all();
+  // }
+  // dds_thread.join();
   log_->debug("Navigator stopping ...");
 }
 
@@ -119,24 +145,27 @@ void Navigator::NavUpdate() {
     ScalarUpdate();
   }
 
-  // log to console
-  if (is_init_) {
-    log_->info(
-        "\tLLA:\t{:.8f}, {:.8f}, {:.2f}",
-        navtools::RAD2DEG<> * kf_.phi_,
-        navtools::RAD2DEG<> * kf_.lam_,
-        kf_.h_);
-    Eigen::Vector3d rpy = navtools::quat2euler<double>(kf_.q_b_l_, true) * navtools::RAD2DEG<>;
-    log_->info("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy(0), rpy(1), rpy(2));
-    // log_->debug("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", kf_.vn_, kf_.ve_, kf_.vd_);
-    // log_->debug(
-    //     "\tQ:\t{:.4f}, {:.4f}, {:.4f}, {:.4f}",
-    //     kf_.q_b_l_(0),
-    //     kf_.q_b_l_(1),
-    //     kf_.q_b_l_(2),
-    //     kf_.q_b_l_(3));
-    // log_->debug("\tCLK:\t{:.2f}, {:.3f}", kf_.cb_, kf_.cd_);
-  }
+  // log to dds subscribers
+  // std::unique_lock<std::mutex> lock(dds_mtx_);
+  // dds_cv_.notify_all();
+  LogDDSMsg();
+  // if (is_init_) {
+  //   // log to console
+  //   log_->info(
+  //       "\tLLA:\t{:.8f}, {:.8f}, {:.2f}",
+  //       navtools::RAD2DEG<> * kf_.phi_,
+  //       navtools::RAD2DEG<> * kf_.lam_,
+  //       kf_.h_);
+  //   // log_->info("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy(0), rpy(1), rpy(2));
+  //   // log_->debug("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", kf_.vn_, kf_.ve_, kf_.vd_);
+  //   // log_->debug(
+  //   //     "\tQ:\t{:.4f}, {:.4f}, {:.4f}, {:.4f}",
+  //   //     kf_.q_b_l_(0),
+  //   //     kf_.q_b_l_(1),
+  //   //     kf_.q_b_l_(2),
+  //   //     kf_.q_b_l_(3));
+  //   // log_->debug("\tCLK:\t{:.2f}, {:.3f}", kf_.cb_, kf_.cd_);
+  // }
 }
 
 // *=== ~ChannelUpdate ===*
@@ -144,9 +173,11 @@ void Navigator::ChannelUpdate(ChannelNavPacket &msg) {
   std::unique_lock<std::mutex> lock(*msg.mtx);
   if (ch_data_.find(msg.Header.ChannelNum) != ch_data_.end()) {
     // update map data
+    ch_data_[msg.Header.ChannelNum].Header = msg.Header;
     ch_data_[msg.Header.ChannelNum].FilePtr = msg.FilePtr;
     ch_data_[msg.Header.ChannelNum].Week = msg.Week;
     ch_data_[msg.Header.ChannelNum].ToW = msg.ToW;
+    ch_data_[msg.Header.ChannelNum].CNo = msg.CNo;
     ch_data_[msg.Header.ChannelNum].Doppler = msg.Doppler;
     ch_data_[msg.Header.ChannelNum].CodePhase = msg.CodePhase;
     ch_data_[msg.Header.ChannelNum].CarrierPhase = msg.CarrierPhase;
@@ -175,11 +206,14 @@ void Navigator::ChannelUpdate(ChannelNavPacket &msg) {
     ch_data_.insert(
         {msg.Header.ChannelNum,
          ChannelNavData{
+             msg.Header,
              msg.FilePtr,
              satutils::KeplerEphem<double>(),
              msg.Week,
              msg.ToW,
+             msg.CNo,
              msg.Doppler,
+             0.0,
              msg.CodePhase,
              msg.CarrierPhase,
              msg.DllDisc,
@@ -192,6 +226,8 @@ void Navigator::ChannelUpdate(ChannelNavPacket &msg) {
              msg.Lambda,
              msg.ChipRate,
              msg.CarrierFreq,
+             0.0,
+             0.0,
              msg.PromptCorrelators,
              false,
              true,
@@ -352,15 +388,34 @@ void Navigator::ScalarUpdate() {
       Eigen::Vector3d xyz = navtools::lla2ecef<double>(lla);
       Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
       Eigen::Vector3d xyzv = C_e_l.transpose() * nedv;
-      Eigen::Vector3d u, tmp;
+      Eigen::Vector3d u, u_ned, tmp;
       double tmp1, tmp2;
       for (size_t ii = 0; ii < ch_data_.size(); ii++) {
         sturdins::RangeAndRate(xyz, xyzv, kf_.cb_, kf_.cd_, sv_pos, sv_vel, u, tmp, tmp1, tmp2);
-        *ch_data_[ii].UnitVec = kf_.C_b_l_.transpose() * (C_e_l * u);
+        u_ned = C_e_l * u;
+        *ch_data_[ii].UnitVec = kf_.C_b_l_.transpose() * u_ned;
+        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1), u_ned(0));
+        ch_data_[ii].Elevation = std::asin(u_ned(2));
+        ch_data_[ii].Pseudorange = psr[ii];
       }
     } else {
       // standard gnss update
       kf_.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
+
+      Eigen::Vector3d lla = Eigen::Vector3d{kf_.phi_, kf_.lam_, kf_.h_};
+      Eigen::Vector3d nedv = Eigen::Vector3d{kf_.vn_, kf_.ve_, kf_.vd_};
+      Eigen::Vector3d xyz = navtools::lla2ecef<double>(lla);
+      Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
+      Eigen::Vector3d xyzv = C_e_l.transpose() * nedv;
+      Eigen::Vector3d u, u_ned, tmp;
+      double tmp1, tmp2;
+      for (size_t ii = 0; ii < ch_data_.size(); ii++) {
+        sturdins::RangeAndRate(xyz, xyzv, kf_.cb_, kf_.cd_, sv_pos, sv_vel, u, tmp, tmp1, tmp2);
+        u_ned = C_e_l * u;
+        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1), u_ned(0));
+        ch_data_[ii].Elevation = std::asin(u_ned(2));
+        ch_data_[ii].Pseudorange = psr[ii];
+      }
     }
 
     // update file ptr location
@@ -391,13 +446,13 @@ void Navigator::ScalarUpdate() {
       const int N = ch_data_.size();
       double tmp1 = 0.0, tmp2 = 0.0;
       Eigen::Vector3d tmp3, u;
-      Eigen::MatrixXd u_ned(3, N);
+      Eigen::MatrixXd u_ned(3, num_sv);
       Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
       Eigen::Matrix3d C_l_b;
 
       // MUSIC estimator
       Eigen::VectorXd est_az(N), est_el(N);
-      for (int i = 0; i < N; i++) {
+      for (int i = 0; i < num_sv; i++) {
         // get doa predicted unit vector
         sturdins::MUSIC(
             est_az(i),
@@ -428,7 +483,6 @@ void Navigator::ScalarUpdate() {
       u_body_est.row(0) = est_az.array().cos() * est_el.array().cos();
       u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
       u_body_est.row(2) = -est_el.array().sin();
-      // u_body_est *= -1.0;
       sturdins::Wahba(C_l_b, u_body_est, u_ned, u_body_var);
       kf_.SetAttitude(C_l_b.transpose());
 
@@ -436,6 +490,30 @@ void Navigator::ScalarUpdate() {
       Eigen::Matrix3Xd u_body = kf_.C_b_l_.transpose() * u_ned;
       for (int ii = 0; ii < u_body.cols(); ii++) {
         *ch_data_[ii].UnitVec = u_body.col(ii);
+        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1, ii), u_ned(0, ii));
+        ch_data_[ii].Elevation = std::asin(u_ned(2, ii));
+        ch_data_[ii].Pseudorange = psr[ii];
+      }
+    } else {
+      Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
+      Eigen::Vector3d u, u_ned, tmp;
+      double tmp1, tmp2;
+      for (size_t ii = 0; ii < ch_data_.size(); ii++) {
+        sturdins::RangeAndRate(
+            x.segment(0, 3),
+            x.segment(3, 3),
+            x(6),
+            x(7),
+            sv_pos.col(ii),
+            sv_vel.col(ii),
+            u,
+            tmp,
+            tmp1,
+            tmp2);
+        u_ned = C_e_l * u;
+        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1), u_ned(0));
+        ch_data_[ii].Elevation = std::asin(u_ned(2));
+        ch_data_[ii].Pseudorange = psr[ii];
       }
     }
 
@@ -563,6 +641,101 @@ void Navigator::LogNavData() {
   nav_log_->write(reinterpret_cast<char *>(&kf_.cb_), sizeof(double));
   nav_log_->write(reinterpret_cast<char *>(&kf_.cd_), sizeof(double));
   nav_log_->write(reinterpret_cast<char *>(tmp.data()), 11 * sizeof(double));
+}
+
+void Navigator::LogDDSMsg() {
+  // while (*running_) {
+  // std::unique_lock<std::mutex> lock(dds_mtx_);
+  // dds_cv_.wait(lock);
+
+  dds_index_++;
+  auto duration = std::chrono::system_clock::now().time_since_epoch();
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+  auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration - seconds);
+
+  // log channel messages
+  dds_channel_msg_.stamp().index() = dds_index_;
+  dds_channel_msg_.stamp().index(dds_index_);
+  dds_channel_msg_.stamp().valid(true);
+  dds_channel_msg_.stamp().sec(seconds.count());
+  dds_channel_msg_.stamp().nanosec(nanoseconds.count());
+  dds_channel_msg_.Week(week_);
+  dds_channel_msg_.ToW(receive_time_);
+  for (auto &it : ch_data_) {  // (uint8_t)ch_data_.size()
+    dds_channel_msg_.ChannelID(it.second.Header.ChannelNum);
+    dds_channel_msg_.SatelliteID(it.second.Header.SVID);
+    dds_channel_msg_.ConstellationID(it.second.Header.Constellation);
+    dds_channel_msg_.SignalID(it.second.Header.Signal);
+    // dds_channel_msg_.ChannelStatus(it.second.Status);
+    dds_channel_msg_.Doppler(-it.second.Lambda * it.second.Doppler);
+    dds_channel_msg_.DopplerVariance(it.second.PsrdotVar);
+    dds_channel_msg_.Pseudorange(it.second.Pseudorange);
+    dds_channel_msg_.PseudorangeVariance(it.second.PsrVar);
+    dds_channel_msg_.CarrierPhase(it.second.CarrierPhase);
+    dds_channel_msg_.CarrierPhaseVariance(it.second.PhaseVar);
+    dds_channel_msg_.CNo(it.second.CNo);
+    dds_channel_msg_.Azimuth(it.second.Azimuth * navtools::RAD2DEG<>);
+    dds_channel_msg_.Elevation(it.second.Elevation * navtools::RAD2DEG<>);
+    // dds_channel_msg_.IE(it.second.IE);
+    // dds_channel_msg_.IP(it.second.IP);
+    // dds_channel_msg_.IL(it.second.IL);
+    // dds_channel_msg_.QE(it.second.QE);
+    // dds_channel_msg_.QP(it.second.QP);
+    // dds_channel_msg_.QL(it.second.QL);
+    // dds_channel_msg_.TapSpace(it.second.tap_space);
+    dds_channel_pub_->Publish(dds_channel_msg_);
+  }
+
+  // log navigation message
+  if (is_init_) {
+    Eigen::Vector3d rpy = navtools::quat2euler<double>(kf_.q_b_l_, true) * navtools::RAD2DEG<>;
+    dds_nav_msg_.stamp().index(dds_index_);
+    dds_nav_msg_.stamp().valid(true);
+    dds_nav_msg_.stamp().sec(seconds.count());
+    dds_nav_msg_.stamp().nanosec(nanoseconds.count());
+    dds_nav_msg_.Week(week_);
+    dds_nav_msg_.ToW(receive_time_);
+    dds_nav_msg_.Lat(navtools::RAD2DEG<> * kf_.phi_);
+    dds_nav_msg_.Lon(navtools::RAD2DEG<> * kf_.lam_);
+    dds_nav_msg_.H(kf_.h_);
+    dds_nav_msg_.Vn(kf_.vn_);
+    dds_nav_msg_.Ve(kf_.ve_);
+    dds_nav_msg_.Vd(kf_.vd_);
+    dds_nav_msg_.Roll(rpy(0));
+    dds_nav_msg_.Pitch(rpy(1));
+    dds_nav_msg_.Yaw(rpy(2));
+    dds_nav_msg_.Bias(kf_.cb_);
+    dds_nav_msg_.Drift(kf_.cd_);
+    dds_nav_msg_.P0(kf_.P_(0, 0));
+    dds_nav_msg_.P1(kf_.P_(1, 1));
+    dds_nav_msg_.P2(kf_.P_(2, 2));
+    dds_nav_msg_.P3(kf_.P_(3, 3));
+    dds_nav_msg_.P4(kf_.P_(4, 4));
+    dds_nav_msg_.P5(kf_.P_(5, 5));
+    dds_nav_msg_.P6(kf_.P_(6, 6));
+    dds_nav_msg_.P7(kf_.P_(7, 7));
+    dds_nav_msg_.P8(kf_.P_(8, 8));
+    dds_nav_msg_.P9(kf_.P_(9, 9));
+    dds_nav_msg_.P10(kf_.P_(10, 10));
+    dds_nav_pub_->Publish(dds_nav_msg_);
+
+    // log to console
+    log_->info(
+        "\tLLA:\t{:.8f}, {:.8f}, {:.2f}",
+        navtools::RAD2DEG<> * kf_.phi_,
+        navtools::RAD2DEG<> * kf_.lam_,
+        kf_.h_);
+    // log_->info("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy(0), rpy(1), rpy(2));
+    // log_->debug("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", kf_.vn_, kf_.ve_, kf_.vd_);
+    // log_->debug(
+    //     "\tQ:\t{:.4f}, {:.4f}, {:.4f}, {:.4f}",
+    //     kf_.q_b_l_(0),
+    //     kf_.q_b_l_(1),
+    //     kf_.q_b_l_(2),
+    //     kf_.q_b_l_(3));
+    // log_->debug("\tCLK:\t{:.2f}, {:.3f}", kf_.cb_, kf_.cd_);
+  }
+  // }
 }
 
 // *=== UpdateFilePtr ===*
