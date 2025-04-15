@@ -13,6 +13,7 @@
 #include <fftw3.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 
 #include <chrono>
@@ -181,6 +182,8 @@ SturDR::SturDR(const std::string yaml_fname)
 SturDR::~SturDR() {
   log_->trace("~SturDR");
   log_->info("SturDR shutting down ...");
+  // spdlog::drop_all();
+  // spdlog::shutdown();
 }
 
 // *=== Start ===*
@@ -264,6 +267,8 @@ void SturDR::Start() {
       gps_l1ca_array_channels_[i].Join();
     }
   }
+  spdlog::drop_all();
+  spdlog::shutdown();
 }
 
 // *=== GenNewPrn ===*

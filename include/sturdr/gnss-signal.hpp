@@ -77,10 +77,10 @@ void AccumulateEPLArray(
     uint64_t &half_samp,
     uint64_t &samp_remaining,
     double &t_space,
-    std::complex<double> &E,
+    Eigen::Ref<Eigen::VectorXcd> E,
     Eigen::Ref<Eigen::VectorXcd> P1,
     Eigen::Ref<Eigen::VectorXcd> P2,
-    std::complex<double> &L);
+    Eigen::Ref<Eigen::VectorXcd> L);
 
 /**
  * *=== Correlate ===*

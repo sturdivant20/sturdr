@@ -40,6 +40,8 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
       p_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       p1_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       p2_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      e_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      l_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       bf_{BeamFormer(conf_.antenna.n_ant, nav_pkt_.Lambda, conf_.antenna.ant_xyz)} {
   nav_pkt_.PromptCorrelators.resize(conf_.antenna.n_ant);
   nav_pkt_.PromptCorrelators = Eigen::VectorXcd::Zero(conf_.antenna.n_ant);
@@ -69,10 +71,10 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
       half_samp_,
       samp_remaining_,
       tap_space_,
-      E_,
+      e_array_,
       p1_array_,
       p2_array_,
-      L_);
+      l_array_);
   // AccumulateEPL(
   //     shm_->col(0).segment(shm_ptr_, samp_to_read),
   //     code_.data(),
@@ -85,11 +87,10 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
   //     half_samp_,
   //     samp_remaining_,
   //     tap_space_,
-  //     E_,
+  //     e_array_(0),
   //     p1_array_(0),
   //     p2_array_(0),
-  //     L_);
-  // P_ += (P1_ + P2_);
+  //     l_array_(0));
 
   // move forward in buffer
   shm_ptr_ += samp_to_read;
@@ -104,14 +105,31 @@ void ChannelGpsL1caArray::Dump() {
     bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
     P1_ = bf_(p1_array_);
     P2_ = bf_(p2_array_);
+    E_ = bf_(e_array_);
+    L_ = bf_(l_array_);
   } else {
     P1_ = p1_array_(0);
     P2_ = p2_array_(0);
+    E_ = e_array_(0);
+    L_ = l_array_(0);
   }
 
   // combine prompt sections
   p_array_ = p1_array_ + p2_array_;
   P_ = P1_ + P2_;
+
+  // log_->warn(
+  //     "Channel {} - IE = {:.1f}, IP = {:.1f}, IL = {:.1f}",
+  //     file_pkt_.Header.ChannelNum,
+  //     E_.real() / 10000.0,
+  //     P_.real() / 10000.0,
+  //     L_.real() / 10000.0);
+  // log_->warn(
+  //     "Channel {} - QE = {:.1f}, QP = {:.1f}, QL = {:.1f}",
+  //     file_pkt_.Header.ChannelNum,
+  //     E_.imag() / 10000.0,
+  //     P_.imag() / 10000.0,
+  //     L_.imag() / 10000.0);
 
   // check if navigation data needs to be parsed
   if (!(file_pkt_.TrackingStatus & TrackingFlags::EPH_DECODED)) {
@@ -268,6 +286,8 @@ void ChannelGpsL1caArray::Dump() {
   p_array_.setZero();
   p1_array_.setZero();
   p2_array_.setZero();
+  e_array_.setZero();
+  l_array_.setZero();
   P_old_ = P_;
   E_ = 0.0;
   P_ = 0.0;

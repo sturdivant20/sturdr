@@ -354,7 +354,7 @@ void Navigator::ScalarUpdate() {
     // measurement corrections
     if (conf_.antenna.is_multi_antenna) {
       // phased array update
-      double lamb = ch_data_[0].Lambda;
+      double lamb = ch_data_[1].Lambda;
       Eigen::MatrixXd phase_disc(conf_.antenna.n_ant, num_sv);
       Eigen::MatrixXd phase_disc_var(conf_.antenna.n_ant, num_sv);
       Eigen::VectorXd O = Eigen::VectorXd::Ones(conf_.antenna.n_ant);
@@ -393,7 +393,7 @@ void Navigator::ScalarUpdate() {
       for (size_t ii = 0; ii < ch_data_.size(); ii++) {
         sturdins::RangeAndRate(xyz, xyzv, kf_.cb_, kf_.cd_, sv_pos, sv_vel, u, tmp, tmp1, tmp2);
         u_ned = C_e_l * u;
-        *ch_data_[ii].UnitVec = kf_.C_b_l_.transpose() * u_ned;
+        // *ch_data_[ii].UnitVec = kf_.C_b_l_.transpose() * u_ned;
         ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1), u_ned(0));
         ch_data_[ii].Elevation = std::asin(u_ned(2));
         ch_data_[ii].Pseudorange = psr[ii];
@@ -488,8 +488,8 @@ void Navigator::ScalarUpdate() {
 
       // save beamsteering unit vector to channels
       Eigen::Matrix3Xd u_body = kf_.C_b_l_.transpose() * u_ned;
-      for (int ii = 0; ii < u_body.cols(); ii++) {
-        *ch_data_[ii].UnitVec = u_body.col(ii);
+      for (uint8_t ii = 1; ii <= (uint8_t)u_body.cols(); ii++) {
+        // *ch_data_[ii].UnitVec = u_body.col(ii);
         ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1, ii), u_ned(0, ii));
         ch_data_[ii].Elevation = std::asin(u_ned(2, ii));
         ch_data_[ii].Pseudorange = psr[ii];
@@ -498,7 +498,7 @@ void Navigator::ScalarUpdate() {
       Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
       Eigen::Vector3d u, u_ned, tmp;
       double tmp1, tmp2;
-      for (size_t ii = 0; ii < ch_data_.size(); ii++) {
+      for (uint8_t ii = 1; ii <= (uint8_t)ch_data_.size(); ii++) {
         sturdins::RangeAndRate(
             x.segment(0, 3),
             x.segment(3, 3),
@@ -554,7 +554,7 @@ void Navigator::ScalarUpdate() {
 bool Navigator::VectorUpdate() {
   // make sure all channels have arrived
   std::vector<std::pair<uint64_t, uint8_t>> sample_ptrs;
-  for (uint8_t i = 1; i < (uint8_t)ch_data_.size(); i++) {
+  for (uint8_t i = 1; i <= (uint8_t)ch_data_.size(); i++) {
     // log_->error("{}", ch_data_[i].ReadyForVT);
     if (!ch_data_[i].ReadyForVT) return false;
     // sample_ptrs.push_back({(it.second.FilePtr + nav_file_ptr_) % file_size_, it.first});
@@ -662,7 +662,10 @@ void Navigator::LogDDSMsg() {
   dds_channel_msg_.Week(week_);
   dds_channel_msg_.ToW(receive_time_);
   for (auto &it : ch_data_) {  // (uint8_t)ch_data_.size()
-    dds_channel_msg_.ChannelID(it.second.Header.ChannelNum);
+    if (it.first > (uint8_t)ch_data_.size()) {
+      continue;
+    }
+    dds_channel_msg_.ChannelID(it.first - 1);
     dds_channel_msg_.SatelliteID(it.second.Header.SVID);
     dds_channel_msg_.ConstellationID(it.second.Header.Constellation);
     dds_channel_msg_.SignalID(it.second.Header.Signal);

@@ -29,6 +29,10 @@ test = ["pytest"]
 wheel.expand-macos-universal-tags = true
 minimum-version = "build-system.requires"
 
+[tool.scikit-build.cmake]
+args = ["-DCMAKE_PREFIX_PATH=./../../build/src/"]
+# args = ["./build/"]
+
 
 # [tool.pytest.ini_options]
 # minversion = "8.0"

@@ -133,7 +133,9 @@ class LockDetectors {
   double m2_;
   double m4_;
   double cno_;
+  double carr_ratio_;
   double alpha_;
+  double dt_;
 
  public:
   LockDetectors(double alpha = 0.005);

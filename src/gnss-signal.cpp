@@ -105,10 +105,10 @@ void AccumulateEPLArray(
     uint64_t &half_samp,
     uint64_t &samp_remaining,
     double &t_space,
-    std::complex<double> &E,
+    Eigen::Ref<Eigen::VectorXcd> E,
     Eigen::Ref<Eigen::VectorXcd> P1,
     Eigen::Ref<Eigen::VectorXcd> P2,
-    std::complex<double> &L) {
+    Eigen::Ref<Eigen::VectorXcd> L) {
   // init phase increments
   double d_code = code_freq / samp_freq;
   double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
@@ -127,13 +127,13 @@ void AccumulateEPLArray(
     // early
     // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
     v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
-    E += (v_code * v_carr(0));
+    E += (v_code * v_carr);
     // E += (v_code * v_carr);
 
     // late
     // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
     v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
-    L += (v_code * v_carr(0));
+    L += (v_code * v_carr);
     // L += (v_code * v_carr);
 
     // prompt

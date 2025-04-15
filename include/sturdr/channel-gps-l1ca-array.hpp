@@ -30,6 +30,8 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
   Eigen::VectorXcd p_array_;
   Eigen::VectorXcd p1_array_;
   Eigen::VectorXcd p2_array_;
+  Eigen::VectorXcd e_array_;
+  Eigen::VectorXcd l_array_;
   BeamFormer bf_;
 
  public:

@@ -226,7 +226,15 @@ void CarrierLockDetector(
 // }
 
 LockDetectors::LockDetectors(double alpha)
-    : k_{0.0}, nbp_{0.0}, nbd_{0.0}, m2_{0.0}, m4_{0.0}, cno_{1000.0}, alpha_{alpha} {};
+    : k_{0.0},
+      nbp_{0.0},
+      nbd_{0.0},
+      m2_{0.0},
+      m4_{0.0},
+      cno_{1000.0},
+      carr_ratio_{0.0},
+      alpha_{alpha},
+      dt_{0.0} {};
 LockDetectors::~LockDetectors() = default;
 
 void LockDetectors::Update(const double &IP, const double &QP, const double &T) {
@@ -235,6 +243,15 @@ void LockDetectors::Update(const double &IP, const double &QP, const double &T) 
   double P_curr = I + Q;
   double P_diff = I - Q;
   double P_curr2 = P_curr * P_curr;
+
+  if (dt_ != T) {
+    k_ = 0.0;
+    m2_ = 0.0;
+    m4_ = 0.0;
+    nbd_ = 0.0;
+    nbp_ = 0.0;
+    dt_ = T;
+  }
 
   if (k_ < 100.0) {
     k_ += 1.0;
@@ -248,9 +265,12 @@ void LockDetectors::Update(const double &IP, const double &QP, const double &T) 
     m4_ = LowPassFilter(m4_, P_curr2, alpha_);
     nbd_ = LowPassFilter(nbd_, P_diff, alpha_);
     nbp_ = LowPassFilter(nbp_, P_curr, alpha_);
+    // if (k_ >= 100.0) {
     double pd = std::sqrt(std::abs(2.0 * m2_ * m2_ - m4_));
     double pn = std::abs(m2_ - pd);
     cno_ = (pd / pn) / T;
+    carr_ratio_ = nbd_ / nbp_;
+    //   k_ = 0.0;
   }
 }
 void LockDetectors::Update(std::complex<double> &P, const double &T) {
@@ -268,7 +288,7 @@ bool LockDetectors::GetCarrierLock() {
   //  -> cos(2 * φ) = NBD / NBP
   //  -> Phase error should be less than 15° to be considered locked
   //  -> cos(2 * 15) ~ 0.866
-  return ((nbd_ / nbp_) > 0.866);
+  return (carr_ratio_ > 0.866);
 }
 
 double LockDetectors::GetCno() {
