@@ -14,8 +14,6 @@
 
 #include "sturdr/beamformer.hpp"
 
-#include <Eigen/src/Core/Matrix.h>
-
 #include <cmath>
 #include <navtools/constants.hpp>
 
@@ -38,21 +36,24 @@ Eigen::VectorXcd BeamFormer::GetWeights() {
 
 // *=== CalcSteeringWeights ===*
 void BeamFormer::CalcSteeringWeights(const Eigen::Ref<const Eigen::Vector3d>& u_body) {
-  for (int i = 0; i < N_; i++) {
-    w_(i) = std::exp(navtools::COMPLEX_I<> / lambda_ * u_body.dot(xyz_.col(i)));
-  }
+  // for (int i = 0; i < N_; i++) {
+  //   w_(i) = std::exp(navtools::COMPLEX_I<> / lambda_ * u_body.dot(xyz_.col(i)));
+  // }
+  w_ = (navtools::COMPLEX_I<> / lambda_ * (xyz_.transpose() * u_body)).array().exp();
 }
 
 // *=== CalcNullingWeights ===*
 void BeamFormer::CalcNullingWeights(const Eigen::Ref<const Eigen::Vector3d>& u_body) {
   // for nulling - the sum of the N-1 secondary antennas should equal the power of the primary
   double null_factor = 1.0 / static_cast<double>(N_ - 1);
-  for (int i = 0; i < N_; i++) {
-    w_(i) = std::exp(navtools::COMPLEX_I<> / lambda_ * u_body.dot(xyz_.col(i)));
-    if (i > 0) {
-      w_(i) *= null_factor;
-    }
-  }
+  // for (int i = 0; i < N_; i++) {
+  //   w_(i) = std::exp(navtools::COMPLEX_I<> / lambda_ * u_body.dot(xyz_.col(i)));
+  //   if (i > 0) {
+  //     w_(i) *= null_factor;
+  //   }
+  // }
+  CalcSteeringWeights(u_body);
+  w_.segment(1, 3) *= null_factor;
 }
 
 // *=== () ===*

@@ -16,6 +16,9 @@
 
 #include "sturdr/channel-gps-l1ca-array.hpp"
 
+#include <cmath>
+#include <functional>
+
 #include "sturdr/discriminator.hpp"
 #include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/gnss-signal.hpp"
@@ -50,7 +53,7 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
 
 // *=== ~ChannelGpsL1caArray ===*
 ChannelGpsL1caArray::~ChannelGpsL1caArray() {
-  log_->trace("~ChannelGpsL1caArray");
+  // log_->trace("~ChannelGpsL1caArray");
 }
 
 // *=== Integrate ===*
@@ -147,21 +150,25 @@ void ChannelGpsL1caArray::Dump() {
 
   // lock detectors
   // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
-  lock_.Update(p_array_(0), T_);
+  lock_.Update(P_, T_);
+  // lock_.Update(p_array_(0), T_);
   code_lock_ = lock_.GetCodeLock();
   carr_lock_ = lock_.GetCarrierLock();
   cno_ = lock_.GetCno();
+  double cno_single = cno_ / (double)conf_.antenna.n_ant;
 
   // discriminators
   double chip_err = DllNneml2(E_, L_);       // [chips]
   double phase_err = PllCostas(P_);          // [rad]
   double freq_err = FllAtan2(P1_, P2_, T_);  // [rad/s]
   double chip_var = DllVariance(cno_, T_);
-  double phase_var = PllVariance(cno_, T_);
+  double phase_var = PllVariance(cno_single, T_);
+  // double phase_var = PllVariance(cno_, T_);
   double freq_var = FllVariance(cno_, T_);
 
   // update time of week
   file_pkt_.ToW += T_;
+  file_pkt_.ToW = std::rint(file_pkt_.ToW * 100.0) / 100.0;
   nav_pkt_.ToW = file_pkt_.ToW;
 
   // update nav packet

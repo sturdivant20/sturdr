@@ -63,8 +63,11 @@ void RunVDFllUpdate(
   data.Sv.CalcNavStates<false>(sv_clk, sv_pos, sv_vel, sv_acc, tT);
 
   // 2. Propage receive time by number of samples accumulated since last vector update
-  double dt = (static_cast<double>(d_samp) / samp_freq);
-  tR += dt;
+  if (d_samp > 0) {
+    double dt = (static_cast<double>(d_samp) / samp_freq);
+    tR += dt;
+    filt.Propagate(dt);
+  }
   // spdlog::get("sturdr-console")->warn("dt: {}", dt);
 
   // 3. Estimate scalar-tracking based measurements
@@ -84,7 +87,6 @@ void RunVDFllUpdate(
   psrdot(0) -= data.Lambda * data.FllDisc;
 
   // 4. Run kalman filter (save predicted nav-state)
-  filt.Propagate(dt);
   if (n_ant > 1) {
     // if using antenna array - estimate attitude
     Eigen::VectorXd phase_disc = data.PllDisc.array() - data.PllDisc(0);
@@ -137,6 +139,13 @@ void RunVDFllUpdate(
   data.Pseudorange = psr(0);
   if (n_ant > 1) {
     *data.UnitVec = filt.C_b_l_.transpose() * u_ned;
+    // spdlog::get("sturdr-console")
+    //     ->warn(
+    //         "Channel {} - unit_vec = [{}, {}, {}]",
+    //         data.Header.ChannelNum,
+    //         (*data.UnitVec)(0),
+    //         (*data.UnitVec)(1),
+    //         (*data.UnitVec)(2));
   }
 
   // 8. Vector FLL update

@@ -180,8 +180,8 @@ SturDR::SturDR(const std::string yaml_fname)
 
 // *=== ~SturDR ===*
 SturDR::~SturDR() {
-  log_->trace("~SturDR");
-  log_->info("SturDR shutting down ...");
+  // log_->trace("~SturDR");
+  // log_->info("SturDR shutting down ...");
   // spdlog::drop_all();
   // spdlog::shutdown();
 }
@@ -267,6 +267,7 @@ void SturDR::Start() {
       gps_l1ca_array_channels_[i].Join();
     }
   }
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
   spdlog::drop_all();
   spdlog::shutdown();
 }

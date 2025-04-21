@@ -19,7 +19,7 @@ namespace sturdr {
 
 // *=== ~FftwWrapper ===*
 FftwWrapper::~FftwWrapper() {
-  spdlog::get("sturdr-console")->trace("~FftwWrapper");
+  // spdlog::get("sturdr-console")->trace("~FftwWrapper");
   fftw_destroy_plan(fft_);
   fftw_destroy_plan(ifft_);
   fftw_destroy_plan(fft_many_);

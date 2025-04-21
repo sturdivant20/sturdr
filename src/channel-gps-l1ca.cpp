@@ -17,6 +17,7 @@
 #include "sturdr/channel-gps-l1ca.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <navtools/constants.hpp>
@@ -105,7 +106,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
 
 // *=== ~ChannelGpsL1ca ===*
 ChannelGpsL1ca::~ChannelGpsL1ca() {
-  log_->trace("~ChannelGpsL1ca");
+  // log_->trace("~ChannelGpsL1ca");
   file_log_->close();
   if (thread_->joinable()) {
     thread_->join();
@@ -325,6 +326,7 @@ void ChannelGpsL1ca::Dump() {
 
   // update time of week
   file_pkt_.ToW += T_;
+  file_pkt_.ToW = std::rint(file_pkt_.ToW * 100) / 100;
   nav_pkt_.ToW = file_pkt_.ToW;
 
   // update nav packet
@@ -542,6 +544,7 @@ void ChannelGpsL1ca::Demodulate() {
     // if here - a subframe has been parsed
     file_pkt_.Week = gps_lnav_.GetWeekNumber();
     file_pkt_.ToW = gps_lnav_.GetTimeOfWeek() - 0.02;
+    file_pkt_.ToW = std::rint(file_pkt_.ToW * 100) / 100;
     nav_pkt_.Week = file_pkt_.Week;
     nav_pkt_.ToW = file_pkt_.ToW;
     file_pkt_.TrackingStatus |= TrackingFlags::TOW_DECODED;

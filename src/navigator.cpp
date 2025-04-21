@@ -80,7 +80,7 @@ Navigator::Navigator(
 
 // *=== ~Navigator ===*
 Navigator::~Navigator() {
-  log_->trace("~Navigator");
+  // log_->trace("~Navigator");
   nav_log_->close();
   eph_log_->close();
   if (thread_.joinable()) {
@@ -483,16 +483,23 @@ void Navigator::ScalarUpdate() {
       u_body_est.row(0) = est_az.array().cos() * est_el.array().cos();
       u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
       u_body_est.row(2) = -est_el.array().sin();
+      // std::cout << "u_body_est = \n" << u_body_est << "\n";
       sturdins::Wahba(C_l_b, u_body_est, u_ned, u_body_var);
       kf_.SetAttitude(C_l_b.transpose());
 
       // save beamsteering unit vector to channels
-      Eigen::Matrix3Xd u_body = kf_.C_b_l_.transpose() * u_ned;
-      for (uint8_t ii = 1; ii <= (uint8_t)u_body.cols(); ii++) {
-        // *ch_data_[ii].UnitVec = u_body.col(ii);
-        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1, ii), u_ned(0, ii));
-        ch_data_[ii].Elevation = std::asin(u_ned(2, ii));
-        ch_data_[ii].Pseudorange = psr[ii];
+      // Eigen::Matrix3Xd u_body = C_l_b * u_ned;
+      for (uint8_t ii = 1; ii <= (uint8_t)u_ned.cols(); ii++) {
+        *ch_data_[ii].UnitVec = C_l_b * u_ned.col(ii - 1);
+        // log_->warn(
+        //     "Channel {} - unit_vec = [{}, {}, {}]",
+        //     ch_data_[ii].Header.ChannelNum,
+        //     (*ch_data_[ii].UnitVec)(0),
+        //     (*ch_data_[ii].UnitVec)(1),
+        //     (*ch_data_[ii].UnitVec)(2));
+        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1, ii - 1), u_ned(0, ii - 1));
+        ch_data_[ii].Elevation = std::asin(u_ned(2, ii - 1));
+        ch_data_[ii].Pseudorange = psr[ii - 1];
       }
     } else {
       Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
@@ -728,7 +735,7 @@ void Navigator::LogDDSMsg() {
         navtools::RAD2DEG<> * kf_.phi_,
         navtools::RAD2DEG<> * kf_.lam_,
         kf_.h_);
-    // log_->info("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy(0), rpy(1), rpy(2));
+    log_->info("\tRPY:\t{:.2f}, {:.2f}, {:.2f}", rpy(0), rpy(1), rpy(2));
     // log_->debug("\tNEDV:\t{:.3f}, {:.3f}, {:.3f}", kf_.vn_, kf_.ve_, kf_.vd_);
     // log_->debug(
     //     "\tQ:\t{:.4f}, {:.4f}, {:.4f}, {:.4f}",
