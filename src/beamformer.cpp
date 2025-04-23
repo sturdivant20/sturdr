@@ -20,7 +20,7 @@
 namespace sturdr {
 
 // *=== BeamFormer ===*
-BeamFormer::BeamFormer(int n_ant, double lambda, Eigen::Matrix3Xd ant_xyz)
+BeamFormer::BeamFormer(int n_ant, double lambda, Eigen::Ref<Eigen::Matrix3Xd> ant_xyz)
     : N_{n_ant}, lambda_{lambda}, xyz_{ant_xyz}, w_{Eigen::VectorXcd::Zero(N_)} {
   w_(0) = std::complex<double>(1.0, 0.0);
 }
@@ -45,7 +45,7 @@ void BeamFormer::CalcSteeringWeights(const Eigen::Ref<const Eigen::Vector3d>& u_
 // *=== CalcNullingWeights ===*
 void BeamFormer::CalcNullingWeights(const Eigen::Ref<const Eigen::Vector3d>& u_body) {
   // for nulling - the sum of the N-1 secondary antennas should equal the power of the primary
-  double null_factor = 1.0 / static_cast<double>(N_ - 1);
+  double null_factor = -1.0 / static_cast<double>(N_ - 1);
   // for (int i = 0; i < N_; i++) {
   //   w_(i) = std::exp(navtools::COMPLEX_I<> / lambda_ * u_body.dot(xyz_.col(i)));
   //   if (i > 0) {

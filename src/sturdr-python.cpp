@@ -197,7 +197,7 @@ PYBIND11_MODULE(_sturdr_core, h) {
   //! === Beam Steer ===============================================================================
   py::class_<BeamFormer>(h, "BeamFormer")
       .def(
-          py::init<int, double, Eigen::Matrix3Xd>(),
+          py::init<int, double, Eigen::Ref<Eigen::Matrix3Xd>>(),
           py::arg("n_ant"),
           py::arg("lamb"),
           py::arg("ant_xyz"),

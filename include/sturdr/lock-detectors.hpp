@@ -136,6 +136,7 @@ class LockDetectors {
   double carr_ratio_;
   double alpha_;
   double dt_;
+  double P_prev_;
 
  public:
   LockDetectors(double alpha = 0.005);
@@ -143,6 +144,7 @@ class LockDetectors {
 
   void Update(const double &IP, const double &QP, const double &T);
   void Update(std::complex<double> &P, const double &T);
+  void Reset();
   bool GetCodeLock();
   bool GetCarrierLock();
   double GetCno();

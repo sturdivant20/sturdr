@@ -45,7 +45,8 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
       p2_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       e_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       l_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
-      bf_{BeamFormer(conf_.antenna.n_ant, nav_pkt_.Lambda, conf_.antenna.ant_xyz)} {
+      bf_{BeamFormer(conf_.antenna.n_ant, nav_pkt_.Lambda, conf_.antenna.ant_xyz)},
+      is_bf_{false} {
   nav_pkt_.PromptCorrelators.resize(conf_.antenna.n_ant);
   nav_pkt_.PromptCorrelators = Eigen::VectorXcd::Zero(conf_.antenna.n_ant);
   nav_pkt_.PllDisc.resize(conf_.antenna.n_ant);
@@ -105,6 +106,10 @@ void ChannelGpsL1caArray::Dump() {
   // log_->warn("u_body = [{}, {}, {}]", u_body_(0), u_body_(1), u_body_(2));
   // beamsteer
   if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
+    // if (!is_bf_) {
+    //   lock_.Reset();
+    //   is_bf_ = true;
+    // }
     bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
     P1_ = bf_(p1_array_);
     P2_ = bf_(p2_array_);
@@ -150,20 +155,20 @@ void ChannelGpsL1caArray::Dump() {
 
   // lock detectors
   // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
-  lock_.Update(P_, T_);
-  // lock_.Update(p_array_(0), T_);
+  // lock_.Update(P_, T_);
+  lock_.Update(p_array_(0), T_);
   code_lock_ = lock_.GetCodeLock();
   carr_lock_ = lock_.GetCarrierLock();
   cno_ = lock_.GetCno();
-  double cno_single = cno_ / (double)conf_.antenna.n_ant;
+  // double cno_single = cno_ / (double)conf_.antenna.n_ant;
 
   // discriminators
   double chip_err = DllNneml2(E_, L_);       // [chips]
   double phase_err = PllCostas(P_);          // [rad]
   double freq_err = FllAtan2(P1_, P2_, T_);  // [rad/s]
   double chip_var = DllVariance(cno_, T_);
-  double phase_var = PllVariance(cno_single, T_);
-  // double phase_var = PllVariance(cno_, T_);
+  // double phase_var = PllVariance(cno_single, T_);
+  double phase_var = PllVariance(cno_, T_);
   double freq_var = FllVariance(cno_, T_);
 
   // update time of week
@@ -234,6 +239,7 @@ void ChannelGpsL1caArray::Dump() {
     // kf_.SetRemCarrierPhase(rem_carr_phase_);
     // kf_.SetRemCodePhase(rem_code_phase_);
   }
+  int_per_cnt_ += T_ms_;
 
   // update file packet
   file_pkt_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
@@ -282,10 +288,10 @@ void ChannelGpsL1caArray::Dump() {
 
   // std::cout << "ChannelGpsL1ca::Dump - file log called\n";
   // file_log_->info("{}", file_pkt_);
+  file_log_->write(reinterpret_cast<char *>(&int_per_cnt_), sizeof(uint64_t));
   file_log_->write(reinterpret_cast<char *>(&file_pkt_), sizeof(ChannelPacket));
 
   // begin next nco period
-  int_per_cnt_ += T_ms_;
   NewCodePeriod();
   Status();
 

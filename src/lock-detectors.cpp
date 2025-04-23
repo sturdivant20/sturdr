@@ -234,7 +234,8 @@ LockDetectors::LockDetectors(double alpha)
       cno_{1000.0},
       carr_ratio_{0.0},
       alpha_{alpha},
-      dt_{0.0} {};
+      dt_{0.0},
+      P_prev_{0.0} {};
 LockDetectors::~LockDetectors() = default;
 
 void LockDetectors::Update(const double &IP, const double &QP, const double &T) {
@@ -245,15 +246,11 @@ void LockDetectors::Update(const double &IP, const double &QP, const double &T) 
   double P_curr2 = P_curr * P_curr;
 
   if (dt_ != T) {
-    k_ = 0.0;
-    m2_ = 0.0;
-    m4_ = 0.0;
-    nbd_ = 0.0;
-    nbp_ = 0.0;
+    Reset();
     dt_ = T;
   }
 
-  if (k_ < 100.0) {
+  if (k_ < 200.0) {
     k_ += 1.0;
     double g = 1.0 / k_;
     m2_ = LowPassFilter(m2_, P_curr, g);
@@ -263,18 +260,42 @@ void LockDetectors::Update(const double &IP, const double &QP, const double &T) 
   } else {
     m2_ = LowPassFilter(m2_, P_curr, alpha_);
     m4_ = LowPassFilter(m4_, P_curr2, alpha_);
-    nbd_ = LowPassFilter(nbd_, P_diff, alpha_);
-    nbp_ = LowPassFilter(nbp_, P_curr, alpha_);
-    // if (k_ >= 100.0) {
     double pd = std::sqrt(std::abs(2.0 * m2_ * m2_ - m4_));
     double pn = std::abs(m2_ - pd);
     cno_ = (pd / pn) / T;
     carr_ratio_ = nbd_ / nbp_;
-    //   k_ = 0.0;
   }
+
+  // double P_avg = 0.5 * (P_prev_ + P_curr);
+  // double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev_), 2);
+  // if (k_ < 100.0) {
+  //   k_ += 1.0;
+  //   double g = 1.0 / k_;
+  //   m2_ = LowPassFilter(m2_, P_avg, g);
+  //   m4_ = LowPassFilter(m4_, P_noise, g);
+  //   nbd_ = LowPassFilter(nbd_, P_diff, g);
+  //   nbp_ = LowPassFilter(nbp_, P_curr, g);
+  // } else {
+  //   nbd_ = LowPassFilter(nbd_, P_diff, alpha_);
+  //   nbp_ = LowPassFilter(nbp_, P_curr, alpha_);
+  //   m2_ = LowPassFilter(m2_, P_avg, alpha_);
+  //   m4_ = LowPassFilter(m4_, P_noise, alpha_);
+  //   cno_ = m2_ / (m4_ * T);  // (1 / (PN / PC)) / T
+  //   carr_ratio_ = nbd_ / nbp_;
+  // }
+
+  P_prev_ = P_curr;
 }
 void LockDetectors::Update(std::complex<double> &P, const double &T) {
   Update(P.real(), P.imag(), T);
+}
+
+void LockDetectors::Reset() {
+  k_ = 0.0;
+  m2_ = 0.0;
+  m4_ = 0.0;
+  nbd_ = 0.0;
+  nbp_ = 0.0;
 }
 
 bool LockDetectors::GetCodeLock() {

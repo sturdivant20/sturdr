@@ -392,6 +392,7 @@ void ChannelGpsL1ca::Dump() {
     carr_jitter_ = 0.0;
     code_doppler_ = *nav_pkt_.VTCodeRate - satutils::GPS_CA_CODE_RATE<>;
   }
+  int_per_cnt_ += T_ms_;
 
   // update file packet
   file_pkt_.Doppler = carr_doppler_ / navtools::TWO_PI<>;
@@ -414,11 +415,11 @@ void ChannelGpsL1ca::Dump() {
 
   // no need to log additional correlators here
   // file_log_->info("{}", file_pkt_);
+  file_log_->write(reinterpret_cast<char *>(&int_per_cnt_), sizeof(uint64_t));
   file_log_->write(
       reinterpret_cast<char *>(&file_pkt_), sizeof(ChannelPacket) - 8 * sizeof(double));
 
   // begin next nco period
-  int_per_cnt_ += T_ms_;
   NewCodePeriod();
   Status();
 

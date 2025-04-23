@@ -34,7 +34,7 @@ class BeamFormer {
    * @param n_ant   number of antennas
    * @param lambda  wavelength of carrier signal [m/rad]
    */
-  BeamFormer(int n_ant, double lambda, Eigen::Matrix3Xd ant_xyz);
+  BeamFormer(int n_ant, double lambda, Eigen::Ref<Eigen::Matrix3Xd> ant_xyz);
 
   /**
    * *=== ~BeamFormer ===*
