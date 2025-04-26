@@ -32,6 +32,7 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
   Eigen::VectorXcd p2_array_;
   Eigen::VectorXcd e_array_;
   Eigen::VectorXcd l_array_;
+  Eigen::VectorXcd w_phase_cal_;
   BeamFormer bf_;
   bool is_bf_;
 

@@ -92,7 +92,14 @@ void RunVDFllUpdate(
     Eigen::VectorXd phase_disc = data.PllDisc.array() - data.PllDisc(0);
     Eigen::VectorXd phase_disc_var(n_ant);
     for (int j = 0; j < n_ant; j++) {
-      navtools::WrapPiToPi<double>(phase_disc(j));
+      // navtools::WrapPiToPi<double>(phase_disc(j));
+      phase_disc(j) =
+          std::fmod(phase_disc(j) + navtools::PI<>, navtools::TWO_PI<>) - navtools::PI<>;
+      if (phase_disc(j) < -navtools::PI<>) {
+        phase_disc(j) += navtools::TWO_PI<>;
+      } else if (phase_disc(j) > navtools::PI<>) {
+        phase_disc(j) -= navtools::TWO_PI<>;
+      }
       phase_disc_var(j) = data.PhaseVar;
     }
 

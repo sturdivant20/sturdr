@@ -593,30 +593,31 @@ bool Navigator::VectorUpdate() {
 
   // run updates
   uint64_t d_samp;
+  // std::cout << "d_samp = [ ";
   for (std::pair<uint64_t, uint8_t> &p : sample_ptrs) {
     // make sure samples are 'delta' from the last update
     d_samp = GetDeltaSamples(ch_data_[p.second].FilePtr);
+    // std::cout << d_samp << ", ";
 
     // run all vector updates and log to file
-    if (d_samp > 0) {
-      RunVDFllUpdate(
-          d_samp,
-          conf_.rfsignal.samp_freq,
-          intmd_freq_rad,
-          ch_data_[p.second],
-          receive_time_,
-          T,
-          kf_,
-          conf_.antenna.ant_xyz,
-          conf_.antenna.n_ant);
+    RunVDFllUpdate(
+        d_samp,
+        conf_.rfsignal.samp_freq,
+        intmd_freq_rad,
+        ch_data_[p.second],
+        receive_time_,
+        T,
+        kf_,
+        conf_.antenna.ant_xyz,
+        conf_.antenna.n_ant);
 
-      // update file pointer
-      UpdateFilePtr(d_samp);
+    // update file pointer
+    UpdateFilePtr(d_samp);
 
-      // // log solution
-      // LogNavData();
-    }
+    // // log solution
+    // LogNavData();
   }
+  // std::cout << "\n";
 
   // log solution only after finished
   LogNavData();

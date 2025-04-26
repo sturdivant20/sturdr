@@ -17,6 +17,7 @@
 #include "sturdr/channel-gps-l1ca-array.hpp"
 
 #include <cmath>
+#include <complex>
 #include <functional>
 
 #include "sturdr/discriminator.hpp"
@@ -45,11 +46,20 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
       p2_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       e_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       l_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      w_phase_cal_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       bf_{BeamFormer(conf_.antenna.n_ant, nav_pkt_.Lambda, conf_.antenna.ant_xyz)},
       is_bf_{false} {
   nav_pkt_.PromptCorrelators.resize(conf_.antenna.n_ant);
   nav_pkt_.PromptCorrelators = Eigen::VectorXcd::Zero(conf_.antenna.n_ant);
   nav_pkt_.PllDisc.resize(conf_.antenna.n_ant);
+  // w_phase_cal_ << std::complex<double>(1.0, 0.0),
+  //     std::complex<double>(1.0, 0.0),
+  //     std::complex<double>(1.0, 0.0),
+  //     std::complex<double>(1.0, 0.0);
+  w_phase_cal_ << std::complex<double>(1.0, 0.0),
+      std::complex<double>(-0.948803223566488, -0.315867761808388),
+      std::complex<double>(-0.231189814499734, +0.97290866460916),
+      std::complex<double>(-0.533946572224442, +0.845518218614932);
 }
 
 // *=== ~ChannelGpsL1caArray ===*
@@ -105,22 +115,26 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 void ChannelGpsL1caArray::Dump() {
   // log_->warn("u_body = [{}, {}, {}]", u_body_(0), u_body_(1), u_body_(2));
   // beamsteer
-  if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
-    // if (!is_bf_) {
-    //   lock_.Reset();
-    //   is_bf_ = true;
-    // }
-    bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
-    P1_ = bf_(p1_array_);
-    P2_ = bf_(p2_array_);
-    E_ = bf_(e_array_);
-    L_ = bf_(l_array_);
-  } else {
-    P1_ = p1_array_(0);
-    P2_ = p2_array_(0);
-    E_ = e_array_(0);
-    L_ = l_array_(0);
-  }
+  p1_array_.array() *= w_phase_cal_.array();
+  p2_array_.array() *= w_phase_cal_.array();
+  e_array_.array() *= w_phase_cal_.array();
+  l_array_.array() *= w_phase_cal_.array();
+  // if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
+  //   // if (!is_bf_) {
+  //   //   lock_.Reset();
+  //   //   is_bf_ = true;
+  //   // }
+  //   bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
+  //   P1_ = bf_(p1_array_);
+  //   P2_ = bf_(p2_array_);
+  //   E_ = bf_(e_array_);
+  //   L_ = bf_(l_array_);
+  // } else {
+  P1_ = p1_array_(0);
+  P2_ = p2_array_(0);
+  E_ = e_array_(0);
+  L_ = l_array_(0);
+  // }
 
   // combine prompt sections
   p_array_ = p1_array_ + p2_array_;
