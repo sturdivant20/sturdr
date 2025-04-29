@@ -231,6 +231,8 @@ LockDetectors::LockDetectors(double alpha)
       nbd_{0.0},
       m2_{0.0},
       m4_{0.0},
+      A_{0.0},
+      eta_{0.0},
       cno_{1000.0},
       carr_ratio_{0.0},
       alpha_{alpha},
@@ -243,51 +245,92 @@ void LockDetectors::Update(const double &IP, const double &QP, const double &T) 
   double Q = QP * QP;
   double P_curr = I + Q;
   double P_diff = I - Q;
-  double P_curr2 = P_curr * P_curr;
 
   if (dt_ != T) {
     Reset();
     dt_ = T;
   }
 
-  if (k_ < 200.0) {
-    k_ += 1.0;
-    double g = 1.0 / k_;
-    m2_ = LowPassFilter(m2_, P_curr, g);
-    m4_ = LowPassFilter(m4_, P_curr2, g);
-    nbd_ = LowPassFilter(nbd_, P_diff, g);
-    nbp_ = LowPassFilter(nbp_, P_curr, g);
-  } else {
-    m2_ = LowPassFilter(m2_, P_curr, alpha_);
-    m4_ = LowPassFilter(m4_, P_curr2, alpha_);
-    double pd = std::sqrt(std::abs(2.0 * m2_ * m2_ - m4_));
-    double pn = std::abs(m2_ - pd);
-    cno_ = (pd / pn) / T;
-    carr_ratio_ = nbd_ / nbp_;
-  }
-
-  // double P_avg = 0.5 * (P_prev_ + P_curr);
-  // double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev_), 2);
-  // if (k_ < 100.0) {
+  // double P_curr2 = P_curr * P_curr;
+  // if (k_ < 200.0) {
   //   k_ += 1.0;
   //   double g = 1.0 / k_;
-  //   m2_ = LowPassFilter(m2_, P_avg, g);
-  //   m4_ = LowPassFilter(m4_, P_noise, g);
+  //   m2_ = LowPassFilter(m2_, P_curr, g);
+  //   m4_ = LowPassFilter(m4_, P_curr2, g);
   //   nbd_ = LowPassFilter(nbd_, P_diff, g);
   //   nbp_ = LowPassFilter(nbp_, P_curr, g);
   // } else {
-  //   nbd_ = LowPassFilter(nbd_, P_diff, alpha_);
-  //   nbp_ = LowPassFilter(nbp_, P_curr, alpha_);
-  //   m2_ = LowPassFilter(m2_, P_avg, alpha_);
-  //   m4_ = LowPassFilter(m4_, P_noise, alpha_);
-  //   cno_ = m2_ / (m4_ * T);  // (1 / (PN / PC)) / T
+  //   m2_ = LowPassFilter(m2_, P_curr, alpha_);
+  //   m4_ = LowPassFilter(m4_, P_curr2, alpha_);
+  //   double pd = std::sqrt(std::abs(2.0 * m2_ * m2_ - m4_));
+  //   double pn = std::abs(m2_ - pd);
+  //   cno_ = (pd / pn) / T;
   //   carr_ratio_ = nbd_ / nbp_;
   // }
 
+  double P_avg = 0.5 * (P_prev_ + P_curr);
+  double P_noise = std::pow(std::sqrt(P_curr) - std::sqrt(P_prev_), 2);
+  if (k_ < 100.0) {
+    k_ += 1.0;
+    double g = 1.0 / k_;
+    m2_ = LowPassFilter(m2_, P_avg, g);
+    m4_ = LowPassFilter(m4_, P_noise, g);
+    nbd_ = LowPassFilter(nbd_, P_diff, g);
+    nbp_ = LowPassFilter(nbp_, P_curr, g);
+  } else {
+    nbd_ = LowPassFilter(nbd_, P_diff, alpha_);
+    nbp_ = LowPassFilter(nbp_, P_curr, alpha_);
+    m2_ = LowPassFilter(m2_, P_avg, alpha_);
+    m4_ = LowPassFilter(m4_, P_noise, alpha_);
+    cno_ = m2_ / (m4_ * T);  // (1 / (PN / PC)) / T
+    carr_ratio_ = nbd_ / nbp_;
+  }
+
   P_prev_ = P_curr;
 }
-void LockDetectors::Update(std::complex<double> &P, const double &T) {
+void LockDetectors::Update(const std::complex<double> &P, const double &T) {
   Update(P.real(), P.imag(), T);
+}
+
+void LockDetectors::Update(
+    const double &IP,
+    const double &QP,
+    const Eigen::Ref<const Eigen::Vector<double, 12>> &IN,
+    const Eigen::Ref<const Eigen::Vector<double, 12>> &QN,
+    const double &T) {
+  if (dt_ != T) {
+    Reset();
+    dt_ = T;
+  }
+  double I = IP * IP;
+  double Q = QP * QP;
+  double nbp = I + Q;
+  double nbd = I - Q;
+  // double sigma_sq = (IN.array() * IN.array() + QN.array() * QN.array()).mean();
+  double sigma_sq = 0.5 * ((IN.array() * IN.array()).mean() + (QN.array() * QN.array()).mean());
+  if (k_ < 100.0) {
+    k_ += 1.0;
+    double g = 1.0 / k_;
+    A_ = LowPassFilter(A_, nbp, g);
+    eta_ = LowPassFilter(eta_, sigma_sq, g);
+    nbd_ = LowPassFilter(nbd_, nbd, g);
+    nbp_ = LowPassFilter(nbp_, nbd, g);
+  } else {
+    A_ = LowPassFilter(A_, nbp, alpha_);
+    eta_ = LowPassFilter(eta_, sigma_sq, alpha_);
+    nbd_ = LowPassFilter(nbd_, nbd, alpha_);
+    nbp_ = LowPassFilter(nbp_, nbd, alpha_);
+    cno_ = (A_ - 2.0 * eta_) / (2.0 * T * eta_);
+    carr_ratio_ = nbd_ / nbp_;
+  }
+
+  P_prev_ = nbp;
+}
+void LockDetectors::Update(
+    const std::complex<double> &P,
+    const Eigen::Ref<const Eigen::Vector<std::complex<double>, 12>> &N,
+    const double &T) {
+  Update(P.real(), P.imag(), N.real(), N.imag(), T);
 }
 
 void LockDetectors::Reset() {
@@ -296,6 +339,8 @@ void LockDetectors::Reset() {
   m4_ = 0.0;
   nbd_ = 0.0;
   nbp_ = 0.0;
+  A_ = 0.0;
+  eta_ = 0.0;
 }
 
 bool LockDetectors::GetCodeLock() {

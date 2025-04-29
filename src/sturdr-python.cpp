@@ -10,6 +10,7 @@
 
 // TODO: add vector processing
 
+#include <pybind11/detail/common.h>
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -870,7 +871,22 @@ PYBIND11_MODULE(_sturdr_core, h) {
   // AccumulateEPL
   gnss.def(
       "AccumulateEPL",
-      &AccumulateEPL,
+      py::overload_cast<
+          const Eigen::Ref<const Eigen::VectorXcd> &,
+          const bool[1023],
+          double &,
+          double &,
+          double &,
+          double &,
+          double &,
+          double &,
+          uint64_t &,
+          uint64_t &,
+          double &,
+          std::complex<double> &,
+          std::complex<double> &,
+          std::complex<double> &,
+          std::complex<double> &>(&AccumulateEPL),
       py::arg("rfdata"),
       py::arg("code"),
       py::arg("rem_code_phase"),
@@ -1366,7 +1382,7 @@ PYBIND11_MODULE(_sturdr_core, h) {
           py::arg("T"))
       .def(
           "Update",
-          py::overload_cast<std::complex<double> &, const double &>(&LockDetectors::Update),
+          py::overload_cast<const std::complex<double> &, const double &>(&LockDetectors::Update),
           py::arg("P"),
           py::arg("T"))
       .def("GetCodeLock", &LockDetectors::GetCodeLock)

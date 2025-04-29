@@ -288,45 +288,83 @@ void SturDR::GetNewPrn(uint8_t& prn) {
   // search for next available prn
   while (prns_in_use_[prn_ptr_]) {
     // prn_ptr_ = prn_ptr_ % 32 + 1;
+    // switch (prn_ptr_) {
+    //   case (uint8_t)1:
+    //     prn_ptr_ = 2;
+    //     break;
+    //   case (uint8_t)2:
+    //     prn_ptr_ = 3;
+    //     break;
+    //   case (uint8_t)3:
+    //     prn_ptr_ = 6;
+    //     break;
+    //   case (uint8_t)6:
+    //     prn_ptr_ = 11;
+    //     break;
+    //   case (uint8_t)11:
+    //     prn_ptr_ = 14;
+    //     break;
+    //   case (uint8_t)14:
+    //     prn_ptr_ = 17;
+    //     break;
+    //   case (uint8_t)17:
+    //     prn_ptr_ = 19;
+    //     break;
+    //   case (uint8_t)19:
+    //     prn_ptr_ = 22;
+    //     break;
+    //   case (uint8_t)22:
+    //     prn_ptr_ = 24;
+    //     break;
+    //   case (uint8_t)24:
+    //     prn_ptr_ = 30;
+    //     break;
+    //   case (uint8_t)30:
+    //     prn_ptr_ = 28;
+    //     break;
+    //   case (uint8_t)28:
+    //     prn_ptr_ = 1;
+    //     break;
+    //   default:
+    //     prn_ptr_ = 1;
+    //     break;
+    // }
     switch (prn_ptr_) {
-      case (uint8_t)1:
-        prn_ptr_ = 2;
+      case (uint8_t)5:
+        prn_ptr_ = 10;
         break;
-      case (uint8_t)2:
-        prn_ptr_ = 3;
+      case (uint8_t)10:
+        prn_ptr_ = 13;
         break;
-      case (uint8_t)3:
-        prn_ptr_ = 6;
+      case (uint8_t)13:
+        prn_ptr_ = 15;
         break;
-      case (uint8_t)6:
-        prn_ptr_ = 11;
+      case (uint8_t)15:
+        prn_ptr_ = 18;
         break;
-      case (uint8_t)11:
-        prn_ptr_ = 14;
+      case (uint8_t)18:
+        prn_ptr_ = 23;
         break;
-      case (uint8_t)14:
-        prn_ptr_ = 17;
-        break;
-      case (uint8_t)17:
-        prn_ptr_ = 19;
-        break;
-      case (uint8_t)19:
-        prn_ptr_ = 22;
-        break;
-      case (uint8_t)22:
+      case (uint8_t)23:
         prn_ptr_ = 24;
         break;
       case (uint8_t)24:
+        prn_ptr_ = 27;
+        break;
+      case (uint8_t)27:
+        prn_ptr_ = 29;
+        break;
+      case (uint8_t)29:
+        prn_ptr_ = 32;
+        break;
+      case (uint8_t)32:
         prn_ptr_ = 30;
         break;
       case (uint8_t)30:
-        prn_ptr_ = 28;
-        break;
-      case (uint8_t)28:
-        prn_ptr_ = 1;
+        prn_ptr_ = 5;
         break;
       default:
-        prn_ptr_ = 1;
+        prn_ptr_ = 5;
         break;
     }
   }
@@ -335,45 +373,83 @@ void SturDR::GetNewPrn(uint8_t& prn) {
   prn = prn_ptr_;
   prns_in_use_[prn_ptr_] = true;
   // prn_ptr_ = prn_ptr_ % 32 + 1;
+  // switch (prn_ptr_) {
+  //   case (uint8_t)1:
+  //     prn_ptr_ = 2;
+  //     break;
+  //   case (uint8_t)2:
+  //     prn_ptr_ = 3;
+  //     break;
+  //   case (uint8_t)3:
+  //     prn_ptr_ = 6;
+  //     break;
+  //   case (uint8_t)6:
+  //     prn_ptr_ = 11;
+  //     break;
+  //   case (uint8_t)11:
+  //     prn_ptr_ = 14;
+  //     break;
+  //   case (uint8_t)14:
+  //     prn_ptr_ = 17;
+  //     break;
+  //   case (uint8_t)17:
+  //     prn_ptr_ = 19;
+  //     break;
+  //   case (uint8_t)19:
+  //     prn_ptr_ = 22;
+  //     break;
+  //   case (uint8_t)22:
+  //     prn_ptr_ = 24;
+  //     break;
+  //   case (uint8_t)24:
+  //     prn_ptr_ = 30;
+  //     break;
+  //   case (uint8_t)30:
+  //     prn_ptr_ = 28;
+  //     break;
+  //   case (uint8_t)28:
+  //     prn_ptr_ = 1;
+  //     break;
+  //   default:
+  //     prn_ptr_ = 1;
+  //     break;
+  // }
   switch (prn_ptr_) {
-    case (uint8_t)1:
-      prn_ptr_ = 2;
+    case (uint8_t)5:
+      prn_ptr_ = 10;
       break;
-    case (uint8_t)2:
-      prn_ptr_ = 3;
+    case (uint8_t)10:
+      prn_ptr_ = 13;
       break;
-    case (uint8_t)3:
-      prn_ptr_ = 6;
+    case (uint8_t)13:
+      prn_ptr_ = 15;
       break;
-    case (uint8_t)6:
-      prn_ptr_ = 11;
+    case (uint8_t)15:
+      prn_ptr_ = 18;
       break;
-    case (uint8_t)11:
-      prn_ptr_ = 14;
+    case (uint8_t)18:
+      prn_ptr_ = 23;
       break;
-    case (uint8_t)14:
-      prn_ptr_ = 17;
-      break;
-    case (uint8_t)17:
-      prn_ptr_ = 19;
-      break;
-    case (uint8_t)19:
-      prn_ptr_ = 22;
-      break;
-    case (uint8_t)22:
+    case (uint8_t)23:
       prn_ptr_ = 24;
       break;
     case (uint8_t)24:
+      prn_ptr_ = 27;
+      break;
+    case (uint8_t)27:
+      prn_ptr_ = 29;
+      break;
+    case (uint8_t)29:
+      prn_ptr_ = 32;
+      break;
+    case (uint8_t)32:
       prn_ptr_ = 30;
       break;
     case (uint8_t)30:
-      prn_ptr_ = 28;
-      break;
-    case (uint8_t)28:
-      prn_ptr_ = 1;
+      prn_ptr_ = 5;
       break;
     default:
-      prn_ptr_ = 1;
+      prn_ptr_ = 5;
       break;
   }
 }

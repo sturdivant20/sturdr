@@ -60,6 +60,7 @@ class ChannelGpsL1ca : public Channel {
   double w0p_;
   double w0f_;
   double tap_space_;
+  Eigen::Vector<double, 12> noise_taps_;
   TrackingKF kf_;
 
   /**
@@ -71,6 +72,7 @@ class ChannelGpsL1ca : public Channel {
   std::complex<double> P1_;
   std::complex<double> P2_;
   std::complex<double> P_old_;
+  Eigen::Vector<std::complex<double>, 12> N_;
 
   /**
    * @brief counters and telemetry

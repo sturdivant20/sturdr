@@ -54,6 +54,136 @@ void AccumulateEPL(
     uint64_t &half_samp,
     uint64_t &samp_remaining,
     double &t_space,
+    const Eigen::Ref<const Eigen::Vector<double, 12>> &noise_taps,
+    std::complex<double> &E,
+    std::complex<double> &P1,
+    std::complex<double> &P2,
+    std::complex<double> &L,
+    Eigen::Ref<Eigen::Vector<std::complex<double>, 12>> N) {
+  // init phase increments
+  double d_code = code_freq / samp_freq;
+  double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
+
+  // loop through number of samples
+  std::complex<double> v_carr;
+  double v_code;
+  for (const std::complex<double> &sample : rfdata) {
+    v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * sample;
+
+    // early
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
+    E += (v_code * v_carr);
+
+    // late
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
+    L += (v_code * v_carr);
+
+    // prompt
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    if (samp_remaining > half_samp) {
+      P1 += (v_code * v_carr);
+    } else {
+      P2 += (v_code * v_carr);
+    }
+
+    // noise
+    for (int ii = 0; ii < 12; ii++) {
+      v_code =
+          code[static_cast<int>(std::round(rem_code_phase + noise_taps(ii))) % 1023] ? 1.0 : -1.0;
+      N(ii) += (v_code * v_carr);
+    }
+
+    // increment
+    rem_code_phase += d_code;
+    rem_carr_phase += d_carr;
+    samp_remaining--;
+  }
+}
+void AccumulateEPLArray(
+    const Eigen::Ref<const Eigen::MatrixXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
+    const Eigen::Ref<const Eigen::Vector<double, 12>> &noise_taps,
+    Eigen::Ref<Eigen::VectorXcd> E,
+    Eigen::Ref<Eigen::VectorXcd> P1,
+    Eigen::Ref<Eigen::VectorXcd> P2,
+    Eigen::Ref<Eigen::VectorXcd> L,
+    Eigen::Ref<Eigen::Vector<std::complex<double>, 12>> N) {
+  // init phase increments
+  double d_code = code_freq / samp_freq;
+  double d_carr = (carr_freq + 0.5 * carr_jit / samp_freq) / samp_freq;
+
+  // loop through number of samples
+  int n_samp = rfdata.rows();
+  int n_ant = rfdata.cols();
+  Eigen::VectorXcd v_carr(n_ant);
+  // std::complex<double> v_carr;
+  double v_code;
+  for (int ii = 0; ii < n_samp; ii++) {
+    // for (const std::complex<double> &sample : rfdata.col(0)) {
+    v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * rfdata.row(ii);
+    // v_carr = std::exp(-navtools::COMPLEX_I<> * rem_carr_phase) * sample;
+
+    // early
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase + t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase + t_space)) % 1023] ? 1.0 : -1.0;
+    E += (v_code * v_carr);
+    // E += (v_code * v_carr);
+
+    // late
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase - t_space, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase - t_space)) % 1023] ? 1.0 : -1.0;
+    L += (v_code * v_carr);
+    // L += (v_code * v_carr);
+
+    // prompt
+    // v_code = code[static_cast<int>(std::fmod(rem_code_phase, 1023.0))] ? 1.0 : -1.0;
+    v_code = code[static_cast<int>(std::round(rem_code_phase)) % 1023] ? 1.0 : -1.0;
+    if (samp_remaining > half_samp) {
+      P1 += (v_code * v_carr);
+      // P1(0) += (v_code * v_carr);
+    } else {
+      P2 += (v_code * v_carr);
+      // P2(0) += (v_code * v_carr);
+    }
+
+    // noise
+    for (int ii = 0; ii < 12; ii++) {
+      v_code =
+          code[static_cast<int>(std::round(rem_code_phase + noise_taps(ii))) % 1023] ? 1.0 : -1.0;
+      N(ii) += (v_code * v_carr(0));
+    }
+
+    // increment
+    rem_code_phase += d_code;
+    rem_carr_phase += d_carr;
+    samp_remaining--;
+  }
+}
+// *=== AccumulateEPL ===*
+void AccumulateEPL(
+    const Eigen::Ref<const Eigen::VectorXcd> &rfdata,
+    const bool code[1023],
+    double &rem_code_phase,
+    double &code_freq,
+    double &rem_carr_phase,
+    double &carr_freq,
+    double &carr_jit,
+    double &samp_freq,
+    uint64_t &half_samp,
+    uint64_t &samp_remaining,
+    double &t_space,
     std::complex<double> &E,
     std::complex<double> &P1,
     std::complex<double> &P2,

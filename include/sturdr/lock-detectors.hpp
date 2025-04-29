@@ -20,6 +20,7 @@
 #ifndef STURDR_LOCK_DETECTORS_HPP
 #define STURDR_LOCK_DETECTORS_HPP
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <complex>
 
@@ -132,6 +133,8 @@ class LockDetectors {
   double nbd_;
   double m2_;
   double m4_;
+  double A_;
+  double eta_;
   double cno_;
   double carr_ratio_;
   double alpha_;
@@ -142,8 +145,18 @@ class LockDetectors {
   LockDetectors(double alpha = 0.005);
   ~LockDetectors();
 
+  void Update(
+      const double &IP,
+      const double &QP,
+      const Eigen::Ref<const Eigen::Vector<double, 12>> &IN,
+      const Eigen::Ref<const Eigen::Vector<double, 12>> &QN,
+      const double &T);
+  void Update(
+      const std::complex<double> &P,
+      const Eigen::Ref<const Eigen::Vector<std::complex<double>, 12>> &N,
+      const double &T);
   void Update(const double &IP, const double &QP, const double &T);
-  void Update(std::complex<double> &P, const double &T);
+  void Update(const std::complex<double> &P, const double &T);
   void Reset();
   bool GetCodeLock();
   bool GetCarrierLock();

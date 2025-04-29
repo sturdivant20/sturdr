@@ -85,12 +85,14 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
       half_samp_,
       samp_remaining_,
       tap_space_,
+      noise_taps_,
       e_array_,
       p1_array_,
       p2_array_,
-      l_array_);
-  // AccumulateEPL(
-  //     shm_->col(0).segment(shm_ptr_, samp_to_read),
+      l_array_,
+      N_);
+  // AccumulateEPLArray(
+  //     shm_->block(shm_ptr_, 0, samp_to_read, (int)conf_.antenna.n_ant),
   //     code_.data(),
   //     rem_code_phase_,
   //     nco_code_freq,
@@ -101,10 +103,10 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
   //     half_samp_,
   //     samp_remaining_,
   //     tap_space_,
-  //     e_array_(0),
-  //     p1_array_(0),
-  //     p2_array_(0),
-  //     l_array_(0));
+  //     e_array_,
+  //     p1_array_,
+  //     p2_array_,
+  //     l_array_);
 
   // move forward in buffer
   shm_ptr_ += samp_to_read;
@@ -114,27 +116,30 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 // *=== Dump ===*
 void ChannelGpsL1caArray::Dump() {
   // log_->warn("u_body = [{}, {}, {}]", u_body_(0), u_body_(1), u_body_(2));
+  // phase calibrations
+  // p1_array_.array() *= w_phase_cal_.array();
+  // p2_array_.array() *= w_phase_cal_.array();
+  // e_array_.array() *= w_phase_cal_.array();
+  // l_array_.array() *= w_phase_cal_.array();
+
   // beamsteer
-  p1_array_.array() *= w_phase_cal_.array();
-  p2_array_.array() *= w_phase_cal_.array();
-  e_array_.array() *= w_phase_cal_.array();
-  l_array_.array() *= w_phase_cal_.array();
-  // if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
-  //   // if (!is_bf_) {
-  //   //   lock_.Reset();
-  //   //   is_bf_ = true;
-  //   // }
-  //   bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
-  //   P1_ = bf_(p1_array_);
-  //   P2_ = bf_(p2_array_);
-  //   E_ = bf_(e_array_);
-  //   L_ = bf_(l_array_);
-  // } else {
-  P1_ = p1_array_(0);
-  P2_ = p2_array_(0);
-  E_ = e_array_(0);
-  L_ = l_array_(0);
-  // }
+  if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
+    // if (!is_bf_) {
+    //   lock_.Reset();
+    //   is_bf_ = true;
+    // }
+    bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
+    P1_ = bf_(p1_array_);
+    P2_ = bf_(p2_array_);
+    E_ = bf_(e_array_);
+    L_ = bf_(l_array_);
+    N_.array() *= static_cast<double>(conf_.antenna.n_ant) / 2.0;
+  } else {
+    P1_ = p1_array_(0);
+    P2_ = p2_array_(0);
+    E_ = e_array_(0);
+    L_ = l_array_(0);
+  }
 
   // combine prompt sections
   p_array_ = p1_array_ + p2_array_;
@@ -168,9 +173,8 @@ void ChannelGpsL1caArray::Dump() {
   }
 
   // lock detectors
-  // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
+  lock_.Update(P_, N_, T_);
   // lock_.Update(P_, T_);
-  lock_.Update(p_array_(0), T_);
   code_lock_ = lock_.GetCodeLock();
   carr_lock_ = lock_.GetCarrierLock();
   cno_ = lock_.GetCno();
@@ -321,6 +325,7 @@ void ChannelGpsL1caArray::Dump() {
   L_ = 0.0;
   P1_ = 0.0;
   P2_ = 0.0;
+  N_.setZero();
 }
 
 }  // namespace sturdr

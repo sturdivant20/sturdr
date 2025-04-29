@@ -68,6 +68,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
       w0p_{NaturalFrequency(conf_.tracking.pll_bw_wide, 3)},
       w0f_{NaturalFrequency(conf_.tracking.fll_bw_wide, 2)},
       tap_space_{conf_.tracking.tap_epl_wide},
+      noise_taps_{50, 110, 150, 225, 310, 400, 495, 600, 720, 805, 900, 980},
       kf_{TrackingKF()},
       E_{std::complex<double>(0.0, 0.0)},
       P_{std::complex<double>(0.0, 0.0)},
@@ -75,6 +76,7 @@ ChannelGpsL1ca::ChannelGpsL1ca(
       P1_{std::complex<double>(0.0, 0.0)},
       P2_{std::complex<double>(0.0, 0.0)},
       P_old_{std::complex<double>(0.0, 0.0)},
+      N_{Eigen::Vector<std::complex<double>, 12>::Zero()},
       T_{0.001},
       T_ms_{1},
       int_per_cnt_{0},
@@ -279,10 +281,28 @@ void ChannelGpsL1ca::Integrate(const uint64_t &samp_to_read) {
       half_samp_,
       samp_remaining_,
       tap_space_,
+      noise_taps_,
       E_,
       P1_,
       P2_,
-      L_);
+      L_,
+      N_);
+  // AccumulateEPL(
+  //     shm_->col(0).segment(shm_ptr_, samp_to_read),
+  //     code_.data(),
+  //     rem_code_phase_,
+  //     nco_code_freq,
+  //     rem_carr_phase_,
+  //     nco_carr_freq,
+  //     carr_jitter_,
+  //     conf_.rfsignal.samp_freq,
+  //     half_samp_,
+  //     samp_remaining_,
+  //     tap_space_,
+  //     E_,
+  //     P1_,
+  //     P2_,
+  //     L_);
   // P_ += (P1_ + P2_);
 
   // move forward in buffer
@@ -310,8 +330,8 @@ void ChannelGpsL1ca::Dump() {
   }
 
   // lock detectors
-  // LockDetectors(code_lock_, carr_lock_, cno_, nbd_, nbp_, pc_, pn_, P_old_, P_, T_, 0.05);
-  lock_.Update(P_, T_);
+  lock_.Update(P_, N_, T_);
+  // lock_.Update(P_, T_);
   code_lock_ = lock_.GetCodeLock();
   carr_lock_ = lock_.GetCarrierLock();
   cno_ = lock_.GetCno();
@@ -430,6 +450,7 @@ void ChannelGpsL1ca::Dump() {
   L_ = 0.0;
   P1_ = 0.0;
   P2_ = 0.0;
+  N_.setZero();
 }
 
 // *=== Status ===*
