@@ -19,7 +19,9 @@
 #include <cmath>
 #include <complex>
 #include <functional>
+#include <navtools/math.hpp>
 
+#include "navtools/constants.hpp"
 #include "sturdr/discriminator.hpp"
 #include "sturdr/fftw-wrapper.hpp"
 #include "sturdr/gnss-signal.hpp"
@@ -38,7 +40,9 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
     std::shared_ptr<ConcurrentBarrier> barrier2,
     std::shared_ptr<ConcurrentQueue> nav_queue,
     std::shared_ptr<FftwWrapper> fftw_plans,
-    std::function<void(uint8_t &)> &GetNewPrnFunc)
+    std::function<void(uint8_t &)> &GetNewPrnFunc,
+    std::shared_ptr<Eigen::MatrixX<Eigen::VectorXcd>> manifold,
+    std::shared_ptr<Eigen::VectorXcd> phase_cal)
     : ChannelGpsL1ca(
           conf, n, running, shared_array, barrier1, barrier2, nav_queue, fftw_plans, GetNewPrnFunc),
       p_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
@@ -46,20 +50,14 @@ ChannelGpsL1caArray::ChannelGpsL1caArray(
       p2_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       e_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
       l_array_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
-      w_phase_cal_{Eigen::VectorXcd::Zero(conf.antenna.n_ant)},
+      w_bf_{Eigen::RowVectorXcd::Zero(conf.antenna.n_ant)},
+      manifold_{manifold},
+      w_phase_cal_{phase_cal},
       bf_{BeamFormer(conf_.antenna.n_ant, nav_pkt_.Lambda, conf_.antenna.ant_xyz)},
       is_bf_{false} {
   nav_pkt_.PromptCorrelators.resize(conf_.antenna.n_ant);
   nav_pkt_.PromptCorrelators = Eigen::VectorXcd::Zero(conf_.antenna.n_ant);
   nav_pkt_.PllDisc.resize(conf_.antenna.n_ant);
-  // w_phase_cal_ << std::complex<double>(1.0, 0.0),
-  //     std::complex<double>(1.0, 0.0),
-  //     std::complex<double>(1.0, 0.0),
-  //     std::complex<double>(1.0, 0.0);
-  w_phase_cal_ << std::complex<double>(1.0, 0.0),
-      std::complex<double>(-0.948803223566488, -0.315867761808388),
-      std::complex<double>(-0.231189814499734, +0.97290866460916),
-      std::complex<double>(-0.533946572224442, +0.845518218614932);
 }
 
 // *=== ~ChannelGpsL1caArray ===*
@@ -115,12 +113,11 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 
 // *=== Dump ===*
 void ChannelGpsL1caArray::Dump() {
-  // log_->warn("u_body = [{}, {}, {}]", u_body_(0), u_body_(1), u_body_(2));
   // phase calibrations
-  // p1_array_.array() *= w_phase_cal_.array();
-  // p2_array_.array() *= w_phase_cal_.array();
-  // e_array_.array() *= w_phase_cal_.array();
-  // l_array_.array() *= w_phase_cal_.array();
+  p1_array_.array() *= (*w_phase_cal_).array();
+  p2_array_.array() *= (*w_phase_cal_).array();
+  e_array_.array() *= (*w_phase_cal_).array();
+  l_array_.array() *= (*w_phase_cal_).array();
 
   // beamsteer
   if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
@@ -128,11 +125,30 @@ void ChannelGpsL1caArray::Dump() {
     //   lock_.Reset();
     //   is_bf_ = true;
     // }
-    bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
-    P1_ = bf_(p1_array_);
-    P2_ = bf_(p2_array_);
-    E_ = bf_(e_array_);
-    L_ = bf_(l_array_);
+
+    // // deterministic beamforming
+    // bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
+    // P1_ = bf_(p1_array_);
+    // P2_ = bf_(p2_array_);
+    // E_ = bf_(e_array_);
+    // L_ = bf_(l_array_);
+
+    // manifold beamforming
+    double tmp = std::atan2((*nav_pkt_.UnitVec)(1), (*nav_pkt_.UnitVec)(0));
+    tmp -= navtools::TWO_PI<> * std::floor(tmp / navtools::TWO_PI<>);
+    int az = static_cast<int>(std::rint(navtools::RAD2DEG<> * tmp));
+    int el = static_cast<int>(std::rint(navtools::RAD2DEG<> * -std::asin((*nav_pkt_.UnitVec)(2))));
+    az = (az > 359) ? az - 360 : az;
+    az = (az < 0) ? az + 360 : az;
+    el = (el > 90) ? el - 90 : el;
+    el = (el < 0) ? el + 90 : el;
+    // std::cout << "Az = " << az << ", El = " << el << "\n";
+    w_bf_ = ((*manifold_)(el, az)).transpose();
+    // std::cout << "W manifold = " << w_bf_ << "\n";
+    P1_ = w_bf_ * p1_array_;
+    P2_ = w_bf_ * p2_array_;
+    E_ = w_bf_ * e_array_;
+    L_ = w_bf_ * l_array_;
     N_.array() *= static_cast<double>(conf_.antenna.n_ant) / 2.0;
   } else {
     P1_ = p1_array_(0);
@@ -144,19 +160,6 @@ void ChannelGpsL1caArray::Dump() {
   // combine prompt sections
   p_array_ = p1_array_ + p2_array_;
   P_ = P1_ + P2_;
-
-  // log_->warn(
-  //     "Channel {} - IE = {:.1f}, IP = {:.1f}, IL = {:.1f}",
-  //     file_pkt_.Header.ChannelNum,
-  //     E_.real() / 10000.0,
-  //     P_.real() / 10000.0,
-  //     L_.real() / 10000.0);
-  // log_->warn(
-  //     "Channel {} - QE = {:.1f}, QP = {:.1f}, QL = {:.1f}",
-  //     file_pkt_.Header.ChannelNum,
-  //     E_.imag() / 10000.0,
-  //     P_.imag() / 10000.0,
-  //     L_.imag() / 10000.0);
 
   // check if navigation data needs to be parsed
   if (!(file_pkt_.TrackingStatus & TrackingFlags::EPH_DECODED)) {

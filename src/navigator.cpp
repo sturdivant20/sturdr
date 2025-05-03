@@ -451,17 +451,17 @@ void Navigator::ScalarUpdate() {
       Eigen::Matrix3d C_l_b;
 
       // MUSIC estimator
-      Eigen::VectorXd est_az(N), est_el(N);
-      for (int i = 0; i < num_sv; i++) {
+      // Eigen::VectorXd est_az(N), est_el(N);
+      for (int i = 0; i < N; i++) {
         // get doa predicted unit vector
-        sturdins::MUSIC(
-            est_az(i),
-            est_el(i),
-            ch_data_[i + 1].PromptCorrelators,
-            conf_.antenna.ant_xyz,
-            static_cast<int>(conf_.antenna.n_ant),
-            ch_data_[i + 1].Lambda,
-            1e-4);
+        // sturdins::MUSIC(
+        //     est_az(i),
+        //     est_el(i),
+        //     ch_data_[i + 1].PromptCorrelators,
+        //     conf_.antenna.ant_xyz,
+        //     static_cast<int>(conf_.antenna.n_ant),
+        //     ch_data_[i + 1].Lambda,
+        //     1e-4);
         // get ephemeris unit vector
         sturdins::RangeAndRate(
             x.segment(0, 3),
@@ -478,18 +478,21 @@ void Navigator::ScalarUpdate() {
       }
 
       // Wahba's problem solution
-      Eigen::MatrixXd u_body_est(3, N);
-      Eigen::VectorXd u_body_var{Eigen::VectorXd::Ones(N)};
-      u_body_est.row(0) = est_az.array().cos() * est_el.array().cos();
-      u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
-      u_body_est.row(2) = -est_el.array().sin();
-      // std::cout << "u_body_est = \n" << u_body_est << "\n";
-      sturdins::Wahba(C_l_b, u_body_est, u_ned, u_body_var);
+      // Eigen::MatrixXd u_body_est(3, N);
+      // Eigen::VectorXd u_body_var{Eigen::VectorXd::Ones(N)};
+      // u_body_est.row(0) = est_az.array().cos() * est_el.array().cos();
+      // u_body_est.row(1) = est_az.array().sin() * est_el.array().cos();
+      // u_body_est.row(2) = -est_el.array().sin();
+      // // std::cout << "u_body_est = \n" << u_body_est << "\n";
+      // sturdins::Wahba(C_l_b, u_body_est, u_ned, u_body_var);
+
+      // initialize kalman filter attitude
+      C_l_b << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
       kf_.SetAttitude(C_l_b.transpose());
 
       // save beamsteering unit vector to channels
-      // Eigen::Matrix3Xd u_body = C_l_b * u_ned;
-      for (uint8_t ii = 1; ii <= (uint8_t)u_ned.cols(); ii++) {
+      u_ned *= -1.0;
+      for (uint8_t ii = 1; ii <= (uint8_t)N; ii++) {
         *ch_data_[ii].UnitVec = C_l_b * u_ned.col(ii - 1);
         // log_->warn(
         //     "Channel {} - unit_vec = [{}, {}, {}]",
@@ -497,8 +500,8 @@ void Navigator::ScalarUpdate() {
         //     (*ch_data_[ii].UnitVec)(0),
         //     (*ch_data_[ii].UnitVec)(1),
         //     (*ch_data_[ii].UnitVec)(2));
-        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1, ii - 1), u_ned(0, ii - 1));
-        ch_data_[ii].Elevation = std::asin(u_ned(2, ii - 1));
+        ch_data_[ii].Azimuth = std::atan2(u_ned(1, ii - 1), u_ned(0, ii - 1));
+        ch_data_[ii].Elevation = -std::asin(u_ned(2, ii - 1));
         ch_data_[ii].Pseudorange = psr[ii - 1];
       }
     } else {
@@ -517,9 +520,9 @@ void Navigator::ScalarUpdate() {
             tmp,
             tmp1,
             tmp2);
-        u_ned = C_e_l * u;
-        ch_data_[ii].Azimuth = navtools::PI<> + std::atan2(u_ned(1), u_ned(0));
-        ch_data_[ii].Elevation = std::asin(u_ned(2));
+        u_ned = C_e_l * -u;
+        ch_data_[ii].Azimuth = std::atan2(u_ned(1), u_ned(0));
+        ch_data_[ii].Elevation = -std::asin(u_ned(2));
         ch_data_[ii].Pseudorange = psr[ii];
       }
     }
@@ -695,6 +698,8 @@ void Navigator::LogDDSMsg() {
     // dds_channel_msg_.QL(it.second.QL);
     // dds_channel_msg_.TapSpace(it.second.tap_space);
     dds_channel_pub_->Publish(dds_channel_msg_);
+    // std::cout << "Azimuth = " << dds_channel_msg_.Azimuth()
+    //           << ", Elevation = " << dds_channel_msg_.Elevation() << "\n";
   }
 
   // log navigation message

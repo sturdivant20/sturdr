@@ -32,7 +32,9 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
   Eigen::VectorXcd p2_array_;
   Eigen::VectorXcd e_array_;
   Eigen::VectorXcd l_array_;
-  Eigen::VectorXcd w_phase_cal_;
+  Eigen::RowVectorXcd w_bf_;
+  std::shared_ptr<Eigen::MatrixX<Eigen::VectorXcd>> manifold_;
+  std::shared_ptr<Eigen::VectorXcd> w_phase_cal_;
   BeamFormer bf_;
   bool is_bf_;
 
@@ -50,7 +52,9 @@ class ChannelGpsL1caArray : public ChannelGpsL1ca {
       std::shared_ptr<ConcurrentBarrier> barrier2,
       std::shared_ptr<ConcurrentQueue> nav_queue,
       std::shared_ptr<FftwWrapper> fftw_plans,
-      std::function<void(uint8_t &)> &GetNewPrnFunc);
+      std::function<void(uint8_t &)> &GetNewPrnFunc,
+      std::shared_ptr<Eigen::MatrixX<Eigen::VectorXcd>> manifold,
+      std::shared_ptr<Eigen::VectorXcd> phase_cal);
 
   /**
    * *=== ~ChannelGpsL1caArray ===*

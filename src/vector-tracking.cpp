@@ -140,9 +140,9 @@ void RunVDFllUpdate(
   // 7. Unit Vector for potential beamsteering (in body frame)
   Eigen::Vector3d lla{filt.phi_, filt.lam_, filt.h_};
   Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
-  Eigen::Vector3d u_ned = C_e_l * u;
-  data.Azimuth = navtools::PI<> + std::atan2(u_ned(1), u_ned(0));
-  data.Elevation = std::asin(u_ned(2));
+  Eigen::Vector3d u_ned = C_e_l * -u;
+  data.Azimuth = std::atan2(u_ned(1), u_ned(0));
+  data.Elevation = -std::asin(u_ned(2));
   data.Pseudorange = psr(0);
   if (n_ant > 1) {
     *data.UnitVec = filt.C_b_l_.transpose() * u_ned;

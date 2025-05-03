@@ -65,6 +65,8 @@ class SturDR {
   std::vector<ChannelGpsL1caArray> gps_l1ca_array_channels_;
   std::shared_ptr<ConcurrentBarrier> barrier1_;
   std::shared_ptr<ConcurrentBarrier> barrier2_;
+  std::shared_ptr<Eigen::MatrixX<Eigen::VectorXcd>> manifold_;
+  std::shared_ptr<Eigen::VectorXcd> phase_cal_;
 
   /**
    * @brief spdlog loggers
@@ -99,6 +101,24 @@ class SturDR {
 
  private:
   /**
+   * @brief Thread safe function for a channel to request a new PRN
+   * @param prn current channel prn
+   */
+  void GetNewPrn(uint8_t &prn);
+
+  /**
+   * *=== InitChannels ===*
+   * @brief initializes channels to be used
+   */
+  void InitChannels();
+
+  /**
+   * *=== ParsePhaseCalibrationFiles ===*
+   * @brief Parses the experimentally derived phase calibrations and manifold definition
+   */
+  void ParsePhaseCalibrationFiles();
+
+  /**
    * *=== Run ===*
    * @brief Runs the receiver using real input stream
    */
@@ -115,18 +135,6 @@ class SturDR {
   void RunComplex();
   template <typename T>
   void RunComplexArray();
-
-  /**
-   * @brief Thread safe function for a channel to request a new PRN
-   * @param prn current channel prn
-   */
-  void GetNewPrn(uint8_t &prn);
-
-  /**
-   * *=== InitChannels ===*
-   * @brief initializes channels to be used
-   */
-  void InitChannels();
 };
 
 }  // namespace sturdr

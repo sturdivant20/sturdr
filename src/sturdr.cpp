@@ -19,6 +19,7 @@
 #include <chrono>
 #include <complex>
 #include <cstdint>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -288,170 +289,170 @@ void SturDR::GetNewPrn(uint8_t& prn) {
   // search for next available prn
   while (prns_in_use_[prn_ptr_]) {
     // prn_ptr_ = prn_ptr_ % 32 + 1;
-    // switch (prn_ptr_) {
-    //   case (uint8_t)1:
-    //     prn_ptr_ = 2;
-    //     break;
-    //   case (uint8_t)2:
-    //     prn_ptr_ = 3;
-    //     break;
-    //   case (uint8_t)3:
-    //     prn_ptr_ = 6;
-    //     break;
-    //   case (uint8_t)6:
-    //     prn_ptr_ = 11;
-    //     break;
-    //   case (uint8_t)11:
-    //     prn_ptr_ = 14;
-    //     break;
-    //   case (uint8_t)14:
-    //     prn_ptr_ = 17;
-    //     break;
-    //   case (uint8_t)17:
-    //     prn_ptr_ = 19;
-    //     break;
-    //   case (uint8_t)19:
-    //     prn_ptr_ = 22;
-    //     break;
-    //   case (uint8_t)22:
-    //     prn_ptr_ = 24;
-    //     break;
-    //   case (uint8_t)24:
-    //     prn_ptr_ = 30;
-    //     break;
-    //   case (uint8_t)30:
-    //     prn_ptr_ = 28;
-    //     break;
-    //   case (uint8_t)28:
-    //     prn_ptr_ = 1;
-    //     break;
-    //   default:
-    //     prn_ptr_ = 1;
-    //     break;
-    // }
     switch (prn_ptr_) {
-      case (uint8_t)5:
-        prn_ptr_ = 10;
+      case (uint8_t)1:
+        prn_ptr_ = 2;
         break;
-      case (uint8_t)10:
-        prn_ptr_ = 13;
+      case (uint8_t)2:
+        prn_ptr_ = 6;
         break;
-      case (uint8_t)13:
-        prn_ptr_ = 15;
+      // case (uint8_t)3:
+      //   prn_ptr_ = 6;
+      //   break;
+      case (uint8_t)6:
+        prn_ptr_ = 14;
         break;
-      case (uint8_t)15:
-        prn_ptr_ = 18;
+      // case (uint8_t)11:
+      //   prn_ptr_ = 14;
+      //   break;
+      case (uint8_t)14:
+        prn_ptr_ = 17;
         break;
-      case (uint8_t)18:
-        prn_ptr_ = 23;
+      case (uint8_t)17:
+        prn_ptr_ = 19;
         break;
-      case (uint8_t)23:
+      case (uint8_t)19:
+        prn_ptr_ = 22;
+        break;
+      case (uint8_t)22:
         prn_ptr_ = 24;
         break;
       case (uint8_t)24:
-        prn_ptr_ = 27;
-        break;
-      case (uint8_t)27:
-        prn_ptr_ = 29;
-        break;
-      case (uint8_t)29:
-        prn_ptr_ = 32;
-        break;
-      case (uint8_t)32:
         prn_ptr_ = 30;
         break;
       case (uint8_t)30:
-        prn_ptr_ = 5;
+        prn_ptr_ = 28;
+        break;
+      case (uint8_t)28:
+        prn_ptr_ = 1;
         break;
       default:
-        prn_ptr_ = 5;
+        prn_ptr_ = 1;
         break;
     }
+    // switch (prn_ptr_) {
+    //   case (uint8_t)5:
+    //     prn_ptr_ = 10;
+    //     break;
+    //   case (uint8_t)10:
+    //     prn_ptr_ = 13;
+    //     break;
+    //   case (uint8_t)13:
+    //     prn_ptr_ = 15;
+    //     break;
+    //   case (uint8_t)15:
+    //     prn_ptr_ = 18;
+    //     break;
+    //   case (uint8_t)18:
+    //     prn_ptr_ = 23;
+    //     break;
+    //   case (uint8_t)23:
+    //     prn_ptr_ = 24;
+    //     break;
+    //   case (uint8_t)24:
+    //     prn_ptr_ = 27;
+    //     break;
+    //   case (uint8_t)27:
+    //     prn_ptr_ = 29;
+    //     break;
+    //   case (uint8_t)29:
+    //     prn_ptr_ = 32;
+    //     break;
+    //   case (uint8_t)32:
+    //     prn_ptr_ = 30;
+    //     break;
+    //   case (uint8_t)30:
+    //     prn_ptr_ = 5;
+    //     break;
+    //   default:
+    //     prn_ptr_ = 5;
+    //     break;
+    // }
   }
 
   // log new prn
   prn = prn_ptr_;
   prns_in_use_[prn_ptr_] = true;
   // prn_ptr_ = prn_ptr_ % 32 + 1;
-  // switch (prn_ptr_) {
-  //   case (uint8_t)1:
-  //     prn_ptr_ = 2;
-  //     break;
-  //   case (uint8_t)2:
-  //     prn_ptr_ = 3;
-  //     break;
-  //   case (uint8_t)3:
-  //     prn_ptr_ = 6;
-  //     break;
-  //   case (uint8_t)6:
-  //     prn_ptr_ = 11;
-  //     break;
-  //   case (uint8_t)11:
-  //     prn_ptr_ = 14;
-  //     break;
-  //   case (uint8_t)14:
-  //     prn_ptr_ = 17;
-  //     break;
-  //   case (uint8_t)17:
-  //     prn_ptr_ = 19;
-  //     break;
-  //   case (uint8_t)19:
-  //     prn_ptr_ = 22;
-  //     break;
-  //   case (uint8_t)22:
-  //     prn_ptr_ = 24;
-  //     break;
-  //   case (uint8_t)24:
-  //     prn_ptr_ = 30;
-  //     break;
-  //   case (uint8_t)30:
-  //     prn_ptr_ = 28;
-  //     break;
-  //   case (uint8_t)28:
-  //     prn_ptr_ = 1;
-  //     break;
-  //   default:
-  //     prn_ptr_ = 1;
-  //     break;
-  // }
   switch (prn_ptr_) {
-    case (uint8_t)5:
-      prn_ptr_ = 10;
+    case (uint8_t)1:
+      prn_ptr_ = 2;
       break;
-    case (uint8_t)10:
-      prn_ptr_ = 13;
+    case (uint8_t)2:
+      prn_ptr_ = 6;
       break;
-    case (uint8_t)13:
-      prn_ptr_ = 15;
+    // case (uint8_t)3:
+    //   prn_ptr_ = 6;
+    //   break;
+    case (uint8_t)6:
+      prn_ptr_ = 14;
       break;
-    case (uint8_t)15:
-      prn_ptr_ = 18;
+    // case (uint8_t)11:
+    //   prn_ptr_ = 14;
+    //   break;
+    case (uint8_t)14:
+      prn_ptr_ = 17;
       break;
-    case (uint8_t)18:
-      prn_ptr_ = 23;
+    case (uint8_t)17:
+      prn_ptr_ = 19;
       break;
-    case (uint8_t)23:
+    case (uint8_t)19:
+      prn_ptr_ = 22;
+      break;
+    case (uint8_t)22:
       prn_ptr_ = 24;
       break;
     case (uint8_t)24:
-      prn_ptr_ = 27;
-      break;
-    case (uint8_t)27:
-      prn_ptr_ = 29;
-      break;
-    case (uint8_t)29:
-      prn_ptr_ = 32;
-      break;
-    case (uint8_t)32:
       prn_ptr_ = 30;
       break;
     case (uint8_t)30:
-      prn_ptr_ = 5;
+      prn_ptr_ = 28;
+      break;
+    case (uint8_t)28:
+      prn_ptr_ = 1;
       break;
     default:
-      prn_ptr_ = 5;
+      prn_ptr_ = 1;
       break;
   }
+  // switch (prn_ptr_) {
+  //   case (uint8_t)5:
+  //     prn_ptr_ = 10;
+  //     break;
+  //   case (uint8_t)10:
+  //     prn_ptr_ = 13;
+  //     break;
+  //   case (uint8_t)13:
+  //     prn_ptr_ = 15;
+  //     break;
+  //   case (uint8_t)15:
+  //     prn_ptr_ = 18;
+  //     break;
+  //   case (uint8_t)18:
+  //     prn_ptr_ = 23;
+  //     break;
+  //   case (uint8_t)23:
+  //     prn_ptr_ = 24;
+  //     break;
+  //   case (uint8_t)24:
+  //     prn_ptr_ = 27;
+  //     break;
+  //   case (uint8_t)27:
+  //     prn_ptr_ = 29;
+  //     break;
+  //   case (uint8_t)29:
+  //     prn_ptr_ = 32;
+  //     break;
+  //   case (uint8_t)32:
+  //     prn_ptr_ = 30;
+  //     break;
+  //   case (uint8_t)30:
+  //     prn_ptr_ = 5;
+  //     break;
+  //   default:
+  //     prn_ptr_ = 5;
+  //     break;
+  // }
 }
 
 // *=== InitChannels ===*
@@ -495,6 +496,7 @@ void SturDR::InitChannels() {
         gps_l1ca_channels_[i - 1].Start();
       }
     } else {
+      ParsePhaseCalibrationFiles();
       gps_l1ca_array_channels_.reserve(conf_.rfsignal.max_channels);
       for (uint8_t i = 1; i <= (uint8_t)conf_.rfsignal.max_channels; i++) {
         gps_l1ca_array_channels_.emplace_back(
@@ -506,11 +508,70 @@ void SturDR::InitChannels() {
             barrier2_,
             nav_queue_,
             fftw_plans_,
-            get_new_prn_func);
+            get_new_prn_func,
+            manifold_,
+            phase_cal_);
         gps_l1ca_array_channels_[i - 1].Start();
       }
     }
   }
+}
+
+// *=== ParsePhaseCalibrationFiles ===*
+void SturDR::ParsePhaseCalibrationFiles() {
+  // parse manifold
+  Eigen::MatrixX<Eigen::VectorXcd> tmp_manifold(91, 360);
+  std::string manifold_file = yp_.GetVar<std::string>("manifold_file");
+  std::ifstream fid(manifold_file, std::ios::binary);
+  if (fid.is_open() || fid.good()) {
+    for (int el_cnt = 0; el_cnt < 91; el_cnt++) {
+      for (int az_cnt = 0; az_cnt < 360; az_cnt++) {
+        tmp_manifold(el_cnt, az_cnt) = Eigen::VectorXcd::Zero(conf_.antenna.n_ant);
+        fid.read(
+            reinterpret_cast<char*>(tmp_manifold(el_cnt, az_cnt).data()),
+            conf_.antenna.n_ant * sizeof(std::complex<double>));
+      }
+    }
+    manifold_ = std::make_shared<Eigen::MatrixX<Eigen::VectorXcd>>(tmp_manifold);
+
+    // std::cout << "MANIFOLD: \n----------\n";
+    // for (int ii = 0; ii < 91; ++ii) {
+    //   for (int jj = 0; jj < 360; ++jj) {
+    //     std::cout << (*manifold_)(ii, jj).transpose() << "\n";
+    //   }
+    // }
+  } else {
+    log_->warn(
+        "SturDR::ParsePhaseCalibrationFiles -> Unable to open Manifold File '{}'", manifold_file);
+    return;
+  }
+  fid.close();
+
+  // parse phase calibrations
+  phase_cal_ = std::make_shared<Eigen::VectorXcd>(Eigen::VectorXcd::Zero(conf_.antenna.n_ant));
+  std::string phase_cal_file = yp_.GetVar<std::string>("phase_cal_file");
+  fid.open(phase_cal_file, std::ios::binary);
+  if (fid.is_open() || fid.good()) {
+    fid.read(
+        reinterpret_cast<char*>((*phase_cal_).segment(1, conf_.antenna.n_ant - 1).data()),
+        (conf_.antenna.n_ant - 1) * sizeof(std::complex<double>));
+
+    // convert weights to unity scale
+    double phase;
+    for (uint8_t ii = 0; ii < conf_.antenna.n_ant; ii++) {
+      phase = std::atan2((*phase_cal_)(ii).imag(), (*phase_cal_)(ii).real());
+      (*phase_cal_)(ii) = std::complex<double>(std::cos(phase), std::sin(phase));
+    }
+
+    // std::cout << "PHASE CALIBRATION: \n-------------------\n";
+    // std::cout << (*phase_cal_) << "\n";
+  } else {
+    log_->warn(
+        "SturDR::ParsePhaseCalibrationFiles -> Unable to open Phase Calibration File '{}'",
+        manifold_file);
+    return;
+  }
+  fid.close();
 }
 
 //! ------------------------------------------------------------------------------------------------
