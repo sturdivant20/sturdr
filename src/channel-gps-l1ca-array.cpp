@@ -114,10 +114,10 @@ void ChannelGpsL1caArray::Integrate(const uint64_t &samp_to_read) {
 // *=== Dump ===*
 void ChannelGpsL1caArray::Dump() {
   // phase calibrations
-  p1_array_.array() *= (*w_phase_cal_).array();
-  p2_array_.array() *= (*w_phase_cal_).array();
-  e_array_.array() *= (*w_phase_cal_).array();
-  l_array_.array() *= (*w_phase_cal_).array();
+  // p1_array_.array() *= (*w_phase_cal_).array();
+  // p2_array_.array() *= (*w_phase_cal_).array();
+  // e_array_.array() *= (*w_phase_cal_).array();
+  // l_array_.array() *= (*w_phase_cal_).array();
 
   // beamsteer
   if (!std::isnan((*nav_pkt_.UnitVec)(0))) {
@@ -126,29 +126,28 @@ void ChannelGpsL1caArray::Dump() {
     //   is_bf_ = true;
     // }
 
-    // // deterministic beamforming
-    // bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
-    // P1_ = bf_(p1_array_);
-    // P2_ = bf_(p2_array_);
-    // E_ = bf_(e_array_);
-    // L_ = bf_(l_array_);
+    // deterministic beamforming
+    bf_.CalcSteeringWeights(*nav_pkt_.UnitVec);
+    P1_ = bf_(p1_array_);
+    P2_ = bf_(p2_array_);
+    E_ = bf_(e_array_);
+    L_ = bf_(l_array_);
 
-    // manifold beamforming
-    double tmp = std::atan2((*nav_pkt_.UnitVec)(1), (*nav_pkt_.UnitVec)(0));
-    tmp -= navtools::TWO_PI<> * std::floor(tmp / navtools::TWO_PI<>);
-    int az = static_cast<int>(std::rint(navtools::RAD2DEG<> * tmp));
-    int el = static_cast<int>(std::rint(navtools::RAD2DEG<> * -std::asin((*nav_pkt_.UnitVec)(2))));
-    az = (az > 359) ? az - 360 : az;
-    az = (az < 0) ? az + 360 : az;
-    el = (el > 90) ? el - 90 : el;
-    el = (el < 0) ? el + 90 : el;
-    // std::cout << "Az = " << az << ", El = " << el << "\n";
-    w_bf_ = ((*manifold_)(el, az)).transpose();
-    // std::cout << "W manifold = " << w_bf_ << "\n";
-    P1_ = w_bf_ * p1_array_;
-    P2_ = w_bf_ * p2_array_;
-    E_ = w_bf_ * e_array_;
-    L_ = w_bf_ * l_array_;
+    // // manifold beamforming
+    // double tmp = std::atan2((*nav_pkt_.UnitVec)(1), (*nav_pkt_.UnitVec)(0));
+    // tmp -= navtools::TWO_PI<> * std::floor(tmp / navtools::TWO_PI<>);
+    // int az = static_cast<int>(std::rint(navtools::RAD2DEG<> * tmp));
+    // int el = static_cast<int>(std::rint(navtools::RAD2DEG<> *
+    // -std::asin((*nav_pkt_.UnitVec)(2)))); az = (az > 359) ? az - 360 : az; az = (az < 0) ? az +
+    // 360 : az; el = (el > 90) ? el - 90 : el; el = (el < 0) ? el + 90 : el;
+    // // std::cout << "Az = " << az << ", El = " << el << "\n";
+    // w_bf_ = ((*manifold_)(el, az)).transpose();
+    // // std::cout << "W manifold = " << w_bf_ << "\n";
+    // P1_ = w_bf_ * p1_array_;
+    // P2_ = w_bf_ * p2_array_;
+    // E_ = w_bf_ * e_array_;
+    // L_ = w_bf_ * l_array_;
+
     N_.array() *= static_cast<double>(conf_.antenna.n_ant) / 2.0;
   } else {
     P1_ = p1_array_(0);
@@ -181,15 +180,15 @@ void ChannelGpsL1caArray::Dump() {
   code_lock_ = lock_.GetCodeLock();
   carr_lock_ = lock_.GetCarrierLock();
   cno_ = lock_.GetCno();
-  // double cno_single = cno_ / (double)conf_.antenna.n_ant;
+  double cno_single = cno_ / (double)conf_.antenna.n_ant;
 
   // discriminators
   double chip_err = DllNneml2(E_, L_);       // [chips]
   double phase_err = PllCostas(P_);          // [rad]
   double freq_err = FllAtan2(P1_, P2_, T_);  // [rad/s]
   double chip_var = DllVariance(cno_, T_);
-  // double phase_var = PllVariance(cno_single, T_);
-  double phase_var = PllVariance(cno_, T_);
+  double phase_var = PllVariance(cno_single, T_);
+  // double phase_var = PllVariance(cno_, T_);
   double freq_var = FllVariance(cno_, T_);
 
   // update time of week

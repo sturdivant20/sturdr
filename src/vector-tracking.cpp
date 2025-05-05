@@ -102,7 +102,6 @@ void RunVDFllUpdate(
       }
       phase_disc_var(j) = data.PhaseVar;
     }
-
     // spdlog::get("sturdr-console")->error("phase_disc: {}", phase_disc.transpose());
 
     filt.PhasedArrayUpdate(
@@ -118,7 +117,6 @@ void RunVDFllUpdate(
         n_ant,
         data.Lambda);
   } else {
-    // spdlog::get("sturdr-console")->error("Regular update ... ");
     filt.GnssUpdate(sv_pos, sv_vel, psr, psrdot, psr_var, psrdot_var);
   }
 
@@ -140,19 +138,13 @@ void RunVDFllUpdate(
   // 7. Unit Vector for potential beamsteering (in body frame)
   Eigen::Vector3d lla{filt.phi_, filt.lam_, filt.h_};
   Eigen::Matrix3d C_e_l = navtools::ecef2nedDcm<double>(lla);
-  Eigen::Vector3d u_ned = C_e_l * -u;
-  data.Azimuth = std::atan2(u_ned(1), u_ned(0));
-  data.Elevation = -std::asin(u_ned(2));
+  Eigen::Vector3d u_ned = C_e_l * u;
+  data.Azimuth = std::atan2(-u_ned(1), -u_ned(0));
+  data.Elevation = -std::asin(-u_ned(2));
   data.Pseudorange = psr(0);
+  // *data.UnitVec = u_ned;
   if (n_ant > 1) {
     *data.UnitVec = filt.C_b_l_.transpose() * u_ned;
-    // spdlog::get("sturdr-console")
-    //     ->warn(
-    //         "Channel {} - unit_vec = [{}, {}, {}]",
-    //         data.Header.ChannelNum,
-    //         (*data.UnitVec)(0),
-    //         (*data.UnitVec)(1),
-    //         (*data.UnitVec)(2));
   }
 
   // 8. Vector FLL update
